@@ -41,6 +41,7 @@ export interface Chat {
   lastMessageAt: string;
   unreadCount: number;
   isTyping: boolean;
+  status?: SessionStatus;
 }
 
 export interface Message {

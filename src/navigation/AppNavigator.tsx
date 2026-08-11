@@ -52,8 +52,8 @@ function MainTabs() {
             <AppIcon name={focused ? filled : outline} size={size} color={color} />
           );
         },
-        tabBarActiveTintColor: Colors.primary,
-        tabBarInactiveTintColor: Colors.tabInactive,
+        tabBarActiveTintColor: Colors.white,
+        tabBarInactiveTintColor: 'rgba(255,255,255,0.65)',
         tabBarLabelStyle: styles.tabLabel,
         tabBarStyle: styles.tabBar,
         tabBarItemStyle: styles.tabItem,
@@ -151,7 +151,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   tabBar: {
-    backgroundColor: Colors.background,
+    backgroundColor: Colors.primary,
     borderTopWidth: 0,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,

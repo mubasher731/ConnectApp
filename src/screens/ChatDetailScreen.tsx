@@ -20,7 +20,7 @@ import { socketService } from '../api/socket';
 import { useAuth } from '../context/AuthContext';
 import { chatService } from '../services/dataService';
 import { sessionService } from '../services/sessionService';
-import { Message } from '../types';
+import { Message, Session, SessionStatus } from '../types';
 import { Colors, Radius, Shadows, Spacing } from '../theme';
 
 interface ChatDetailScreenProps {
@@ -43,6 +43,13 @@ const formatDay = (ts: string) => {
   if (d.isSame(dayjs(), 'day')) return 'Today';
   if (d.isSame(dayjs().subtract(1, 'day'), 'day')) return 'Yesterday';
   return d.format('DD MMM YYYY');
+};
+
+/** mm:ss countdown formatter for the session timer. */
+const formatCountdown = (totalSeconds: number) => {
+  const m = Math.floor(totalSeconds / 60);
+  const s = totalSeconds % 60;
+  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 };
 
 /** WhatsApp-style typing indicator (3 pulsing dots). */
@@ -99,6 +106,10 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
   const [sessionNotice, setSessionNotice] = useState<string | null>(null);
   const [chatDisabled, setChatDisabled] = useState(false);
   const [online, setOnline] = useState(!!participantOnline);
+  // Session metadata + countdown state.
+  const [session, setSession] = useState<Session | null>(null);
+  const [status, setStatus] = useState<SessionStatus>('scheduled');
+  const [now, setNow] = useState(() => Date.now());
   const listRef = useRef<FlatList>(null);
   // Dedup guards: seen server message ids + unconfirmed optimistic messages.
   const seenIds = useRef<Set<string>>(new Set());
@@ -136,6 +147,15 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
       socketService.joinSession(chatId);
       // Join via HTTP so the server attaches us to the room and marks active.
       sessionService.joinSession(chatId, socketService.getSocket()?.id).catch(() => {});
+      // Fetch session details to power the countdown + input locking.
+      sessionService
+        .getSession(chatId)
+        .then((s) => {
+          if (!mounted) return;
+          setSession(s);
+          if (s?.status) setStatus(s.status);
+        })
+        .catch(() => {});
     }
 
     const socket = socketService.getSocket();
@@ -196,15 +216,18 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
     // Session lifecycle banners.
     const onSessionStarted = () => {
       setSessionNotice('Session started');
+      setStatus('active');
       setChatDisabled(false);
     };
     const onSessionEnding = () => setSessionNotice('Session ends in 1 minute');
     const onSessionEnded = () => {
       setSessionNotice('Session ended');
+      setStatus('completed');
       setChatDisabled(true);
     };
     const onSessionMissed = () => {
       setSessionNotice('Session missed — nobody joined');
+      setStatus('missed');
       setChatDisabled(true);
     };
     const onUserJoined = ({ userRole }: { userRole?: string }) => {
@@ -238,9 +261,54 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
     };
   }, [chatId, user?.id]);
 
+  // Tick once per second to drive the real-time countdown timer.
+  useEffect(() => {
+    const interval = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // ---- Countdown + input locking (derived from session metadata) ----
+  const durationMs = (session?.duration_minutes ?? 0) * 60 * 1000;
+  const scheduledAt = session?.scheduled_start ? dayjs(session.scheduled_start) : null;
+  const startAt = session?.actual_start ? dayjs(session.actual_start) : null;
+  const endAtMs = startAt
+    ? startAt.valueOf() + durationMs
+    : scheduledAt
+    ? scheduledAt.valueOf() + durationMs
+    : null;
+
+  const isBeforeStart = !!scheduledAt && status === 'scheduled' && now < scheduledAt.valueOf();
+  const hasEnded = endAtMs !== null && now >= endAtMs;
+  // Locked until the session officially starts; unlocks while active and
+  // locks again the moment the timer reaches zero.
+  const locked = chatDisabled || !session || isBeforeStart || hasEnded;
+
+  let countdownLabel: string | null = null;
+  let countdownTone: 'start' | 'remaining' | 'ended' = 'remaining';
+  if (isBeforeStart && scheduledAt) {
+    const secs = Math.max(0, Math.ceil((scheduledAt.valueOf() - now) / 1000));
+    countdownLabel = `Starts in ${formatCountdown(secs)}`;
+    countdownTone = 'start';
+  } else if (endAtMs !== null) {
+    const secs = Math.max(0, Math.ceil((endAtMs - now) / 1000));
+    if (hasEnded) {
+      countdownLabel = 'Session ended';
+      countdownTone = 'ended';
+    } else {
+      countdownLabel = `${formatCountdown(secs)} remaining`;
+      countdownTone = 'remaining';
+    }
+  }
+
+  const inputPlaceholder = !locked
+    ? 'Type a message'
+    : isBeforeStart
+    ? 'Session starts soon'
+    : 'Session ended';
+
   const sendMessage = useCallback(() => {
     const trimmed = inputText.trim();
-    if (!trimmed || !chatId || chatDisabled) return;
+    if (!trimmed || !chatId || chatDisabled || !session || isBeforeStart || hasEnded) return;
 
     socketService.sendTypingStopped(chatId);
     const localId = `local-${Date.now()}`;
@@ -266,7 +334,7 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
 
     setInputText('');
     setShowEmoji(false);
-  }, [chatId, inputText, chatDisabled, user?.id]);
+  }, [chatId, inputText, chatDisabled, user?.id, session, isBeforeStart, hasEnded]);
 
   const handleChangeText = (text: string) => {
     const wasEmpty = inputText.trim().length === 0;
@@ -274,15 +342,15 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
     setInputText(text);
     if (!chatId) return;
 
-    const now = Date.now();
+    const nowMs = Date.now();
     if (nowEmpty) {
       // Emit typingStopped when the composer is cleared.
       if (!wasEmpty) socketService.sendTypingStopped(chatId);
       return;
     }
     // Throttle typing signals to ~1/s (spec requirement).
-    if (wasEmpty || now - lastTypingSent.current > 1000) {
-      lastTypingSent.current = now;
+    if (wasEmpty || nowMs - lastTypingSent.current > 1000) {
+      lastTypingSent.current = nowMs;
       socketService.sendTyping(chatId);
     }
   };
@@ -372,6 +440,48 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
       >
+        {/* Session countdown + lifecycle notices — pinned below the chat header */}
+        {countdownLabel || sessionNotice ? (
+          <View>
+            {countdownLabel ? (
+              <View
+                style={[
+                  styles.countdownBanner,
+                  countdownTone === 'start' && styles.countdownBannerStart,
+                  countdownTone === 'ended' && styles.countdownBannerEnded,
+                ]}
+              >
+                <AppIcon
+                  name="timer-outline"
+                  size={16}
+                  color={
+                    countdownTone === 'start'
+                      ? Colors.info
+                      : countdownTone === 'ended'
+                      ? Colors.error
+                      : Colors.success
+                  }
+                />
+                <Text
+                  style={[
+                    styles.countdownText,
+                    countdownTone === 'start' && styles.countdownTextStart,
+                    countdownTone === 'ended' && styles.countdownTextEnded,
+                  ]}
+                >
+                  {countdownLabel}
+                </Text>
+              </View>
+            ) : null}
+            {sessionNotice ? (
+              <View style={styles.noticeBanner}>
+                <AppIcon name="information-circle-outline" size={16} color={Colors.warning} />
+                <Text style={styles.noticeText}>{sessionNotice}</Text>
+              </View>
+            ) : null}
+          </View>
+        ) : null}
+
         <FlatList
           ref={listRef}
           data={messages}
@@ -390,14 +500,6 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
             />
           }
         />
-
-        {/* Session lifecycle notice */}
-        {sessionNotice ? (
-          <View style={styles.noticeBanner}>
-            <AppIcon name="information-circle-outline" size={16} color={Colors.warning} />
-            <Text style={styles.noticeText}>{sessionNotice}</Text>
-          </View>
-        ) : null}
 
         {/* Composer */}
         <View style={styles.inputContainer}>
@@ -421,18 +523,10 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
           )}
 
           <View style={styles.inputRow}>
-            <TouchableOpacity
-              style={[styles.roundButton, chatDisabled && styles.buttonDisabled]}
-              activeOpacity={0.7}
-              disabled={chatDisabled}
-            >
-              <AppIcon name="add" size={22} color={chatDisabled ? Colors.textTertiary : Colors.primary} />
-            </TouchableOpacity>
-
-            <View style={[styles.textInputWrapper, chatDisabled && styles.inputWrapperDisabled]}>
+            <View style={[styles.textInputWrapper, locked && styles.inputWrapperDisabled]}>
               <TextInput
                 style={styles.textInput}
-                placeholder={chatDisabled ? 'Session ended' : 'Type a message'}
+                placeholder={inputPlaceholder}
                 placeholderTextColor={Colors.textTertiary}
                 value={inputText}
                 onChangeText={handleChangeText}
@@ -440,14 +534,14 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
                 maxLength={500}
                 onSubmitEditing={sendMessage}
                 returnKeyType="send"
-                editable={!chatDisabled}
+                editable={!locked}
               />
               <View style={styles.inputActions}>
                 <TouchableOpacity
                   style={[styles.inputAction, showEmoji && styles.inputActionActive]}
                   onPress={() => setShowEmoji((s) => !s)}
                   activeOpacity={0.6}
-                  disabled={chatDisabled}
+                  disabled={locked}
                 >
                   <AppIcon
                     name={showEmoji ? 'close' : 'happy-outline'}
@@ -455,30 +549,22 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
                     color={chatDisabled ? Colors.textTertiary : showEmoji ? Colors.primary : Colors.textSecondary}
                   />
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.inputAction} activeOpacity={0.6} disabled={chatDisabled}>
-                  <AppIcon name="camera-outline" size={20} color={chatDisabled ? Colors.textTertiary : Colors.textSecondary} />
-                </TouchableOpacity>
               </View>
             </View>
 
-            {inputText.trim().length > 0 ? (
-              <TouchableOpacity
-                style={[styles.roundButton, styles.sendButton, chatDisabled && styles.buttonDisabled]}
-                onPress={sendMessage}
-                activeOpacity={0.85}
-                disabled={chatDisabled}
-              >
-                <AppIcon name="arrow-up" size={20} color={Colors.white} />
-              </TouchableOpacity>
-            ) : (
-              <TouchableOpacity
-                style={[styles.roundButton, chatDisabled && styles.buttonDisabled]}
-                activeOpacity={0.7}
-                disabled={chatDisabled}
-              >
-                <AppIcon name="mic-outline" size={22} color={chatDisabled ? Colors.textTertiary : Colors.primary} />
-              </TouchableOpacity>
-            )}
+            <TouchableOpacity
+              style={[
+                styles.roundButton,
+                styles.sendButton,
+                locked && styles.buttonDisabled,
+                inputText.trim().length === 0 && styles.buttonDisabled,
+              ]}
+              onPress={sendMessage}
+              activeOpacity={0.85}
+              disabled={locked || inputText.trim().length === 0}
+            >
+              <AppIcon name="arrow-up" size={20} color={Colors.primary} />
+            </TouchableOpacity>
           </View>
         </View>
       </KeyboardAvoidingView>
@@ -538,6 +624,32 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.warningSoft,
     paddingVertical: Spacing.sm,
     paddingHorizontal: Spacing.lg,
+  },
+  countdownBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.successSoft,
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.lg,
+  },
+  countdownBannerStart: {
+    backgroundColor: '#E8F0FE',
+  },
+  countdownBannerEnded: {
+    backgroundColor: Colors.errorSoft,
+  },
+  countdownText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: Colors.success,
+    marginLeft: Spacing.sm,
+  },
+  countdownTextStart: {
+    color: Colors.info,
+  },
+  countdownTextEnded: {
+    color: Colors.error,
   },
   noticeText: {
     fontSize: 13,
@@ -639,10 +751,10 @@ const styles = StyleSheet.create({
   },
   inputContainer: {
     borderTopWidth: 1,
-    borderTopColor: Colors.border,
-    backgroundColor: Colors.background,
+    borderTopColor: Colors.primary,
+    backgroundColor: Colors.primary,
     paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
+    paddingTop: Spacing.sm,
     paddingBottom: Platform.OS === 'ios' ? Spacing.md : Spacing.sm,
   },
   emojiStrip: {
@@ -670,15 +782,15 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   sendButton: {
-    backgroundColor: Colors.primary,
+    backgroundColor: Colors.white,
+    marginLeft: Spacing.sm,
     marginRight: 0,
-    ...Shadows.primary,
   },
   textInputWrapper: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'flex-end',
-    backgroundColor: Colors.inputBackground,
+    backgroundColor: Colors.white,
     borderRadius: 22,
     paddingLeft: Spacing.lg,
     paddingRight: Spacing.xs,

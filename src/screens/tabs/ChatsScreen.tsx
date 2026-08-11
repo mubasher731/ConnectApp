@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -6,28 +6,49 @@ import {
   TouchableOpacity,
   StyleSheet,
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Avatar from '../../components/Avatar';
 import EmptyState from '../../components/EmptyState';
+import StatusBadge from '../../components/StatusBadge';
 import { chatService } from '../../services/dataService';
-import { Chat } from '../../types';
+import { Chat, SessionStatus } from '../../types';
 import { Colors, Radius, Shadows, Spacing } from '../../theme';
+
+const FILTERS: { key: 'all' | SessionStatus; label: string }[] = [
+  { key: 'all', label: 'All' },
+  { key: 'scheduled', label: 'Scheduled' },
+  { key: 'active', label: 'Active' },
+  { key: 'completed', label: 'Completed' },
+  { key: 'missed', label: 'Missed' },
+];
 
 const ChatsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const [chats, setChats] = useState<Chat[]>([]);
   const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState<'all' | SessionStatus>('all');
 
-  useEffect(() => {
-    let mounted = true;
-    chatService
-      .getChats()
-      .then((data) => mounted && setChats(data))
-      .catch(() => mounted && setChats([]))
-      .finally(() => mounted && setLoading(false));
-    return () => {
-      mounted = false;
-    };
-  }, []);
+  const filteredChats = useMemo(
+    () => (filter === 'all' ? chats : chats.filter((c) => c.status === filter)),
+    [chats, filter]
+  );
+
+  // Re-fetch every time the screen gains focus (mount + returning to it), so
+  // "See All" always shows the complete, fresh sessions list.
+  useFocusEffect(
+    useCallback(() => {
+      let mounted = true;
+      setLoading(true);
+      chatService
+        .getChats()
+        .then((data) => mounted && setChats(data))
+        .catch(() => mounted && setChats([]))
+        .finally(() => mounted && setLoading(false));
+      return () => {
+        mounted = false;
+      };
+    }, [])
+  );
 
   const navigateToChat = useCallback(
     (chat: Chat) => navigation.navigate('ChatDetail', { chatId: chat.id, participantName: chat.participantName }),
@@ -53,6 +74,7 @@ const ChatsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
             <Text style={styles.chatName} numberOfLines={1}>
               {item.participantName}
             </Text>
+            <StatusBadge status={item.status} />
             <Text style={styles.chatTime}>{item.lastMessageAt}</Text>
           </View>
           <View style={styles.chatPreview}>
@@ -82,8 +104,28 @@ const ChatsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           <Text style={styles.headerCount}>{chats.length} conversations</Text>
         )}
       </View>
+
+      {/* Status filter chips */}
+      <View style={styles.filterRow}>
+        {FILTERS.map((f) => {
+          const active = filter === f.key;
+          return (
+            <TouchableOpacity
+              key={f.key}
+              style={[styles.filterChip, active && styles.filterChipActive]}
+              onPress={() => setFilter(f.key)}
+              activeOpacity={0.7}
+            >
+              <Text style={[styles.filterChipText, active && styles.filterChipTextActive]}>
+                {f.label}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+
       <FlatList
-        data={chats}
+        data={filteredChats}
         keyExtractor={(item) => item.id}
         renderItem={renderItem}
         contentContainerStyle={styles.listContainer}
@@ -93,7 +135,7 @@ const ChatsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
         ListEmptyComponent={
           <EmptyState
             icon="chatbubble-ellipses-outline"
-            title="No messages yet"
+            title={filter === 'all' ? 'No messages yet' : `No ${filter} sessions`}
             message="Your conversations with doctors, nurses and your care team will appear here."
           />
         }
@@ -113,7 +155,7 @@ const styles = StyleSheet.create({
     paddingBottom: Spacing.md,
   },
   headerTitle: {
-    fontSize: 32,
+    fontSize: 28,
     fontWeight: '800',
     color: Colors.text,
     letterSpacing: -0.5,
@@ -122,6 +164,29 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: Colors.textSecondary,
     marginTop: 2,
+  },
+  filterRow: {
+    flexDirection: 'row',
+    paddingHorizontal: Spacing.lg,
+    paddingBottom: Spacing.sm,
+    gap: Spacing.sm,
+  },
+  filterChip: {
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 7,
+    borderRadius: Radius.round,
+    backgroundColor: Colors.inputBackground,
+  },
+  filterChipActive: {
+    backgroundColor: Colors.primary,
+  },
+  filterChipText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: Colors.textSecondary,
+  },
+  filterChipTextActive: {
+    color: Colors.white,
   },
   listContainer: {
     paddingHorizontal: Spacing.lg,
@@ -160,6 +225,7 @@ const styles = StyleSheet.create({
   chatTime: {
     fontSize: 12,
     color: Colors.textTertiary,
+    marginLeft: Spacing.sm,
   },
   chatPreview: {
     flexDirection: 'row',

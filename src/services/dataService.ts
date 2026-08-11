@@ -16,6 +16,7 @@ const mapSessionToChat = (session: Session, meId: number): Chat => {
     lastMessageAt: session.scheduled_start ?? '',
     unreadCount: 0,
     isTyping: false,
+    status: session.status,
   };
 };
 
@@ -39,15 +40,9 @@ export const chatService = {
     const { sessions } = isDoctor
       ? await sessionService.getDoctorSessions(1, 100)
       : await sessionService.getPatientSessions(1, 100);
-    // Dedupe by participant — one conversation per person.
-    const byParticipant = new Map<string, Chat>();
-    for (const session of sessions ?? []) {
-      const chat = mapSessionToChat(session, me.id);
-      if (!byParticipant.has(chat.participantId)) {
-        byParticipant.set(chat.participantId, chat);
-      }
-    }
-    return [...byParticipant.values()];
+    // One row per session — a participant can have multiple sessions
+    // scheduled, so each session becomes its own conversation entry.
+    return (sessions ?? []).map((session) => mapSessionToChat(session, me.id));
   },
 
   async getMessages(sessionId: string | number): Promise<Message[]> {

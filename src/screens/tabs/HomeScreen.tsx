@@ -4,14 +4,15 @@ import {
   Text,
   TextInput,
   FlatList,
-  ScrollView,
   TouchableOpacity,
+  ActivityIndicator,
   StyleSheet,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AppIcon from '../../components/AppIcon';
 import Avatar from '../../components/Avatar';
 import EmptyState from '../../components/EmptyState';
+import StatusBadge from '../../components/StatusBadge';
 import { useAuth } from '../../context/AuthContext';
 import { chatService } from '../../services/dataService';
 import { Chat } from '../../types';
@@ -29,21 +30,31 @@ interface QuickAction {
 const STATIC_ACTIONS: QuickAction[] = [
   { key: 'chats', icon: 'chatbubble-ellipses', label: 'Messages', tint: Colors.primarySoft, color: Colors.primary, target: 'Chats' },
   { key: 'calls', icon: 'call', label: 'Calls', tint: Colors.successSoft, color: Colors.success, target: 'Calls' },
-  { key: 'appointments', icon: 'calendar', label: 'Appointments', tint: Colors.warningSoft, color: Colors.warning },
-  { key: 'medications', icon: 'medkit', label: 'Medications', tint: '#F3E8FF', color: '#9333EA' },
 ];
 
 const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [recentChats, setRecentChats] = useState<Chat[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  // Re-fetches sessions/chats from the backend. Lets the user refresh
+  // without having to close & reopen the app (e.g. when a session is set).
+  const loadChats = useCallback(async () => {
+    setLoading(true);
+    try {
+      const data = await chatService.getChats();
+      setRecentChats(data);
+    } catch {
+      setRecentChats([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    chatService
-      .getChats()
-      .then(setRecentChats)
-      .catch(() => setRecentChats([]));
-  }, []);
+    loadChats();
+  }, [loadChats]);
 
   const filteredChats = recentChats.filter(
     (chat) =>
@@ -75,8 +86,6 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     STATIC_ACTIONS[0],
     STATIC_ACTIONS[1],
     directoryAction,
-    STATIC_ACTIONS[2],
-    STATIC_ACTIONS[3],
   ];
 
   return (
@@ -123,11 +132,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
       </View>
 
       {/* Quick Actions */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.quickActions}
-      >
+      <View style={styles.quickActions}>
         {quickActions.map((action) => (
           <TouchableOpacity
             key={action.key}
@@ -150,16 +155,30 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
             <Text style={styles.actionLabel}>{action.label}</Text>
           </TouchableOpacity>
         ))}
-      </ScrollView>
+      </View>
 
       {/* Recent Conversations */}
       <View style={styles.sectionHeader}>
         <Text style={styles.sectionTitle}>Recent Conversations</Text>
-        {recentChats.length > 0 && (
-          <TouchableOpacity onPress={() => navigation.navigate('Chats')}>
-            <Text style={styles.seeAllText}>See All</Text>
+        <View style={styles.sectionActions}>
+          <TouchableOpacity
+            style={styles.reloadButton}
+            onPress={loadChats}
+            activeOpacity={0.7}
+            disabled={loading}
+          >
+            {loading ? (
+              <ActivityIndicator size="small" color={Colors.primary} />
+            ) : (
+              <AppIcon name="refresh" size={18} color={Colors.primary} />
+            )}
           </TouchableOpacity>
-        )}
+          {recentChats.length > 0 && (
+            <TouchableOpacity onPress={() => navigation.navigate('Chats')}>
+              <Text style={styles.seeAllText}>See All</Text>
+            </TouchableOpacity>
+          )}
+        </View>
       </View>
 
       <FlatList
@@ -181,6 +200,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                 <Text style={styles.chatName} numberOfLines={1}>
                   {item.participantName}
                 </Text>
+                <StatusBadge status={item.status} />
                 <Text style={styles.chatTime}>{item.lastMessageAt}</Text>
               </View>
               <View style={styles.chatPreview}>
@@ -280,13 +300,16 @@ const styles = StyleSheet.create({
     paddingVertical: 0,
   },
   quickActions: {
-    paddingHorizontal: Spacing.xl,
-    paddingVertical: Spacing.md,
-    gap: Spacing.lg,
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'flex-start',
+    paddingHorizontal: Spacing.xs,
+    paddingTop: Spacing.md,
+    paddingBottom: Spacing.sm,
   },
   actionButton: {
     alignItems: 'center',
-    width: 68,
+    flex: 1,
   },
   actionIcon: {
     width: 54,
@@ -306,8 +329,21 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: Spacing.xl,
-    paddingTop: Spacing.md,
+    paddingTop: Spacing.sm,
     paddingBottom: Spacing.xs,
+  },
+  sectionActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  reloadButton: {
+    width: 32,
+    height: 32,
+    borderRadius: Radius.round,
+    backgroundColor: Colors.primarySoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: Spacing.md,
   },
   sectionTitle: {
     fontSize: 18,
@@ -356,6 +392,7 @@ const styles = StyleSheet.create({
   chatTime: {
     fontSize: 12,
     color: Colors.textTertiary,
+    marginLeft: Spacing.sm,
   },
   chatPreview: {
     flexDirection: 'row',

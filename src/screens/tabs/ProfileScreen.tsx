@@ -17,15 +17,6 @@ import { useAuth } from '../../context/AuthContext';
 import { validators } from '../../utils/validation';
 import { Colors, Radius, Shadows, Spacing } from '../../theme';
 
-const settingsItems = [
-  { icon: 'notifications-outline', title: 'Notifications', subtitle: 'Manage your notification preferences' },
-  { icon: 'lock-closed-outline', title: 'Privacy', subtitle: 'Control your privacy settings' },
-  { icon: 'shield-checkmark-outline', title: 'Security', subtitle: 'Password and authentication' },
-  { icon: 'help-circle-outline', title: 'Help & Support', subtitle: 'Get help and contact support' },
-  { icon: 'document-text-outline', title: 'Terms of Service', subtitle: 'Read our terms and conditions' },
-  { icon: 'newspaper-outline', title: 'Privacy Policy', subtitle: 'How we handle your data' },
-] as const;
-
 const ProfileScreen: React.FC = () => {
   const { user, signOut, updateUser } = useAuth();
 
@@ -70,6 +61,11 @@ const ProfileScreen: React.FC = () => {
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+      {/* Header */}
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>My Profile</Text>
+      </View>
+
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
         {/* Profile Header */}
         <View style={styles.profileHeader}>
@@ -116,42 +112,18 @@ const ProfileScreen: React.FC = () => {
             </Text>
           </View>
         </View>
-
-        {/* Settings */}
-        <View style={styles.sectionContainer}>
-          <Text style={styles.sectionTitle}>Settings</Text>
-          {settingsItems.map((item) => (
-            <TouchableOpacity
-              key={item.title}
-              style={styles.settingsItem}
-              activeOpacity={0.7}
-            >
-              <View style={styles.settingsIconContainer}>
-                <AppIcon name={item.icon} size={20} color={Colors.primary} />
-              </View>
-              <View style={styles.settingsContent}>
-                <Text style={styles.settingsTitle}>{item.title}</Text>
-                <Text style={styles.settingsSubtitle}>{item.subtitle}</Text>
-              </View>
-              <AppIcon name="chevron-forward" size={18} color={Colors.textTertiary} />
-            </TouchableOpacity>
-          ))}
-        </View>
-
-        {/* App Info */}
-        <View style={styles.appInfo}>
-          <Text style={styles.appInfoText}>ConnectApp v1.0.0</Text>
-          <Text style={styles.appInfoSubtext}>Healthcare Communication Platform</Text>
-        </View>
-
         {/* Sign Out */}
         <TouchableOpacity style={styles.logoutButton} onPress={handleLogout} activeOpacity={0.8}>
-          <AppIcon name="log-out-outline" size={18} color={Colors.error} />
+          <AppIcon name="log-out-outline" size={18} color={Colors.white} />
           <Text style={styles.logoutText}>Sign Out</Text>
         </TouchableOpacity>
-
-        <View style={styles.bottomSpacer} />
       </ScrollView>
+
+      {/* App Info — pinned at the bottom of the screen */}
+      <View style={styles.appInfo}>
+        <Text style={styles.appInfoText}>ConnectApp v1.0.0</Text>
+        <Text style={styles.appInfoSubtext}>Healthcare Communication Platform</Text>
+      </View>
 
       {/* Edit Profile Modal */}
       <Modal
@@ -223,8 +195,19 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.background,
   },
+  header: {
+    paddingHorizontal: Spacing.xl,
+    paddingTop: Spacing.lg,
+    paddingBottom: Spacing.md,
+  },
+  headerTitle: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: Colors.text,
+    letterSpacing: -0.5,
+  },
   scroll: {
-    paddingBottom: 110,
+    paddingBottom: Spacing.lg,
   },
   profileHeader: {
     alignItems: 'center',
@@ -300,53 +283,11 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.border,
     marginVertical: Spacing.md,
   },
-  sectionContainer: {
-    paddingHorizontal: Spacing.xl,
-    marginBottom: Spacing.xl,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: Colors.text,
-    letterSpacing: -0.2,
-    marginBottom: Spacing.md,
-  },
-  settingsItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Colors.card,
-    borderRadius: Radius.md,
-    paddingVertical: 14,
-    paddingHorizontal: Spacing.lg,
-    marginBottom: Spacing.sm,
-    borderWidth: 1,
-    borderColor: Colors.border,
-  },
-  settingsIconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: Radius.sm + 2,
-    backgroundColor: Colors.primarySoft,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: Spacing.md,
-  },
-  settingsContent: {
-    flex: 1,
-  },
-  settingsTitle: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: Colors.text,
-    marginBottom: 2,
-  },
-  settingsSubtitle: {
-    fontSize: 12,
-    color: Colors.textSecondary,
-  },
   appInfo: {
     alignItems: 'center',
-    marginBottom: Spacing.xl,
+    paddingVertical: Spacing.lg,
+    borderTopWidth: 1,
+    borderTopColor: Colors.border,
   },
   appInfoText: {
     fontSize: 14,
@@ -360,19 +301,18 @@ const styles = StyleSheet.create({
   },
   logoutButton: {
     marginHorizontal: Spacing.xl,
-    backgroundColor: Colors.card,
+    backgroundColor: Colors.error,
     borderRadius: Radius.lg,
     paddingVertical: Spacing.lg,
     alignItems: 'center',
     flexDirection: 'row',
     justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: Colors.errorSoft,
+    ...Shadows.raised,
   },
   logoutText: {
     fontSize: 16,
-    fontWeight: '600',
-    color: Colors.error,
+    fontWeight: '700',
+    color: Colors.white,
     marginLeft: Spacing.sm,
   },
   bottomSpacer: {
