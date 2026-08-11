@@ -2,12 +2,12 @@ import React, { useCallback, useEffect, useState } from 'react';
 import {
   View,
   Text,
-  TextInput,
   FlatList,
   TouchableOpacity,
   ActivityIndicator,
   StyleSheet,
 } from 'react-native';
+import dayjs from 'dayjs';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AppIcon from '../../components/AppIcon';
 import Avatar from '../../components/Avatar';
@@ -32,9 +32,14 @@ const STATIC_ACTIONS: QuickAction[] = [
   { key: 'calls', icon: 'call', label: 'Calls', tint: Colors.successSoft, color: Colors.success, target: 'Calls' },
 ];
 
+/** "Aug 21, 2026 • 6:47 AM" — readable timestamp for conversation cards. */
+const formatChatTime = (ts: string) => {
+  const d = dayjs(ts);
+  return d.isValid() ? d.format('MMM D, YYYY • h:mm A') : ts || '';
+};
+
 const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const { user } = useAuth();
-  const [searchQuery, setSearchQuery] = useState('');
   const [recentChats, setRecentChats] = useState<Chat[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -55,12 +60,6 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   useEffect(() => {
     loadChats();
   }, [loadChats]);
-
-  const filteredChats = recentChats.filter(
-    (chat) =>
-      chat.participantName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      chat.lastMessage.toLowerCase().includes(searchQuery.toLowerCase())
-  );
 
   const getGreeting = useCallback(() => {
     const hour = new Date().getHours();
@@ -108,26 +107,6 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           <TouchableOpacity onPress={() => navigation.navigate('Profile')}>
             <Avatar name={displayName || '?'} size={34} online />
           </TouchableOpacity>
-        </View>
-      </View>
-
-      {/* Search Bar */}
-      <View style={styles.searchContainer}>
-        <View style={styles.searchBar}>
-          <AppIcon name="search-outline" size={18} color={Colors.textTertiary} />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search conversations"
-            placeholderTextColor={Colors.textTertiary}
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            returnKeyType="search"
-          />
-          {searchQuery.length > 0 && (
-            <TouchableOpacity onPress={() => setSearchQuery('')}>
-              <AppIcon name="close-circle" size={18} color={Colors.textTertiary} />
-            </TouchableOpacity>
-          )}
         </View>
       </View>
 
@@ -182,7 +161,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
       </View>
 
       <FlatList
-        data={filteredChats}
+        data={recentChats}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
           <TouchableOpacity
@@ -197,22 +176,10 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
             />
             <View style={styles.chatInfo}>
               <View style={styles.chatHeader}>
-                <Text style={styles.chatName} numberOfLines={1}>
-                  {item.participantName}
-                </Text>
+                <Text style={styles.chatName}>{item.participantName}</Text>
                 <StatusBadge status={item.status} />
-                <Text style={styles.chatTime}>{item.lastMessageAt}</Text>
               </View>
-              <View style={styles.chatPreview}>
-                <Text style={styles.chatMessage} numberOfLines={1}>
-                  {item.lastMessage}
-                </Text>
-                {item.unreadCount > 0 && (
-                  <View style={styles.unreadBadge}>
-                    <Text style={styles.unreadText}>{item.unreadCount}</Text>
-                  </View>
-                )}
-              </View>
+              <Text style={styles.chatTime}>{formatChatTime(item.lastMessageAt)}</Text>
             </View>
           </TouchableOpacity>
         )}
@@ -278,26 +245,6 @@ const styles = StyleSheet.create({
     color: Colors.text,
     letterSpacing: -0.3,
     marginTop: 2,
-  },
-  searchContainer: {
-    paddingHorizontal: Spacing.xl,
-    paddingTop: Spacing.md,
-    paddingBottom: Spacing.md,
-  },
-  searchBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Colors.inputBackground,
-    borderRadius: Radius.md,
-    paddingHorizontal: Spacing.lg,
-    height: 48,
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: 15,
-    color: Colors.text,
-    marginLeft: Spacing.md,
-    paddingVertical: 0,
   },
   quickActions: {
     flexDirection: 'row',
@@ -379,7 +326,7 @@ const styles = StyleSheet.create({
   chatHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     marginBottom: Spacing.xs,
   },
   chatName: {
@@ -388,35 +335,12 @@ const styles = StyleSheet.create({
     color: Colors.text,
     flex: 1,
     marginRight: Spacing.sm,
+    lineHeight: 21,
   },
   chatTime: {
     fontSize: 12,
     color: Colors.textTertiary,
-    marginLeft: Spacing.sm,
-  },
-  chatPreview: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  chatMessage: {
-    fontSize: 14,
-    color: Colors.textSecondary,
-    flex: 1,
-    marginRight: Spacing.sm,
-  },
-  unreadBadge: {
-    backgroundColor: Colors.primary,
-    borderRadius: Radius.round,
-    minWidth: 20,
-    height: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 6,
-  },
-  unreadText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: Colors.white,
+    marginTop: 2,
   },
 });
 

@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   StyleSheet,
 } from 'react-native';
+import dayjs from 'dayjs';
 import { useFocusEffect } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Avatar from '../../components/Avatar';
@@ -22,6 +23,12 @@ const FILTERS: { key: 'all' | SessionStatus; label: string }[] = [
   { key: 'completed', label: 'Completed' },
   { key: 'missed', label: 'Missed' },
 ];
+
+/** "Aug 21, 2026 • 6:47 AM" — readable timestamp for conversation cards. */
+const formatChatTime = (ts: string) => {
+  const d = dayjs(ts);
+  return d.isValid() ? d.format('MMM D, YYYY • h:mm A') : ts || '';
+};
 
 const ChatsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const [chats, setChats] = useState<Chat[]>([]);
@@ -56,8 +63,6 @@ const ChatsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   );
 
   const renderItem = ({ item }: { item: Chat }) => {
-    const showTyping = item.isTyping;
-
     return (
       <TouchableOpacity
         style={styles.chatItem}
@@ -71,26 +76,10 @@ const ChatsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
         />
         <View style={styles.chatContent}>
           <View style={styles.chatHeader}>
-            <Text style={styles.chatName} numberOfLines={1}>
-              {item.participantName}
-            </Text>
+            <Text style={styles.chatName}>{item.participantName}</Text>
             <StatusBadge status={item.status} />
-            <Text style={styles.chatTime}>{item.lastMessageAt}</Text>
           </View>
-          <View style={styles.chatPreview}>
-            {showTyping ? (
-              <Text style={styles.typingText}>typing…</Text>
-            ) : (
-              <Text style={styles.chatMessage} numberOfLines={1}>
-                {item.lastMessage}
-              </Text>
-            )}
-            {item.unreadCount > 0 && (
-              <View style={styles.unreadBadge}>
-                <Text style={styles.unreadText}>{item.unreadCount}</Text>
-              </View>
-            )}
-          </View>
+          <Text style={styles.chatTime}>{formatChatTime(item.lastMessageAt)}</Text>
         </View>
       </TouchableOpacity>
     );
@@ -167,6 +156,7 @@ const styles = StyleSheet.create({
   },
   filterRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     paddingHorizontal: Spacing.lg,
     paddingBottom: Spacing.sm,
     gap: Spacing.sm,
@@ -212,7 +202,7 @@ const styles = StyleSheet.create({
   chatHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     marginBottom: Spacing.xs,
   },
   chatName: {
@@ -221,42 +211,12 @@ const styles = StyleSheet.create({
     color: Colors.text,
     flex: 1,
     marginRight: Spacing.sm,
+    lineHeight: 21,
   },
   chatTime: {
     fontSize: 12,
     color: Colors.textTertiary,
-    marginLeft: Spacing.sm,
-  },
-  chatPreview: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  chatMessage: {
-    fontSize: 14,
-    color: Colors.textSecondary,
-    flex: 1,
-    marginRight: Spacing.sm,
-  },
-  typingText: {
-    fontSize: 14,
-    color: Colors.primary,
-    fontWeight: '500',
-    flex: 1,
-    marginRight: Spacing.sm,
-  },
-  unreadBadge: {
-    backgroundColor: Colors.primary,
-    borderRadius: Radius.round,
-    minWidth: 20,
-    height: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 6,
-  },
-  unreadText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: Colors.white,
+    marginTop: 2,
   },
   separator: {
     height: 1,
