@@ -7,13 +7,12 @@ import {
   ActivityIndicator,
   StyleSheet,
 } from 'react-native';
-import dayjs from 'dayjs';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { AppIcon, Avatar, EmptyState, StatusBadge } from '../../components';
+import { AppIcon, AppointmentCard, Avatar, EmptyState } from '../../components';
 import { useAuth } from '../../context/AuthContext';
 import { chatService } from '../../services/dataService';
 import { Chat } from '../../types';
-import { Colors, Radius, Shadows, Spacing } from '../../theme';
+import { Colors, Radius, Spacing } from '../../theme';
 
 interface QuickAction {
   key: string;
@@ -28,12 +27,6 @@ const STATIC_ACTIONS: QuickAction[] = [
   { key: 'chats', icon: 'chatbubble-ellipses', label: 'Messages', tint: Colors.primarySoft, color: Colors.primary, target: 'Chats' },
   { key: 'calls', icon: 'call', label: 'Calls', tint: Colors.successSoft, color: Colors.success, target: 'Calls' },
 ];
-
-/** "Aug 21, 2026 • 6:47 AM" — readable timestamp for conversation cards. */
-const formatChatTime = (ts: string) => {
-  const d = dayjs(ts);
-  return d.isValid() ? d.format('MMM D, YYYY • h:mm A') : ts || '';
-};
 
 const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const { user } = useAuth();
@@ -161,32 +154,23 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
         data={recentChats}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
-          <TouchableOpacity
-            style={styles.chatCard}
-            onPress={() => navigation.navigate('ChatDetail', { chatId: item.id, participantName: item.participantName })}
-            activeOpacity={0.7}
-          >
-            <Avatar
-              name={item.participantName}
-              size={50}
-              online={item.participantOnline}
-            />
-            <View style={styles.chatInfo}>
-              <View style={styles.chatHeader}>
-                <Text style={styles.chatName}>{item.participantName}</Text>
-                <StatusBadge status={item.status} />
-              </View>
-              <Text style={styles.chatTime}>{formatChatTime(item.lastMessageAt)}</Text>
-            </View>
-          </TouchableOpacity>
+          <AppointmentCard
+            chat={item}
+            onPress={() =>
+              navigation.navigate('ChatDetail', {
+                chatId: item.id,
+                participantName: item.participantName,
+              })
+            }
+          />
         )}
         contentContainerStyle={styles.chatList}
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={
           <EmptyState
             icon="chatbubbles-outline"
-            title="No conversations yet"
-            message="When you start messaging your care team, your recent conversations will appear here."
+            title="No sessions yet"
+            message="When you start messaging your care team, your recent sessions will appear here."
           />
         }
       />
@@ -302,42 +286,9 @@ const styles = StyleSheet.create({
   },
   chatList: {
     paddingHorizontal: Spacing.xl,
-    paddingTop: Spacing.xs,
+    paddingTop: Spacing.sm,
     paddingBottom: 110,
-  },
-  chatCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Colors.card,
-    borderRadius: Radius.lg,
-    padding: Spacing.md,
-    marginTop: Spacing.sm,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    ...Shadows.card,
-  },
-  chatInfo: {
-    flex: 1,
-    marginLeft: Spacing.md,
-  },
-  chatHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: Spacing.xs,
-  },
-  chatName: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: Colors.text,
-    flex: 1,
-    marginRight: Spacing.sm,
-    lineHeight: 21,
-  },
-  chatTime: {
-    fontSize: 12,
-    color: Colors.textTertiary,
-    marginTop: 2,
+    backgroundColor: Colors.surface,
   },
 });
 

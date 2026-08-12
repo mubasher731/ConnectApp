@@ -4,6 +4,7 @@
  *   import { AppIcon, Avatar, FormInput } from '../components';
  */
 export { default as AppIcon } from './AppIcon';
+export { default as AppointmentCard } from './AppointmentCard';
 export { default as AuthHeader } from './AuthHeader';
 export { default as AuthScreenLayout } from './AuthScreenLayout';
 export { default as Avatar } from './Avatar';

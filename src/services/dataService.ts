@@ -17,6 +17,9 @@ const mapSessionToChat = (session: Session, meId: number): Chat => {
     unreadCount: 0,
     isTyping: false,
     status: session.status,
+    durationMinutes: session.duration_minutes,
+    startTime: session.actual_start ?? session.scheduled_start,
+    endTime: session.actual_end ?? null,
   };
 };
 

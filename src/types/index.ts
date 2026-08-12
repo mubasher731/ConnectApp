@@ -42,6 +42,12 @@ export interface Chat {
   unreadCount: number;
   isTyping: boolean;
   status?: SessionStatus;
+  /** Session duration in minutes (drives the "00 Hrs 04 Mins" row). */
+  durationMinutes?: number;
+  /** Effective session start time (actual_start ?? scheduled_start). */
+  startTime?: string | null;
+  /** Session end time when known (actual_end). */
+  endTime?: string | null;
 }
 
 export interface Message {

@@ -7,11 +7,15 @@ const STATUS_META: Record<
   SessionStatus,
   { label: string; bg: string; color: string }
 > = {
-  scheduled: { label: 'Scheduled', bg: '#E8F0FE', color: Colors.info },
-  active: { label: 'Active', bg: Colors.successSoft, color: Colors.success },
-  completed: { label: 'Completed', bg: '#F1F2F6', color: Colors.textSecondary },
-  missed: { label: 'Missed', bg: Colors.errorSoft, color: Colors.error },
+  scheduled: { label: 'Upcoming', bg: '#E8F0FE', color: Colors.info },
+  active: { label: 'Upcoming', bg: '#E8F0FE', color: Colors.info },
+  completed: { label: 'Consulted', bg: Colors.successSoft, color: Colors.success },
+  missed: { label: 'No Show', bg: Colors.errorSoft, color: Colors.error },
 };
+
+/** Public accessor so cards can reuse the status label/colors. */
+export const getStatusMeta = (status?: SessionStatus) =>
+  status ? STATUS_META[status] : undefined;
 
 const StatusBadge: React.FC<{ status?: SessionStatus }> = ({ status }) => {
   if (!status || !STATUS_META[status]) return null;

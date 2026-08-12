@@ -6,37 +6,35 @@ import {
   TouchableOpacity,
   StyleSheet,
 } from 'react-native';
-import dayjs from 'dayjs';
 import { useFocusEffect } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Avatar, EmptyState, StatusBadge } from '../../components';
-import { chatService } from '../../services/dataService';
-import { Chat, SessionStatus } from '../../types';
-import { Colors, Radius, Shadows, Spacing } from '../../theme';
+import { AppointmentCard, EmptyState } from '../../components';
+import { chatService } from '../../services';
+import { Chat } from '../../types';
+import { Colors, Radius, Spacing } from '../../theme';
 
-const FILTERS: { key: 'all' | SessionStatus; label: string }[] = [
+type FilterKey = 'all' | 'upcoming' | 'consulted' | 'no_show';
+
+const FILTERS: { key: FilterKey; label: string }[] = [
   { key: 'all', label: 'All' },
-  { key: 'scheduled', label: 'Scheduled' },
-  { key: 'active', label: 'Active' },
-  { key: 'completed', label: 'Completed' },
-  { key: 'missed', label: 'Missed' },
+  { key: 'upcoming', label: 'Upcoming' },
+  { key: 'consulted', label: 'Consulted' },
+  { key: 'no_show', label: 'No Show' },
 ];
-
-/** "Aug 21, 2026 • 6:47 AM" — readable timestamp for conversation cards. */
-const formatChatTime = (ts: string) => {
-  const d = dayjs(ts);
-  return d.isValid() ? d.format('MMM D, YYYY • h:mm A') : ts || '';
-};
 
 const ChatsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const [chats, setChats] = useState<Chat[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState<'all' | SessionStatus>('all');
+  const [filter, setFilter] = useState<FilterKey>('all');
 
-  const filteredChats = useMemo(
-    () => (filter === 'all' ? chats : chats.filter((c) => c.status === filter)),
-    [chats, filter]
-  );
+  const filteredChats = useMemo(() => {
+    if (filter === 'all') return chats;
+    if (filter === 'upcoming') {
+      return chats.filter((c) => c.status === 'scheduled' || c.status === 'active');
+    }
+    if (filter === 'consulted') return chats.filter((c) => c.status === 'completed');
+    return chats.filter((c) => c.status === 'missed');
+  }, [chats, filter]);
 
   // Re-fetch every time the screen gains focus (mount + returning to it), so
   // "See All" always shows the complete, fresh sessions list.
@@ -60,28 +58,9 @@ const ChatsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     [navigation]
   );
 
-  const renderItem = ({ item }: { item: Chat }) => {
-    return (
-      <TouchableOpacity
-        style={styles.chatItem}
-        onPress={() => navigateToChat(item)}
-        activeOpacity={0.7}
-      >
-        <Avatar
-          name={item.participantName}
-          size={52}
-          online={item.participantOnline}
-        />
-        <View style={styles.chatContent}>
-          <View style={styles.chatHeader}>
-            <Text style={styles.chatName}>{item.participantName}</Text>
-            <StatusBadge status={item.status} />
-          </View>
-          <Text style={styles.chatTime}>{formatChatTime(item.lastMessageAt)}</Text>
-        </View>
-      </TouchableOpacity>
-    );
-  };
+  const renderItem = ({ item }: { item: Chat }) => (
+    <AppointmentCard chat={item} onPress={() => navigateToChat(item)} />
+  );
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
@@ -117,13 +96,12 @@ const ChatsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
         renderItem={renderItem}
         contentContainerStyle={styles.listContainer}
         showsVerticalScrollIndicator={false}
-        ItemSeparatorComponent={() => <View style={styles.separator} />}
         refreshing={loading}
         ListEmptyComponent={
           <EmptyState
-            icon="chatbubble-ellipses-outline"
-            title={filter === 'all' ? 'No messages yet' : `No ${filter} sessions`}
-            message="Your conversations with doctors, nurses and your care team will appear here."
+            icon="calendar-outline"
+            title={filter === 'all' ? 'No sessions yet' : 'No sessions found'}
+            message="Your sessions with doctors, nurses and your care team will appear here."
           />
         }
       />
@@ -178,46 +156,10 @@ const styles = StyleSheet.create({
   },
   listContainer: {
     paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.xs,
     paddingBottom: 110,
     flexGrow: 1,
-  },
-  chatItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: Spacing.md,
-    paddingHorizontal: Spacing.md,
-    borderRadius: Radius.lg,
-    backgroundColor: Colors.card,
-    marginVertical: Spacing.xs,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    ...Shadows.card,
-  },
-  chatContent: {
-    flex: 1,
-    marginLeft: Spacing.md,
-  },
-  chatHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: Spacing.xs,
-  },
-  chatName: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: Colors.text,
-    flex: 1,
-    marginRight: Spacing.sm,
-    lineHeight: 21,
-  },
-  chatTime: {
-    fontSize: 12,
-    color: Colors.textTertiary,
-    marginTop: 2,
-  },
-  separator: {
-    height: 1,
+    backgroundColor: Colors.surface,
   },
 });
 
