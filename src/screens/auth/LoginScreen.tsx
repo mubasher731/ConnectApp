@@ -6,9 +6,7 @@ import {
   StyleSheet,
   Alert,
 } from 'react-native';
-import AuthScreenLayout from '../../components/AuthScreenLayout';
-import FormInput from '../../components/FormInput';
-import PrimaryButton from '../../components/PrimaryButton';
+import { AuthScreenLayout, FormInput, PrimaryButton } from '../../components';
 import { useAuth } from '../../context/AuthContext';
 import { validators, FieldErrors } from '../../utils/validation';
 import { Colors, Spacing } from '../../theme';

@@ -10,9 +10,7 @@ import {
   Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import AppIcon from '../../components/AppIcon';
-import Avatar from '../../components/Avatar';
-import PrimaryButton from '../../components/PrimaryButton';
+import { AppIcon, Avatar, PrimaryButton } from '../../components';
 import { useAuth } from '../../context/AuthContext';
 import { validators } from '../../utils/validation';
 import { Colors, Radius, Shadows, Spacing } from '../../theme';

@@ -13,13 +13,10 @@ import {
 } from 'react-native';
 import dayjs from 'dayjs';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import AppIcon from '../components/AppIcon';
-import Avatar from '../components/Avatar';
-import EmptyState from '../components/EmptyState';
+import { AppIcon, Avatar, EmptyState } from '../components';
 import { socketService } from '../api/socket';
 import { useAuth } from '../context/AuthContext';
-import { chatService } from '../services/dataService';
-import { sessionService } from '../services/sessionService';
+import { chatService, sessionService } from '../services';
 import { Message, Session, SessionStatus } from '../types';
 import { Colors, Radius, Shadows, Spacing } from '../theme';
 

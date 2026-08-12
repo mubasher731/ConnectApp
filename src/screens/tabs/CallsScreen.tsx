@@ -7,9 +7,7 @@ import {
   StyleSheet,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import AppIcon from '../../components/AppIcon';
-import Avatar from '../../components/Avatar';
-import EmptyState from '../../components/EmptyState';
+import { AppIcon, Avatar, EmptyState } from '../../components';
 import { callService } from '../../services/dataService';
 import { CallLog, CallDirection } from '../../types';
 import { Colors, Radius, Shadows, Spacing } from '../../theme';

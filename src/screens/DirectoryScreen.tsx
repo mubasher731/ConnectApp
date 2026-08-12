@@ -7,13 +7,10 @@ import {
   TouchableOpacity,
   Alert,
 } from 'react-native';
-import AppIcon from '../components/AppIcon';
-import Avatar from '../components/Avatar';
-import EmptyState from '../components/EmptyState';
+import { AppIcon, Avatar, EmptyState } from '../components';
 import { socketService } from '../api/socket';
 import { useAuth } from '../context/AuthContext';
-import { chatService } from '../services/dataService';
-import { userService } from '../services/userService';
+import { chatService, userService } from '../services';
 import { User } from '../types';
 import { Colors, Radius, Shadows, Spacing } from '../theme';
 

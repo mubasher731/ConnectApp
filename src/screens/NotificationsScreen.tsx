@@ -6,8 +6,7 @@ import {
   StyleSheet,
   TouchableOpacity,
 } from 'react-native';
-import AppIcon from '../components/AppIcon';
-import EmptyState from '../components/EmptyState';
+import { AppIcon, EmptyState } from '../components';
 import { notificationService } from '../services/dataService';
 import { AppNotification, NotificationKind } from '../types';
 import { Colors, Radius, Shadows, Spacing } from '../theme';

@@ -3,7 +3,7 @@ import { StyleSheet, Platform } from 'react-native';
 import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import AppIcon from '../components/AppIcon';
+import { AppIcon } from '../components';
 import { useAuth } from '../context/AuthContext';
 import { Colors } from '../theme/colors';
 

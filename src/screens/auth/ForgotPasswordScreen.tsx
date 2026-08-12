@@ -1,8 +1,6 @@
 import React, { useState } from 'react';
 import { StyleSheet, Alert } from 'react-native';
-import AuthScreenLayout from '../../components/AuthScreenLayout';
-import FormInput from '../../components/FormInput';
-import PrimaryButton from '../../components/PrimaryButton';
+import { AuthScreenLayout, FormInput, PrimaryButton } from '../../components';
 import { authService } from '../../services/authService';
 import { validators } from '../../utils/validation';
 import { Spacing } from '../../theme';

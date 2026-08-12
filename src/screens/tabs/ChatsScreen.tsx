@@ -9,9 +9,7 @@ import {
 import dayjs from 'dayjs';
 import { useFocusEffect } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Avatar from '../../components/Avatar';
-import EmptyState from '../../components/EmptyState';
-import StatusBadge from '../../components/StatusBadge';
+import { Avatar, EmptyState, StatusBadge } from '../../components';
 import { chatService } from '../../services/dataService';
 import { Chat, SessionStatus } from '../../types';
 import { Colors, Radius, Shadows, Spacing } from '../../theme';

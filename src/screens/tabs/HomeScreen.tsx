@@ -9,10 +9,7 @@ import {
 } from 'react-native';
 import dayjs from 'dayjs';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import AppIcon from '../../components/AppIcon';
-import Avatar from '../../components/Avatar';
-import EmptyState from '../../components/EmptyState';
-import StatusBadge from '../../components/StatusBadge';
+import { AppIcon, Avatar, EmptyState, StatusBadge } from '../../components';
 import { useAuth } from '../../context/AuthContext';
 import { chatService } from '../../services/dataService';
 import { Chat } from '../../types';
