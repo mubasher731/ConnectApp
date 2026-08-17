@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import dayjs from 'dayjs';
 import AppIcon from './AppIcon';
+import Avatar from './Avatar';
 import StatusBadge from './StatusBadge';
 import { Chat } from '../types';
 import { Colors, Radius, Shadows, Spacing } from '../theme';
@@ -49,24 +50,27 @@ const AppointmentCard: React.FC<AppointmentCardProps> = ({ chat, onPress }) => {
 
   return (
     <View style={styles.card}>
+      {/* Top row: status badge (left) + duration (top right, opposite side) */}
       <View style={styles.badgeRow}>
         <StatusBadge status={chat.status} />
+        <View style={styles.durationRow}>
+          <AppIcon name="eye-outline" size={16} color={Colors.textSecondary} />
+          <Text style={styles.duration}>{formatDuration(chat.durationMinutes)}</Text>
+        </View>
       </View>
 
-      <View style={styles.durationRow}>
-        <AppIcon name="time-outline" size={16} color={Colors.primary} />
-        <Text style={styles.duration}>{formatDuration(chat.durationMinutes)}</Text>
+      {/* Row: avatar (left) + name/time */}
+      <View style={styles.topRow}>
+        <Avatar name={chat.participantName} size={48} />
+        <View style={styles.infoBlock}>
+          <Text style={[styles.name, { color: nameColor }]} numberOfLines={1}>
+            {chat.participantName}
+          </Text>
+          <Text style={styles.timeText}>{formatTimeRange(chat)}</Text>
+        </View>
       </View>
 
-      <Text style={[styles.name, { color: nameColor }]} numberOfLines={2}>
-        {chat.participantName}
-      </Text>
-
-      <View style={styles.metaRow}>
-        <AppIcon name="time-outline" size={14} color={Colors.textTertiary} />
-        <Text style={styles.metaText}>{formatTimeRange(chat)}</Text>
-      </View>
-
+      {/* Footer: date + DETAILS */}
       <View style={styles.footerRow}>
         <View style={styles.metaRow}>
           <AppIcon name="calendar-outline" size={14} color={Colors.textTertiary} />
@@ -96,31 +100,46 @@ const styles = StyleSheet.create({
     borderColor: Colors.border,
     ...Shadows.card,
   },
+  topRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: Spacing.sm,
+  },
   badgeRow: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     marginBottom: Spacing.sm,
+  },
+  infoBlock: {
+    flex: 1,
+    marginLeft: Spacing.md,
+    marginRight: Spacing.sm,
+  },
+  name: {
+    fontSize: 18,
+    fontWeight: '700',
+    lineHeight: 24,
+    marginBottom: Spacing.xs,
   },
   durationRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: Spacing.xs,
   },
   duration: {
-    fontSize: 15,
-    fontWeight: '800',
-    color: Colors.text,
+    fontSize: 14,
+    fontWeight: '600',
+    color: Colors.textSecondary,
     marginLeft: Spacing.sm,
   },
-  name: {
-    fontSize: 20,
-    fontWeight: '700',
-    lineHeight: 26,
-    marginBottom: Spacing.xs,
+  timeText: {
+    fontSize: 13,
+    color: Colors.textSecondary,
+    marginTop: Spacing.xs,
   },
   metaRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: Spacing.xs,
   },
   metaText: {
     fontSize: 13,
@@ -140,7 +159,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.error,
     paddingHorizontal: Spacing.lg,
     paddingVertical: Spacing.sm,
-    borderRadius: Radius.md,
+    borderRadius: Radius.sm,
     ...Shadows.raised,
   },
   detailsText: {

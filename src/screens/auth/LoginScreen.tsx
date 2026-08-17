@@ -15,8 +15,12 @@ interface LoginScreenProps {
   navigation: any;
 }
 
+/** Reserved demo doctor credentials (mock login until backend is ready). */
+const DOCTOR_EMAIL = 'doctor@fountain.com';
+const DOCTOR_PASSWORD = '12345678';
+
 const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
-  const { signIn } = useAuth();
+  const { signIn, signInAsDoctor } = useAuth();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -34,7 +38,15 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
 
     setLoading(true);
     try {
-      await signIn({ email, password });
+      // Auto-detect the doctor demo credentials → mock doctor login.
+      // Everything else goes through the normal patient backend login.
+      const isDoctor =
+        email.trim().toLowerCase() === DOCTOR_EMAIL && password === DOCTOR_PASSWORD;
+      if (isDoctor) {
+        await signInAsDoctor({ email, password });
+      } else {
+        await signIn({ email, password });
+      }
       // Success — navigator switches to the authenticated flow automatically.
     } catch (err) {
       Alert.alert(
@@ -98,6 +110,8 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
         <Text style={styles.forgotText}>Forgot password?</Text>
       </TouchableOpacity>
 
+      <Text style={styles.demoHint}>Doctor demo: doctor@fountain.com / 12345678</Text>
+
       <PrimaryButton
         title="Sign In"
         onPress={handleSubmit}
@@ -112,6 +126,12 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
 const styles = StyleSheet.create({
   submitButton: {
     marginTop: Spacing.lg,
+  },
+  demoHint: {
+    fontSize: 13,
+    color: Colors.textSecondary,
+    textAlign: 'center',
+    marginTop: Spacing.md,
   },
   forgotRow: {
     alignSelf: 'flex-end',

@@ -7,6 +7,7 @@ import React, {
   useState,
 } from 'react';
 import { authService, SignInParams, SignUpParams } from '../services/authService';
+import { mockAuthService } from '../services/mockAuthService';
 import { loadApiConfig } from '../api/client';
 import { socketService } from '../api/socket';
 import { User } from '../types';
@@ -17,6 +18,7 @@ interface AuthContextValue {
   isAuthenticated: boolean;
   signIn: (params: SignInParams) => Promise<void>;
   signUp: (params: SignUpParams) => Promise<void>;
+  signInAsDoctor: (params: { email: string; password: string }) => Promise<void>;
   signOut: () => Promise<void>;
   updateUser: (patch: { name?: string; email?: string }) => Promise<void>;
 }
@@ -67,6 +69,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     setUser(session.user);
   }, []);
 
+  // Mock doctor login (offline) until the backend doctor endpoints are ready.
+  const signInAsDoctor = useCallback(async (params: { email: string; password: string }) => {
+    const session = await mockAuthService.signInAsDoctor(params.email, params.password);
+    setUser(session.user);
+  }, []);
+
   const signOut = useCallback(async () => {
     await authService.logout();
     setUser(null);
@@ -84,10 +92,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       isAuthenticated: user !== null,
       signIn,
       signUp,
+      signInAsDoctor,
       signOut,
       updateUser,
     }),
-    [user, initializing, signIn, signUp, signOut, updateUser]
+    [user, initializing, signIn, signUp, signInAsDoctor, signOut, updateUser]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -11,13 +11,15 @@ import SplashScreen from '../screens/splash/SplashScreen';
 import LoginScreen from '../screens/auth/LoginScreen';
 import SignupScreen from '../screens/auth/SignupScreen';
 import ForgotPasswordScreen from '../screens/auth/ForgotPasswordScreen';
-import HomeScreen from '../screens/tabs/HomeScreen';
-import ChatsScreen from '../screens/tabs/ChatsScreen';
+import HomeScreen from '../screens/patient/HomeScreen';
+import ChatsScreen from '../screens/patient/ChatsScreen';
 import ChatDetailScreen from '../screens/ChatDetailScreen';
 import NotificationsScreen from '../screens/NotificationsScreen';
 import DirectoryScreen from '../screens/DirectoryScreen';
-import CallsScreen from '../screens/tabs/CallsScreen';
-import ProfileScreen from '../screens/tabs/ProfileScreen';
+import CallsScreen from '../screens/patient/CallsScreen';
+import ProfileScreen from '../screens/patient/ProfileScreen';
+import DoctorDashboardScreen from '../screens/doctor/DoctorDashboardScreen';
+import DoctorConsultationsScreen from '../screens/doctor/DoctorConsultationsScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -38,6 +40,13 @@ const TAB_ICONS: Record<string, [string, string]> = {
   Home: ['home-outline', 'home'],
   Chats: ['chatbubble-ellipses-outline', 'chatbubble-ellipses'],
   Calls: ['call-outline', 'call'],
+  Profile: ['person-outline', 'person'],
+};
+
+const DOCTOR_TAB_ICONS: Record<string, [string, string]> = {
+  Dashboard: ['grid-outline', 'grid'],
+  Consultations: ['clipboard-outline', 'clipboard'],
+  Chats: ['chatbubble-ellipses-outline', 'chatbubble-ellipses'],
   Profile: ['person-outline', 'person'],
 };
 
@@ -67,6 +76,33 @@ function MainTabs() {
   );
 }
 
+/** Doctor main interface: Dashboard + Consultations + Chats + Profile. */
+function DoctorTabs() {
+  return (
+    <Tab.Navigator
+      screenOptions={({ route }) => ({
+        headerShown: false,
+        tabBarIcon: ({ focused, color, size }) => {
+          const [outline, filled] = DOCTOR_TAB_ICONS[route.name] ?? ['ellipse-outline', 'ellipse'];
+          return (
+            <AppIcon name={focused ? filled : outline} size={size} color={color} />
+          );
+        },
+        tabBarActiveTintColor: Colors.white,
+        tabBarInactiveTintColor: 'rgba(255,255,255,0.65)',
+        tabBarLabelStyle: styles.tabLabel,
+        tabBarStyle: styles.tabBar,
+        tabBarItemStyle: styles.tabItem,
+      })}
+    >
+      <Tab.Screen name="Dashboard" component={DoctorDashboardScreen} />
+      <Tab.Screen name="Consultations" component={DoctorConsultationsScreen} />
+      <Tab.Screen name="Chats" component={ChatsScreen} />
+      <Tab.Screen name="Profile" component={ProfileScreen} />
+    </Tab.Navigator>
+  );
+}
+
 const AppNavigator: React.FC = () => {
   const { user, initializing } = useAuth();
   const [showSplash, setShowSplash] = useState(true);
@@ -80,6 +116,10 @@ const AppNavigator: React.FC = () => {
   if (initializing || showSplash) {
     return <SplashScreen />;
   }
+
+  // Doctors get the doctor module as their main interface; everyone else
+  // uses the standard patient tabs.
+  const isDoctor = user?.role_id === 3;
 
   return (
     <NavigationContainer theme={navTheme}>
@@ -97,7 +137,7 @@ const AppNavigator: React.FC = () => {
           <>
             <Stack.Screen
               name="MainTabs"
-              component={MainTabs}
+              component={isDoctor ? DoctorTabs : MainTabs}
               options={{ headerShown: false }}
             />
             <Stack.Screen
