@@ -2,8 +2,13 @@ import React, { useEffect } from 'react';
 import {
   View,
   StyleSheet,
-  Dimensions,
+  useWindowDimensions,
 } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import {
+  heightPercentageToDP as hp,
+  widthPercentageToDP as wp,
+} from 'react-native-responsive-screen';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -13,9 +18,12 @@ import Animated, {
 } from 'react-native-reanimated';
 import { Colors } from '../../theme/colors';
 
-const { width } = Dimensions.get('window');
-
 const SplashScreen: React.FC = () => {
+  const { width } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
+  const glowSize = Math.min(Math.max(width * 0.78, wp('70%')), hp('42%'));
+  const bubbleSize = Math.min(84, Math.max(64, wp('20%')));
+  const titleSize = Math.min(44, Math.max(32, wp('10.5%')));
   const connectOffset = useSharedValue(-width / 2);
   const appOffset = useSharedValue(width / 2);
   const bubbleScale = useSharedValue(0);
@@ -57,15 +65,25 @@ const SplashScreen: React.FC = () => {
   }));
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom', 'left', 'right']}>
       {/* Soft ambient glow */}
-      <View style={styles.glowTop} />
-      <View style={styles.glowBottom} />
+      <View
+        style={[
+          styles.glowTop,
+          { width: glowSize, height: glowSize, borderRadius: glowSize / 2, top: -glowSize * 0.38, right: -glowSize * 0.38 },
+        ]}
+      />
+      <View
+        style={[
+          styles.glowBottom,
+          { width: glowSize, height: glowSize, borderRadius: glowSize / 2, bottom: -glowSize * 0.34, left: -glowSize * 0.34 },
+        ]}
+      />
 
-      <View style={styles.logoContainer}>
+      <View style={[styles.logoContainer, { marginTop: -Math.min(hp('8%'), 60) }]}>
         {/* Chat Bubble Icon */}
         <Animated.View style={[styles.bubbleContainer, bubbleStyle]}>
-          <View style={styles.chatBubble}>
+          <View style={[styles.chatBubble, { width: bubbleSize, height: bubbleSize, borderRadius: bubbleSize / 3 }]}>
             <View style={styles.bubbleDot} />
             <View style={[styles.bubbleDot, styles.bubbleDotSmall]} />
           </View>
@@ -73,10 +91,10 @@ const SplashScreen: React.FC = () => {
 
         {/* Title */}
         <View style={styles.titleRow}>
-          <Animated.Text style={[styles.title, styles.titleConnect, connectStyle]}>
+          <Animated.Text style={[styles.title, styles.titleConnect, { fontSize: titleSize }, connectStyle]}>
             Connect
           </Animated.Text>
-          <Animated.Text style={[styles.title, styles.titleApp, appStyle]}>
+          <Animated.Text style={[styles.title, styles.titleApp, { fontSize: titleSize }, appStyle]}>
             App
           </Animated.Text>
         </View>
@@ -86,10 +104,10 @@ const SplashScreen: React.FC = () => {
         </Animated.Text>
       </View>
 
-      <Animated.Text style={[styles.footer, textStyle]}>
+      <Animated.Text style={[styles.footer, { bottom: Math.max(insets.bottom + 16, hp('4%')) }, textStyle]}>
         Healthcare Communication
       </Animated.Text>
-    </View>
+    </SafeAreaView>
   );
 };
 
@@ -103,25 +121,14 @@ const styles = StyleSheet.create({
   },
   glowTop: {
     position: 'absolute',
-    top: -120,
-    right: -120,
-    width: 320,
-    height: 320,
-    borderRadius: 160,
     backgroundColor: Colors.splashGlow,
   },
   glowBottom: {
     position: 'absolute',
-    bottom: -100,
-    left: -100,
-    width: 280,
-    height: 280,
-    borderRadius: 140,
     backgroundColor: Colors.splashGlow,
   },
   logoContainer: {
     alignItems: 'center',
-    marginTop: -60,
   },
   bubbleContainer: {
     marginBottom: 28,
@@ -129,9 +136,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   chatBubble: {
-    width: 84,
-    height: 84,
-    borderRadius: 28,
     backgroundColor: Colors.splashIcon,
     justifyContent: 'center',
     alignItems: 'center',
@@ -161,7 +165,6 @@ const styles = StyleSheet.create({
     alignItems: 'baseline',
   },
   title: {
-    fontSize: 44,
     fontWeight: '800',
     letterSpacing: -1,
   },
@@ -181,7 +184,6 @@ const styles = StyleSheet.create({
   },
   footer: {
     position: 'absolute',
-    bottom: 60,
     fontSize: 13,
     color: Colors.splashTextTertiary,
     letterSpacing: 1,

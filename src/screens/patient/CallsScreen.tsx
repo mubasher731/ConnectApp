@@ -11,6 +11,7 @@ import { AppIcon, Avatar, EmptyState } from '../../components';
 import { callService } from '../../services/dataService';
 import { CallLog, CallDirection } from '../../types';
 import { Colors, Radius, Shadows, Spacing } from '../../theme';
+import { useTabBarClearance } from '../../utils/useResponsive';
 
 const directionMeta: Record<CallDirection, { icon: string; label: string; color: string }> = {
   incoming: { icon: 'arrow-down', label: 'Incoming', color: Colors.success },
@@ -21,6 +22,7 @@ const directionMeta: Record<CallDirection, { icon: string; label: string; color:
 const CallsScreen: React.FC = () => {
   const [calls, setCalls] = useState<CallLog[]>([]);
   const [loading, setLoading] = useState(true);
+  const bottomPad = useTabBarClearance();
 
   useEffect(() => {
     let mounted = true;
@@ -87,7 +89,7 @@ const CallsScreen: React.FC = () => {
         data={calls}
         keyExtractor={(item) => item.id}
         renderItem={renderItem}
-        contentContainerStyle={styles.listContainer}
+        contentContainerStyle={[styles.listContainer, { paddingBottom: bottomPad }]}
         showsVerticalScrollIndicator={false}
         ItemSeparatorComponent={() => <View style={styles.separator} />}
         refreshing={loading}
@@ -126,7 +128,6 @@ const styles = StyleSheet.create({
   },
   listContainer: {
     paddingHorizontal: Spacing.lg,
-    paddingBottom: 110,
     flexGrow: 1,
   },
   callItem: {

@@ -13,6 +13,7 @@ import { useAuth } from '../../context/AuthContext';
 import { chatService } from '../../services/dataService';
 import { Chat } from '../../types';
 import { Colors, Radius, Spacing } from '../../theme';
+import { useTabBarClearance } from '../../utils/useResponsive';
 
 interface QuickAction {
   key: string;
@@ -32,6 +33,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const { user } = useAuth();
   const [recentChats, setRecentChats] = useState<Chat[]>([]);
   const [loading, setLoading] = useState(false);
+  const bottomPad = useTabBarClearance();
 
   // Re-fetches sessions/chats from the backend. Lets the user refresh
   // without having to close & reopen the app (e.g. when a session is set).
@@ -164,7 +166,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
             }
           />
         )}
-        contentContainerStyle={styles.chatList}
+        contentContainerStyle={[styles.chatList, { paddingBottom: bottomPad }]}
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={
           <EmptyState
@@ -287,7 +289,6 @@ const styles = StyleSheet.create({
   chatList: {
     paddingHorizontal: Spacing.xl,
     paddingTop: Spacing.sm,
-    paddingBottom: 110,
     backgroundColor: Colors.surface,
   },
 });

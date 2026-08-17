@@ -58,7 +58,8 @@ const PrimaryButton: React.FC<PrimaryButtonProps> = ({
 
 const styles = StyleSheet.create({
   base: {
-    height: 54,
+    minHeight: 54,
+    paddingVertical: 12,
     borderRadius: Radius.md,
     alignItems: 'center',
     justifyContent: 'center',

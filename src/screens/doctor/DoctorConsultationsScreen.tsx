@@ -18,6 +18,7 @@ import {
 } from '../../mock/doctorData';
 import DoctorPill from './components/DoctorPill';
 import { Colors, Radius, Shadows, Spacing } from '../../theme';
+import { useTabBarClearance } from '../../utils/useResponsive';
 
 type FilterKey = 'all' | 'in_progress' | 'completed' | 'closed';
 
@@ -43,6 +44,7 @@ const DoctorConsultationsScreen: React.FC<{ navigation: any }> = () => {
   const [severityDropdownOpen, setSeverityDropdownOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const bottomPad = useTabBarClearance();
   const appointments = MOCK_APPOINTMENTS;
 
   const filtered = appointments.filter((a) => {
@@ -225,7 +227,7 @@ const DoctorConsultationsScreen: React.FC<{ navigation: any }> = () => {
         data={filtered}
         keyExtractor={(item) => item.id}
         renderItem={renderItem}
-        contentContainerStyle={styles.listContainer}
+        contentContainerStyle={[styles.listContainer, { paddingBottom: bottomPad }]}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
         ListEmptyComponent={
@@ -288,7 +290,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.border,
     paddingHorizontal: Spacing.lg,
-    height: 48,
+    minHeight: 48,
   },
   dropdownButtonActive: {
     borderColor: Colors.primary,
@@ -370,7 +372,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.inputBackground,
     borderRadius: Radius.md,
     paddingHorizontal: Spacing.lg,
-    height: 46,
+    minHeight: 46,
   },
   cancelButton: {
     marginLeft: Spacing.sm,
@@ -391,7 +393,6 @@ const styles = StyleSheet.create({
   listContainer: {
     paddingHorizontal: Spacing.xl,
     paddingTop: Spacing.xs,
-    paddingBottom: 110,
     flexGrow: 1,
   },
   card: {

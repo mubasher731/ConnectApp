@@ -18,6 +18,7 @@ import {
 } from '../../mock/doctorData';
 import DoctorPill from './components/DoctorPill';
 import { Colors, Radius, Shadows, Spacing } from '../../theme';
+import { useTabBarClearance } from '../../utils/useResponsive';
 
 interface StatConfig {
   key: 'totalAssigned' | 'awaitingAction' | 'activeSessions' | 'completedSessions';
@@ -55,6 +56,7 @@ const StatCard: React.FC<{ config: StatConfig; value: number }> = ({ config, val
 
 const DoctorDashboardScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const { user } = useAuth();
+  const bottomPad = useTabBarClearance();
   const [searchQuery, setSearchQuery] = useState('');
   const [appointments, setAppointments] = useState<DoctorAppointment[]>(MOCK_APPOINTMENTS);
   const [urgencyFilter, setUrgencyFilter] = useState<UrgencyFilter>('all');
@@ -95,7 +97,7 @@ const DoctorDashboardScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
   return (
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       <ScrollView
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[styles.content, { paddingBottom: bottomPad }]}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
@@ -273,7 +275,6 @@ const styles = StyleSheet.create({
   },
   content: {
     paddingHorizontal: Spacing.xl,
-    paddingBottom: 110,
   },
   header: {
     flexDirection: 'row',
@@ -358,7 +359,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.inputBackground,
     borderRadius: Radius.md,
     paddingHorizontal: Spacing.lg,
-    height: 48,
+    minHeight: 48,
     marginBottom: Spacing.lg,
   },
   searchInput: {

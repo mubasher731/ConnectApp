@@ -41,6 +41,7 @@ const AuthScreenLayout: React.FC<AuthScreenLayoutProps> = ({
         <ScrollView
           contentContainerStyle={styles.scroll}
           keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.content}>
@@ -51,9 +52,8 @@ const AuthScreenLayout: React.FC<AuthScreenLayoutProps> = ({
 
             <View style={styles.form}>{children}</View>
           </View>
+          {footer ? <View style={styles.footer}>{footer}</View> : null}
         </ScrollView>
-
-        {footer ? <View style={styles.footer}>{footer}</View> : null}
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -69,6 +69,7 @@ const styles = StyleSheet.create({
   },
   scroll: {
     flexGrow: 1,
+    justifyContent: 'space-between',
   },
   content: {
     flex: 1,
@@ -89,6 +90,7 @@ const styles = StyleSheet.create({
   },
   footer: {
     paddingHorizontal: Spacing.xl,
+    paddingTop: Spacing.md,
     paddingBottom: Spacing.lg,
     alignItems: 'center',
   },

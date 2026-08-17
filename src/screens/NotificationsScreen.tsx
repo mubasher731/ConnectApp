@@ -6,6 +6,7 @@ import {
   StyleSheet,
   TouchableOpacity,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppIcon, EmptyState } from '../components';
 import { notificationService } from '../services/dataService';
 import { AppNotification, NotificationKind } from '../types';
@@ -63,7 +64,7 @@ const NotificationsScreen: React.FC = () => {
   };
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['left', 'right', 'bottom']}>
       <FlatList
         data={notifications}
         keyExtractor={(item) => item.id}
@@ -80,7 +81,7 @@ const NotificationsScreen: React.FC = () => {
           />
         }
       />
-    </View>
+    </SafeAreaView>
   );
 };
 

@@ -19,3 +19,13 @@ buildscript {
 }
 
 apply plugin: "com.facebook.react.rootproject"
+
+// Gradle 9 validates task inputs strictly. React Native libraries that expose
+// codegen sources need their source JAR tasks to wait for codegen output.
+subprojects { subproject ->
+    subproject.plugins.withId("com.facebook.react") {
+        subproject.tasks.matching { task -> task.name.endsWith("SourcesJar") }.configureEach {
+            dependsOn(subproject.tasks.named("generateCodegenArtifactsFromSchema"))
+        }
+    }
+}

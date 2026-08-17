@@ -12,6 +12,7 @@ import { AppointmentCard, EmptyState } from '../../components';
 import { chatService } from '../../services';
 import { Chat } from '../../types';
 import { Colors, Radius, Spacing } from '../../theme';
+import { useTabBarClearance } from '../../utils/useResponsive';
 
 type FilterKey = 'all' | 'upcoming' | 'consulted' | 'no_show';
 
@@ -26,6 +27,7 @@ const ChatsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const [chats, setChats] = useState<Chat[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<FilterKey>('all');
+  const bottomPad = useTabBarClearance();
 
   const filteredChats = useMemo(() => {
     if (filter === 'all') return chats;
@@ -94,7 +96,7 @@ const ChatsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
         data={filteredChats}
         keyExtractor={(item) => item.id}
         renderItem={renderItem}
-        contentContainerStyle={styles.listContainer}
+        contentContainerStyle={[styles.listContainer, { paddingBottom: bottomPad }]}
         showsVerticalScrollIndicator={false}
         refreshing={loading}
         ListEmptyComponent={
@@ -157,7 +159,6 @@ const styles = StyleSheet.create({
   listContainer: {
     paddingHorizontal: Spacing.lg,
     paddingTop: Spacing.xs,
-    paddingBottom: 110,
     flexGrow: 1,
     backgroundColor: Colors.surface,
   },

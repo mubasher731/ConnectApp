@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, Platform } from 'react-native';
+import { StyleSheet } from 'react-native';
 import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { heightPercentageToDP as hp } from 'react-native-responsive-screen';
 import { AppIcon } from '../components';
 import { useAuth } from '../context/AuthContext';
 import { Colors } from '../theme/colors';
@@ -51,22 +53,11 @@ const DOCTOR_TAB_ICONS: Record<string, [string, string]> = {
 };
 
 function MainTabs() {
+  const tabOptions = useTabOptions(TAB_ICONS);
+
   return (
     <Tab.Navigator
-      screenOptions={({ route }) => ({
-        headerShown: false,
-        tabBarIcon: ({ focused, color, size }) => {
-          const [outline, filled] = TAB_ICONS[route.name] ?? ['ellipse-outline', 'ellipse'];
-          return (
-            <AppIcon name={focused ? filled : outline} size={size} color={color} />
-          );
-        },
-        tabBarActiveTintColor: Colors.white,
-        tabBarInactiveTintColor: 'rgba(255,255,255,0.65)',
-        tabBarLabelStyle: styles.tabLabel,
-        tabBarStyle: styles.tabBar,
-        tabBarItemStyle: styles.tabItem,
-      })}
+      screenOptions={tabOptions}
     >
       <Tab.Screen name="Home" component={HomeScreen} />
       <Tab.Screen name="Chats" component={ChatsScreen} />
@@ -78,22 +69,11 @@ function MainTabs() {
 
 /** Doctor main interface: Dashboard + Consultations + Chats + Profile. */
 function DoctorTabs() {
+  const tabOptions = useTabOptions(DOCTOR_TAB_ICONS);
+
   return (
     <Tab.Navigator
-      screenOptions={({ route }) => ({
-        headerShown: false,
-        tabBarIcon: ({ focused, color, size }) => {
-          const [outline, filled] = DOCTOR_TAB_ICONS[route.name] ?? ['ellipse-outline', 'ellipse'];
-          return (
-            <AppIcon name={focused ? filled : outline} size={size} color={color} />
-          );
-        },
-        tabBarActiveTintColor: Colors.white,
-        tabBarInactiveTintColor: 'rgba(255,255,255,0.65)',
-        tabBarLabelStyle: styles.tabLabel,
-        tabBarStyle: styles.tabBar,
-        tabBarItemStyle: styles.tabItem,
-      })}
+      screenOptions={tabOptions}
     >
       <Tab.Screen name="Dashboard" component={DoctorDashboardScreen} />
       <Tab.Screen name="Consultations" component={DoctorConsultationsScreen} />
@@ -101,6 +81,31 @@ function DoctorTabs() {
       <Tab.Screen name="Profile" component={ProfileScreen} />
     </Tab.Navigator>
   );
+}
+
+function useTabOptions(icons: Record<string, [string, string]>) {
+  const insets = useSafeAreaInsets();
+  const contentHeight = Math.min(64, Math.max(52, hp('7%')));
+
+  return ({ route }: { route: { name: string } }) => ({
+    headerShown: false,
+    tabBarHideOnKeyboard: true,
+    tabBarIcon: ({ focused, color, size }: { focused: boolean; color: string; size: number }) => {
+      const [outline, filled] = icons[route.name] ?? ['ellipse-outline', 'ellipse'];
+      return <AppIcon name={focused ? filled : outline} size={size} color={color} />;
+    },
+    tabBarActiveTintColor: Colors.white,
+    tabBarInactiveTintColor: 'rgba(255,255,255,0.65)',
+    tabBarLabelStyle: styles.tabLabel,
+    tabBarStyle: [
+      styles.tabBar,
+      {
+        height: contentHeight + insets.bottom,
+        paddingBottom: Math.max(insets.bottom, 6),
+      },
+    ],
+    tabBarItemStyle: styles.tabItem,
+  });
 }
 
 const AppNavigator: React.FC = () => {
@@ -195,13 +200,7 @@ const styles = StyleSheet.create({
     borderTopWidth: 0,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    paddingTop: 8,
-    paddingBottom: Platform.OS === 'ios' ? 24 : 10,
-    height: Platform.OS === 'ios' ? 85 : 64,
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
+    paddingTop: 6,
     shadowColor: Colors.shadow,
     shadowOffset: { width: 0, height: -4 },
     shadowOpacity: 0.06,
@@ -209,7 +208,7 @@ const styles = StyleSheet.create({
     elevation: 12,
   },
   tabItem: {
-    paddingTop: 2,
+    flex: 1,
   },
 });
 

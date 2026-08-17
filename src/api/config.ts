@@ -10,7 +10,7 @@
  *   The backend's /api/config reports the ngrok publicUrl, so at runtime the
  *   app typically talks to ngrok (which tunnels to the same server).
  */
-export const FALLBACK_BASE_URL = 'http://172.29.30.38:5002';
+export const FALLBACK_BASE_URL = 'http://172.29.24.175:5002';
 
 let currentBase = FALLBACK_BASE_URL;
 

@@ -8,12 +8,15 @@ import {
   Alert,
   TextInput,
   Modal,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppIcon, Avatar, PrimaryButton } from '../../components';
 import { useAuth } from '../../context/AuthContext';
 import { validators } from '../../utils/validation';
 import { Colors, Radius, Shadows, Spacing } from '../../theme';
+import { useTabBarClearance } from '../../utils/useResponsive';
 
 const ProfileScreen: React.FC = () => {
   const { user, signOut, updateUser } = useAuth();
@@ -23,6 +26,7 @@ const ProfileScreen: React.FC = () => {
   const [email, setEmail] = useState(user?.email ?? '');
   const [errors, setErrors] = useState<{ fullName?: string | null; email?: string | null }>({});
   const [saving, setSaving] = useState(false);
+  const bottomPad = useTabBarClearance();
 
   const displayName = user?.name ?? 'User';
 
@@ -64,7 +68,11 @@ const ProfileScreen: React.FC = () => {
         <Text style={styles.headerTitle}>My Profile</Text>
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
+      <ScrollView
+        style={styles.scrollView}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={[styles.scroll, { paddingBottom: bottomPad }]}
+      >
         {/* Profile Header */}
         <View style={styles.profileHeader}>
           <View style={styles.avatarContainer}>
@@ -115,13 +123,11 @@ const ProfileScreen: React.FC = () => {
           <AppIcon name="log-out-outline" size={18} color={Colors.white} />
           <Text style={styles.logoutText}>Sign Out</Text>
         </TouchableOpacity>
+        <View style={styles.appInfo}>
+          <Text style={styles.appInfoText}>ConnectApp v1.0.0</Text>
+          <Text style={styles.appInfoSubtext}>Healthcare Communication Platform</Text>
+        </View>
       </ScrollView>
-
-      {/* App Info — pinned at the bottom of the screen */}
-      <View style={styles.appInfo}>
-        <Text style={styles.appInfoText}>ConnectApp v1.0.0</Text>
-        <Text style={styles.appInfoSubtext}>Healthcare Communication Platform</Text>
-      </View>
 
       {/* Edit Profile Modal */}
       <Modal
@@ -130,8 +136,16 @@ const ProfileScreen: React.FC = () => {
         animationType="fade"
         onRequestClose={() => setShowEditModal(false)}
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
+        <KeyboardAvoidingView
+          style={styles.modalOverlay}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
+          <ScrollView
+            contentContainerStyle={styles.modalScroll}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
+            <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Edit Profile</Text>
 
             <Text style={styles.modalLabel}>Full name</Text>
@@ -181,8 +195,9 @@ const ProfileScreen: React.FC = () => {
                 <Text style={styles.modalSaveText}>{saving ? 'Saving…' : 'Save'}</Text>
               </TouchableOpacity>
             </View>
-          </View>
-        </View>
+            </View>
+          </ScrollView>
+        </KeyboardAvoidingView>
       </Modal>
     </SafeAreaView>
   );
@@ -205,7 +220,10 @@ const styles = StyleSheet.create({
     letterSpacing: -0.5,
   },
   scroll: {
-    paddingBottom: Spacing.lg,
+    flexGrow: 1,
+  },
+  scrollView: {
+    flex: 1,
   },
   profileHeader: {
     alignItems: 'center',
@@ -254,7 +272,7 @@ const styles = StyleSheet.create({
   },
   editButton: {
     paddingHorizontal: Spacing.xxl,
-    height: 46,
+    minHeight: 46,
   },
   accountCard: {
     marginHorizontal: Spacing.xl,
@@ -283,9 +301,8 @@ const styles = StyleSheet.create({
   },
   appInfo: {
     alignItems: 'center',
-    paddingVertical: Spacing.lg,
-    borderTopWidth: 1,
-    borderTopColor: Colors.border,
+    paddingTop: Spacing.xxl,
+    paddingHorizontal: Spacing.xl,
   },
   appInfoText: {
     fontSize: 14,
@@ -319,9 +336,12 @@ const styles = StyleSheet.create({
   modalOverlay: {
     flex: 1,
     backgroundColor: Colors.overlay,
-    justifyContent: 'center',
-    alignItems: 'center',
     paddingHorizontal: Spacing.xl,
+  },
+  modalScroll: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    paddingVertical: Spacing.xl,
   },
   modalContent: {
     backgroundColor: Colors.white,

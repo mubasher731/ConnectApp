@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   Alert,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppIcon, Avatar, EmptyState } from '../components';
 import { socketService } from '../api/socket';
 import { useAuth } from '../context/AuthContext';
@@ -100,7 +101,7 @@ const DirectoryScreen: React.FC<DirectoryScreenProps> = ({ route, navigation }) 
   );
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['left', 'right', 'bottom']}>
       <FlatList
         data={users}
         keyExtractor={(item) => String(item.id)}
@@ -117,7 +118,7 @@ const DirectoryScreen: React.FC<DirectoryScreenProps> = ({ route, navigation }) 
           />
         }
       />
-    </View>
+    </SafeAreaView>
   );
 };
 

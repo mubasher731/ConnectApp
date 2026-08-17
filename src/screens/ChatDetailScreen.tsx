@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import dayjs from 'dayjs';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useHeaderHeight } from '@react-navigation/elements';
 import { AppIcon, Avatar, EmptyState } from '../components';
 import { socketService } from '../api/socket';
 import { useAuth } from '../context/AuthContext';
@@ -93,6 +94,7 @@ const ChatHeaderTitle: React.FC<{ name: string; online: boolean }> = ({ name, on
 );
 
 const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }) => {
+  const headerHeight = useHeaderHeight();
   const { chatId, participantName, participantOnline } = route.params ?? {};
   const { user } = useAuth();
 
@@ -435,7 +437,7 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? headerHeight : 0}
       >
         {/* Session countdown + lifecycle notices — pinned below the chat header */}
         {countdownLabel || sessionNotice ? (
