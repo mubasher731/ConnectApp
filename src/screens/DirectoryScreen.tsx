@@ -13,7 +13,7 @@ import { socketService } from '../api/socket';
 import { useAuth } from '../context/AuthContext';
 import { chatService, userService } from '../services';
 import { User } from '../types';
-import { Colors, Radius, Shadows, Spacing } from '../theme';
+import { Colors, Radius, Shadows, Spacing, responsiveSize } from '../theme';
 
 interface DirectoryScreenProps {
   route: any;
@@ -148,13 +148,13 @@ const styles = StyleSheet.create({
     marginLeft: Spacing.md,
   },
   name: {
-    fontSize: 16,
+    fontSize: responsiveSize(16),
     fontWeight: '600',
     color: Colors.text,
     marginBottom: 2,
   },
   email: {
-    fontSize: 13,
+    fontSize: responsiveSize(13),
     color: Colors.textSecondary,
   },
   roleBadge: {
@@ -165,7 +165,7 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.sm,
   },
   roleText: {
-    fontSize: 12,
+    fontSize: responsiveSize(12),
     fontWeight: '600',
     color: Colors.primary,
   },

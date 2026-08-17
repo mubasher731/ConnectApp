@@ -15,7 +15,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppIcon, Avatar, PrimaryButton } from '../../components';
 import { useAuth } from '../../context/AuthContext';
 import { validators } from '../../utils/validation';
-import { Colors, Radius, Shadows, Spacing } from '../../theme';
+import { Colors, Radius, Shadows, Spacing, responsiveSize } from '../../theme';
 import { useTabBarClearance } from '../../utils/useResponsive';
 
 const ProfileScreen: React.FC = () => {
@@ -214,7 +214,7 @@ const styles = StyleSheet.create({
     paddingBottom: Spacing.md,
   },
   headerTitle: {
-    fontSize: 28,
+    fontSize: responsiveSize(28),
     fontWeight: '800',
     color: Colors.text,
     letterSpacing: -0.5,
@@ -249,7 +249,7 @@ const styles = StyleSheet.create({
     borderColor: Colors.white,
   },
   profileName: {
-    fontSize: 24,
+    fontSize: responsiveSize(24),
     fontWeight: '800',
     color: Colors.text,
     letterSpacing: -0.3,
@@ -351,7 +351,7 @@ const styles = StyleSheet.create({
     ...Shadows.raised,
   },
   modalTitle: {
-    fontSize: 20,
+    fontSize: responsiveSize(20),
     fontWeight: '800',
     color: Colors.text,
     marginBottom: Spacing.lg,

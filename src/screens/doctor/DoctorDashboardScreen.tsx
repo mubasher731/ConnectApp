@@ -17,8 +17,7 @@ import {
   URGENCY_META,
 } from '../../mock/doctorData';
 import DoctorPill from './components/DoctorPill';
-import { Colors, Radius, Shadows, Spacing } from '../../theme';
-import { useTabBarClearance } from '../../utils/useResponsive';
+import { Colors, Radius, Shadows, Spacing, responsiveSize } from '../../theme';
 
 interface StatConfig {
   key: 'totalAssigned' | 'awaitingAction' | 'activeSessions' | 'completedSessions';
@@ -56,7 +55,6 @@ const StatCard: React.FC<{ config: StatConfig; value: number }> = ({ config, val
 
 const DoctorDashboardScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const { user } = useAuth();
-  const bottomPad = useTabBarClearance();
   const [searchQuery, setSearchQuery] = useState('');
   const [appointments, setAppointments] = useState<DoctorAppointment[]>(MOCK_APPOINTMENTS);
   const [urgencyFilter, setUrgencyFilter] = useState<UrgencyFilter>('all');
@@ -97,7 +95,7 @@ const DoctorDashboardScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
   return (
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       <ScrollView
-        contentContainerStyle={[styles.content, { paddingBottom: bottomPad }]}
+        contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
@@ -275,6 +273,7 @@ const styles = StyleSheet.create({
   },
   content: {
     paddingHorizontal: Spacing.xl,
+    paddingBottom: 110,
   },
   header: {
     flexDirection: 'row',
@@ -308,12 +307,12 @@ const styles = StyleSheet.create({
     borderColor: Colors.white,
   },
   greeting: {
-    fontSize: 15,
+    fontSize: responsiveSize(15),
     color: Colors.textSecondary,
     fontWeight: '500',
   },
   name: {
-    fontSize: 26,
+    fontSize: responsiveSize(26),
     fontWeight: '800',
     color: Colors.text,
     letterSpacing: -0.3,
@@ -344,12 +343,12 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.sm,
   },
   statValue: {
-    fontSize: 26,
+    fontSize: responsiveSize(26),
     fontWeight: '800',
     color: Colors.text,
   },
   statLabel: {
-    fontSize: 13,
+    fontSize: responsiveSize(13),
     color: Colors.textSecondary,
     marginTop: 2,
   },
@@ -359,7 +358,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.inputBackground,
     borderRadius: Radius.md,
     paddingHorizontal: Spacing.lg,
-    minHeight: 48,
+    height: 48,
     marginBottom: Spacing.lg,
   },
   searchInput: {
@@ -376,7 +375,7 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.md,
   },
   sectionTitle: {
-    fontSize: 18,
+    fontSize: responsiveSize(18),
     fontWeight: '700',
     color: Colors.text,
     letterSpacing: -0.2,

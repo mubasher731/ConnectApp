@@ -1,22 +1,33 @@
 import { Colors } from './colors';
+import { PixelRatio } from 'react-native';
+import { widthPercentageToDP as wp } from 'react-native-responsive-screen';
+
+/**
+ * The design was authored around a 375px-wide phone. Keep that design intact
+ * while scaling it down for compact phones and up for wider handsets.
+ */
+const widthScale = Math.min(1.18, Math.max(0.8, wp('100%') / 375));
+
+export const responsiveSize = (size: number, scale = widthScale): number =>
+  PixelRatio.roundToNearestPixel(size * scale);
 
 /** Spacing scale (8-pt grid) */
 export const Spacing = {
-  xs: 4,
-  sm: 8,
-  md: 12,
-  lg: 16,
-  xl: 24,
-  xxl: 32,
-  screen: 24,
+  xs: responsiveSize(4),
+  sm: responsiveSize(8),
+  md: responsiveSize(12),
+  lg: responsiveSize(16),
+  xl: responsiveSize(24),
+  xxl: responsiveSize(32),
+  screen: responsiveSize(24),
 } as const;
 
 /** Border radius scale */
 export const Radius = {
-  sm: 10,
-  md: 16,
-  lg: 20,
-  xl: 28,
+  sm: responsiveSize(10),
+  md: responsiveSize(16),
+  lg: responsiveSize(20),
+  xl: responsiveSize(28),
   round: 999,
 } as const;
 

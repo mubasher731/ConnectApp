@@ -12,8 +12,7 @@ import { AppIcon, AppointmentCard, Avatar, EmptyState } from '../../components';
 import { useAuth } from '../../context/AuthContext';
 import { chatService } from '../../services/dataService';
 import { Chat } from '../../types';
-import { Colors, Radius, Spacing } from '../../theme';
-import { useTabBarClearance } from '../../utils/useResponsive';
+import { Colors, Radius, Spacing, responsiveSize } from '../../theme';
 
 interface QuickAction {
   key: string;
@@ -33,7 +32,6 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const { user } = useAuth();
   const [recentChats, setRecentChats] = useState<Chat[]>([]);
   const [loading, setLoading] = useState(false);
-  const bottomPad = useTabBarClearance();
 
   // Re-fetches sessions/chats from the backend. Lets the user refresh
   // without having to close & reopen the app (e.g. when a session is set).
@@ -166,7 +164,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
             }
           />
         )}
-        contentContainerStyle={[styles.chatList, { paddingBottom: bottomPad }]}
+        contentContainerStyle={styles.chatList}
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={
           <EmptyState
@@ -218,12 +216,12 @@ const styles = StyleSheet.create({
     borderColor: Colors.white,
   },
   greeting: {
-    fontSize: 15,
+    fontSize: responsiveSize(15),
     color: Colors.textSecondary,
     fontWeight: '500',
   },
   userName: {
-    fontSize: 26,
+    fontSize: responsiveSize(26),
     fontWeight: '800',
     color: Colors.text,
     letterSpacing: -0.3,
@@ -250,7 +248,7 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.sm,
   },
   actionLabel: {
-    fontSize: 12,
+    fontSize: responsiveSize(12),
     fontWeight: '600',
     color: Colors.textSecondary,
   },
@@ -276,19 +274,20 @@ const styles = StyleSheet.create({
     marginRight: Spacing.md,
   },
   sectionTitle: {
-    fontSize: 18,
+    fontSize: responsiveSize(18),
     fontWeight: '700',
     color: Colors.text,
     letterSpacing: -0.2,
   },
   seeAllText: {
-    fontSize: 14,
+    fontSize: responsiveSize(14),
     fontWeight: '600',
     color: Colors.primary,
   },
   chatList: {
     paddingHorizontal: Spacing.xl,
     paddingTop: Spacing.sm,
+    paddingBottom: 110,
     backgroundColor: Colors.surface,
   },
 });

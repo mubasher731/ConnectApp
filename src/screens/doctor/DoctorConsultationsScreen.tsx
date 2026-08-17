@@ -17,8 +17,7 @@ import {
   SEVERITY_META,
 } from '../../mock/doctorData';
 import DoctorPill from './components/DoctorPill';
-import { Colors, Radius, Shadows, Spacing } from '../../theme';
-import { useTabBarClearance } from '../../utils/useResponsive';
+import { Colors, Radius, Shadows, Spacing, responsiveSize } from '../../theme';
 
 type FilterKey = 'all' | 'in_progress' | 'completed' | 'closed';
 
@@ -44,7 +43,6 @@ const DoctorConsultationsScreen: React.FC<{ navigation: any }> = () => {
   const [severityDropdownOpen, setSeverityDropdownOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const bottomPad = useTabBarClearance();
   const appointments = MOCK_APPOINTMENTS;
 
   const filtered = appointments.filter((a) => {
@@ -227,7 +225,7 @@ const DoctorConsultationsScreen: React.FC<{ navigation: any }> = () => {
         data={filtered}
         keyExtractor={(item) => item.id}
         renderItem={renderItem}
-        contentContainerStyle={[styles.listContainer, { paddingBottom: bottomPad }]}
+        contentContainerStyle={styles.listContainer}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
         ListEmptyComponent={
@@ -268,13 +266,13 @@ const styles = StyleSheet.create({
     marginLeft: Spacing.md,
   },
   headerTitle: {
-    fontSize: 28,
+    fontSize: responsiveSize(28),
     fontWeight: '800',
     color: Colors.text,
     letterSpacing: -0.5,
   },
   headerSub: {
-    fontSize: 14,
+    fontSize: responsiveSize(14),
     color: Colors.textSecondary,
     marginTop: 2,
   },
@@ -290,7 +288,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.border,
     paddingHorizontal: Spacing.lg,
-    minHeight: 48,
+    height: 48,
   },
   dropdownButtonActive: {
     borderColor: Colors.primary,
@@ -298,7 +296,7 @@ const styles = StyleSheet.create({
   },
   dropdownLabel: {
     flex: 1,
-    fontSize: 15,
+    fontSize: responsiveSize(15),
     fontWeight: '600',
     color: Colors.text,
     marginLeft: Spacing.md,
@@ -352,7 +350,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.primary,
   },
   filterChipText: {
-    fontSize: 13,
+    fontSize: responsiveSize(13),
     fontWeight: '600',
     color: Colors.textSecondary,
   },
@@ -372,7 +370,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.inputBackground,
     borderRadius: Radius.md,
     paddingHorizontal: Spacing.lg,
-    minHeight: 46,
+    height: 46,
   },
   cancelButton: {
     marginLeft: Spacing.sm,
@@ -393,6 +391,7 @@ const styles = StyleSheet.create({
   listContainer: {
     paddingHorizontal: Spacing.xl,
     paddingTop: Spacing.xs,
+    paddingBottom: 110,
     flexGrow: 1,
   },
   card: {

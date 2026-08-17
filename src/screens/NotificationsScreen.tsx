@@ -10,7 +10,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppIcon, EmptyState } from '../components';
 import { notificationService } from '../services/dataService';
 import { AppNotification, NotificationKind } from '../types';
-import { Colors, Radius, Shadows, Spacing } from '../theme';
+import { Colors, Radius, Shadows, Spacing, responsiveSize } from '../theme';
 
 const KIND_META: Record<
   NotificationKind,
@@ -124,7 +124,7 @@ const styles = StyleSheet.create({
   },
   title: {
     flex: 1,
-    fontSize: 15,
+    fontSize: responsiveSize(15),
     fontWeight: '600',
     color: Colors.text,
     marginRight: Spacing.sm,
@@ -139,13 +139,13 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.primary,
   },
   body: {
-    fontSize: 14,
+    fontSize: responsiveSize(14),
     color: Colors.textSecondary,
     lineHeight: 20,
     marginBottom: Spacing.sm,
   },
   time: {
-    fontSize: 12,
+    fontSize: responsiveSize(12),
     color: Colors.textTertiary,
   },
   separator: {

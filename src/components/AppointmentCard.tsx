@@ -5,7 +5,7 @@ import AppIcon from './AppIcon';
 import Avatar from './Avatar';
 import StatusBadge from './StatusBadge';
 import { Chat } from '../types';
-import { Colors, Radius, Shadows, Spacing } from '../theme';
+import { Colors, Radius, Shadows, Spacing, responsiveSize } from '../theme';
 
 interface AppointmentCardProps {
   chat: Chat;
@@ -107,6 +107,7 @@ const styles = StyleSheet.create({
   },
   badgeRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: Spacing.sm,
@@ -117,7 +118,7 @@ const styles = StyleSheet.create({
     marginRight: Spacing.sm,
   },
   name: {
-    fontSize: 18,
+    fontSize: responsiveSize(18),
     fontWeight: '700',
     lineHeight: 24,
     marginBottom: Spacing.xs,
@@ -125,15 +126,16 @@ const styles = StyleSheet.create({
   durationRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    flexShrink: 1,
   },
   duration: {
-    fontSize: 14,
+    fontSize: responsiveSize(14),
     fontWeight: '600',
     color: Colors.textSecondary,
     marginLeft: Spacing.sm,
   },
   timeText: {
-    fontSize: 13,
+    fontSize: responsiveSize(13),
     color: Colors.textSecondary,
     marginTop: Spacing.xs,
   },
@@ -142,7 +144,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   metaText: {
-    fontSize: 13,
+    fontSize: responsiveSize(13),
     color: Colors.textSecondary,
     marginLeft: Spacing.sm,
   },

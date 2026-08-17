@@ -6,7 +6,7 @@ import {
   StyleSheet,
   ViewStyle,
 } from 'react-native';
-import { Colors, Radius, Shadows } from '../theme';
+import { Colors, Radius, Shadows, responsiveSize } from '../theme';
 
 interface PrimaryButtonProps {
   title: string;
@@ -76,7 +76,7 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   title: {
-    fontSize: 16,
+    fontSize: responsiveSize(16),
     fontWeight: '700',
     letterSpacing: 0.2,
   },

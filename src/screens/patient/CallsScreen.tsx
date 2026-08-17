@@ -10,8 +10,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppIcon, Avatar, EmptyState } from '../../components';
 import { callService } from '../../services/dataService';
 import { CallLog, CallDirection } from '../../types';
-import { Colors, Radius, Shadows, Spacing } from '../../theme';
-import { useTabBarClearance } from '../../utils/useResponsive';
+import { Colors, Radius, Shadows, Spacing, responsiveSize } from '../../theme';
 
 const directionMeta: Record<CallDirection, { icon: string; label: string; color: string }> = {
   incoming: { icon: 'arrow-down', label: 'Incoming', color: Colors.success },
@@ -22,7 +21,6 @@ const directionMeta: Record<CallDirection, { icon: string; label: string; color:
 const CallsScreen: React.FC = () => {
   const [calls, setCalls] = useState<CallLog[]>([]);
   const [loading, setLoading] = useState(true);
-  const bottomPad = useTabBarClearance();
 
   useEffect(() => {
     let mounted = true;
@@ -89,7 +87,7 @@ const CallsScreen: React.FC = () => {
         data={calls}
         keyExtractor={(item) => item.id}
         renderItem={renderItem}
-        contentContainerStyle={[styles.listContainer, { paddingBottom: bottomPad }]}
+        contentContainerStyle={styles.listContainer}
         showsVerticalScrollIndicator={false}
         ItemSeparatorComponent={() => <View style={styles.separator} />}
         refreshing={loading}
@@ -116,18 +114,19 @@ const styles = StyleSheet.create({
     paddingBottom: Spacing.md,
   },
   headerTitle: {
-    fontSize: 32,
+    fontSize: responsiveSize(32),
     fontWeight: '800',
     color: Colors.text,
     letterSpacing: -0.5,
   },
   headerCount: {
-    fontSize: 14,
+    fontSize: responsiveSize(14),
     color: Colors.textSecondary,
     marginTop: 2,
   },
   listContainer: {
     paddingHorizontal: Spacing.lg,
+    paddingBottom: 110,
     flexGrow: 1,
   },
   callItem: {
@@ -147,7 +146,7 @@ const styles = StyleSheet.create({
     marginLeft: Spacing.md,
   },
   callName: {
-    fontSize: 16,
+    fontSize: responsiveSize(16),
     fontWeight: '600',
     color: Colors.text,
     marginBottom: Spacing.xs,
@@ -158,17 +157,17 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   directionText: {
-    fontSize: 13,
+    fontSize: responsiveSize(13),
     fontWeight: '500',
     marginLeft: 4,
     marginRight: Spacing.sm,
   },
   callDuration: {
-    fontSize: 13,
+    fontSize: responsiveSize(13),
     color: Colors.textSecondary,
   },
   callTime: {
-    fontSize: 12,
+    fontSize: responsiveSize(12),
     color: Colors.textTertiary,
     marginTop: 1,
   },

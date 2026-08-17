@@ -11,8 +11,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppointmentCard, EmptyState } from '../../components';
 import { chatService } from '../../services';
 import { Chat } from '../../types';
-import { Colors, Radius, Spacing } from '../../theme';
-import { useTabBarClearance } from '../../utils/useResponsive';
+import { Colors, Radius, Spacing, responsiveSize } from '../../theme';
 
 type FilterKey = 'all' | 'upcoming' | 'consulted' | 'no_show';
 
@@ -27,7 +26,6 @@ const ChatsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const [chats, setChats] = useState<Chat[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<FilterKey>('all');
-  const bottomPad = useTabBarClearance();
 
   const filteredChats = useMemo(() => {
     if (filter === 'all') return chats;
@@ -96,7 +94,7 @@ const ChatsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
         data={filteredChats}
         keyExtractor={(item) => item.id}
         renderItem={renderItem}
-        contentContainerStyle={[styles.listContainer, { paddingBottom: bottomPad }]}
+        contentContainerStyle={styles.listContainer}
         showsVerticalScrollIndicator={false}
         refreshing={loading}
         ListEmptyComponent={
@@ -122,13 +120,13 @@ const styles = StyleSheet.create({
     paddingBottom: Spacing.md,
   },
   headerTitle: {
-    fontSize: 28,
+    fontSize: responsiveSize(28),
     fontWeight: '800',
     color: Colors.text,
     letterSpacing: -0.5,
   },
   headerCount: {
-    fontSize: 14,
+    fontSize: responsiveSize(14),
     color: Colors.textSecondary,
     marginTop: 2,
   },
@@ -149,7 +147,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.primary,
   },
   filterChipText: {
-    fontSize: 13,
+    fontSize: responsiveSize(13),
     fontWeight: '600',
     color: Colors.textSecondary,
   },
@@ -159,6 +157,7 @@ const styles = StyleSheet.create({
   listContainer: {
     paddingHorizontal: Spacing.lg,
     paddingTop: Spacing.xs,
+    paddingBottom: 110,
     flexGrow: 1,
     backgroundColor: Colors.surface,
   },

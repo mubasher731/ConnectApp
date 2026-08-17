@@ -19,7 +19,7 @@ import { socketService } from '../api/socket';
 import { useAuth } from '../context/AuthContext';
 import { chatService, sessionService } from '../services';
 import { Message, Session, SessionStatus } from '../types';
-import { Colors, Radius, Shadows, Spacing } from '../theme';
+import { Colors, Radius, Shadows, Spacing, responsiveSize } from '../theme';
 
 interface ChatDetailScreenProps {
   route: any;
@@ -587,10 +587,10 @@ const styles = StyleSheet.create({
     marginLeft: Spacing.sm,
   },
   headerTitleName: {
-    fontSize: 16,
+    fontSize: responsiveSize(16),
     fontWeight: '700',
     color: Colors.text,
-    maxWidth: 200,
+    maxWidth: '70%',
   },
   headerTitleStatus: {
     fontSize: 12,
