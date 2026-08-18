@@ -20,6 +20,7 @@ import NotificationsScreen from '../screens/NotificationsScreen';
 import DirectoryScreen from '../screens/chat/DirectoryScreen';
 import CallsScreen from '../screens/patient/CallsScreen';
 import ProfileScreen from '../screens/patient/ProfileScreen';
+import DoctorsScreen from '../screens/patient/DoctorsScreen';
 import DoctorDashboardScreen from '../screens/doctor/DoctorDashboardScreen';
 import DoctorConsultationsScreen from '../screens/doctor/DoctorConsultationsScreen';
 
@@ -154,6 +155,11 @@ const AppNavigator: React.FC = () => {
               name="Notifications"
               component={NotificationsScreen}
               options={{ title: 'Notifications' }}
+            />
+            <Stack.Screen
+              name="Doctors"
+              component={DoctorsScreen}
+              options={{ title: 'Doctors' }}
             />
             <Stack.Screen
               name="Directory"

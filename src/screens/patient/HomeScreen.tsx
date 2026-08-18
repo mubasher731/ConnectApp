@@ -20,7 +20,7 @@ interface QuickAction {
   label: string;
   tint: string;
   color: string;
-  target?: 'Chats' | 'Calls' | 'Directory';
+  target?: 'Chats' | 'Calls' | 'Doctors';
 }
 
 const STATIC_ACTIONS: QuickAction[] = [
@@ -60,16 +60,13 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
 
   const displayName = user?.name ?? '';
 
-  // Discovery is role-aware: patients browse doctors (role_id 3),
-  // doctors browse patients (role_id 4).
-  const isDoctor = user?.role_id === 3;
   const directoryAction: QuickAction = {
     key: 'directory',
     icon: 'people',
-    label: isDoctor ? 'Patients' : 'Doctors',
+    label: 'Doctors',
     tint: '#E8F0FE',
     color: Colors.info,
-    target: 'Directory',
+    target: 'Doctors',
   };
   const quickActions: QuickAction[] = [
     STATIC_ACTIONS[0],
@@ -107,12 +104,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
             key={action.key}
             style={styles.actionButton}
             onPress={() => {
-              if (action.target === 'Directory') {
-                navigation.navigate('Directory', {
-                  roleId: isDoctor ? 4 : 3,
-                  title: action.label,
-                });
-              } else if (action.target) {
+              if (action.target) {
                 navigation.navigate(action.target);
               }
             }}

@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -7,15 +7,16 @@ import {
   TouchableOpacity,
   StyleSheet,
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppIcon, Avatar } from '../../components';
 import { useAuth } from '../../context/AuthContext';
 import {
   MOCK_APPOINTMENTS,
-  DoctorAppointment,
   APPOINTMENT_STATUS_META,
   URGENCY_META,
 } from '../../mock/doctorData';
+import { bookingStore, BookingRequest } from '../../mock/bookingStore';
 import DoctorPill from '../../components/Doctor/DoctorPill';
 import { Colors, Radius, Shadows, Spacing, responsiveSize } from '../../theme';
 
@@ -56,20 +57,27 @@ const StatCard: React.FC<{ config: StatConfig; value: number }> = ({ config, val
 const DoctorDashboardScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
-  const [appointments, setAppointments] = useState<DoctorAppointment[]>(MOCK_APPOINTMENTS);
+  const appointments = MOCK_APPOINTMENTS;
   const [urgencyFilter, setUrgencyFilter] = useState<UrgencyFilter>('all');
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  // Incoming appointment requests from patients (mock store).
+  const [requests, setRequests] = useState<BookingRequest[]>(() =>
+    bookingStore.listForDoctor(user?.id ?? 2)
+  );
+  const pendingRequests = requests.filter((r) => r.status === 'pending');
 
   const stats = useMemo(
     () => ({
-      totalAssigned: appointments.length,
-      awaitingAction: appointments.filter((a) => a.status === 'pending').length,
+      totalAssigned: appointments.length + requests.length,
+      awaitingAction:
+        appointments.filter((a) => a.status === 'pending').length +
+        pendingRequests.length,
       activeSessions: appointments.filter((a) => a.status === 'in_progress').length,
       completedSessions: appointments.filter(
         (a) => a.status === 'completed' || a.status === 'closed'
       ).length,
     }),
-    [appointments]
+    [appointments, requests, pendingRequests]
   );
 
   const filtered = appointments.filter(
@@ -86,10 +94,20 @@ const DoctorDashboardScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
           appointments.filter((a) => a.urgency === urgencyFilter).length
         }`;
 
-  const handleAction = (id: string, action: 'accepted' | 'rejected') => {
-    setAppointments((prev) =>
-      prev.map((a) => (a.id === id ? { ...a, status: action } : a))
-    );
+  const refreshRequests = useCallback(() => {
+    setRequests(bookingStore.listForDoctor(user?.id ?? 2));
+  }, [user?.id]);
+
+  // Refresh incoming requests when the dashboard gains focus.
+  useFocusEffect(
+    useCallback(() => {
+      refreshRequests();
+    }, [refreshRequests])
+  );
+
+  const handleRequestAction = (id: string, status: 'accepted' | 'rejected') => {
+    bookingStore.update(id, status);
+    refreshRequests();
   };
 
   return (
@@ -143,6 +161,68 @@ const DoctorDashboardScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
             </TouchableOpacity>
           )}
         </View>
+
+        {/* Appointment Requests */}
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Appointment Requests</Text>
+          <Text style={styles.seeAll}>{pendingRequests.length} incoming</Text>
+        </View>
+
+        {pendingRequests.length === 0 ? (
+          <Text style={styles.emptyText}>No incoming appointment requests.</Text>
+        ) : (
+          pendingRequests.map((req) => {
+            const statusMeta = { label: 'Pending', color: '#F59E0B', bg: '#FEF3E0' };
+            return (
+              <View key={req.id} style={styles.appointmentCard}>
+                <View style={styles.appointmentTop}>
+                  <View style={styles.patientInfo}>
+                    <Avatar name={req.patientName} size={40} />
+                    <View style={styles.patientMeta}>
+                      <Text style={styles.patientName}>{req.patientName}</Text>
+                      <Text style={styles.patientSub}>Requested {req.timeSlot}</Text>
+                    </View>
+                  </View>
+                  <DoctorPill
+                    label={statusMeta.label}
+                    color={statusMeta.color}
+                    bg={statusMeta.bg}
+                  />
+                </View>
+
+                <View style={styles.appointmentRow}>
+                  <AppIcon
+                    name="chatbubble-ellipses-outline"
+                    size={14}
+                    color={Colors.textTertiary}
+                  />
+                  <Text style={styles.appointmentMeta} numberOfLines={2}>
+                    {req.message}
+                  </Text>
+                </View>
+
+                <View style={styles.actionRow}>
+                  <TouchableOpacity
+                    style={[styles.actionBtn, styles.acceptBtn]}
+                    onPress={() => handleRequestAction(req.id, 'accepted')}
+                    activeOpacity={0.85}
+                  >
+                    <AppIcon name="checkmark" size={16} color={Colors.white} />
+                    <Text style={styles.actionText}>Accept</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.actionBtn, styles.rejectBtn]}
+                    onPress={() => handleRequestAction(req.id, 'rejected')}
+                    activeOpacity={0.85}
+                  >
+                    <AppIcon name="close" size={16} color={Colors.white} />
+                    <Text style={styles.actionText}>Reject</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            );
+          })
+        )}
 
         {/* Recent Appointments */}
         <View style={styles.sectionHeader}>
@@ -229,34 +309,13 @@ const DoctorDashboardScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
                   <DoctorPill label={urgency.label} color={urgency.color} bg={urgency.bg} />
                 </View>
 
-                {a.status === 'pending' ? (
-                  <View style={styles.actionRow}>
-                    <TouchableOpacity
-                      style={[styles.actionBtn, styles.acceptBtn]}
-                      onPress={() => handleAction(a.id, 'accepted')}
-                      activeOpacity={0.85}
-                    >
-                      <AppIcon name="checkmark" size={16} color={Colors.white} />
-                      <Text style={styles.actionText}>Accept</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={[styles.actionBtn, styles.rejectBtn]}
-                      onPress={() => handleAction(a.id, 'rejected')}
-                      activeOpacity={0.85}
-                    >
-                      <AppIcon name="close" size={16} color={Colors.white} />
-                      <Text style={styles.actionText}>Reject</Text>
-                    </TouchableOpacity>
-                  </View>
-                ) : (
-                  <TouchableOpacity
-                    style={styles.viewBtn}
-                    onPress={() => navigation.navigate('Consultations')}
-                    activeOpacity={0.85}
-                  >
-                    <Text style={styles.viewText}>View Details</Text>
-                  </TouchableOpacity>
-                )}
+                <TouchableOpacity
+                  style={styles.viewBtn}
+                  onPress={() => navigation.navigate('Consultations')}
+                  activeOpacity={0.85}
+                >
+                  <Text style={styles.viewText}>View Details</Text>
+                </TouchableOpacity>
               </View>
             );
           })
