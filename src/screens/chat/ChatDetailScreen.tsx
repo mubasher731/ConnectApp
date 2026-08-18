@@ -14,12 +14,12 @@ import {
 import dayjs from 'dayjs';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useHeaderHeight } from '@react-navigation/elements';
-import { AppIcon, Avatar, EmptyState } from '../components';
-import { socketService } from '../api/socket';
-import { useAuth } from '../context/AuthContext';
-import { chatService, sessionService } from '../services';
-import { Message, Session, SessionStatus } from '../types';
-import { Colors, Radius, Shadows, Spacing, responsiveSize } from '../theme';
+import { AppIcon, Avatar, EmptyState } from '../../components';
+import { socketService } from '../../api/socket';
+import { useAuth } from '../../context/AuthContext';
+import { chatService, sessionService } from '../../services';
+import { Message, Session, SessionStatus } from '../../types';
+import { Colors, Radius, Shadows, Spacing, responsiveSize } from '../../theme';
 
 interface ChatDetailScreenProps {
   route: any;

@@ -8,12 +8,12 @@ import {
   Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { AppIcon, Avatar, EmptyState } from '../components';
-import { socketService } from '../api/socket';
-import { useAuth } from '../context/AuthContext';
-import { chatService, userService } from '../services';
-import { User } from '../types';
-import { Colors, Radius, Shadows, Spacing, responsiveSize } from '../theme';
+import { AppIcon, Avatar, EmptyState } from '../../components';
+import { socketService } from '../../api/socket';
+import { useAuth } from '../../context/AuthContext';
+import { chatService, userService } from '../../services';
+import { User } from '../../types';
+import { Colors, Radius, Shadows, Spacing, responsiveSize } from '../../theme';
 
 interface DirectoryScreenProps {
   route: any;
