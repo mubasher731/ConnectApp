@@ -7,12 +7,31 @@ import {
   Modal,
   StyleSheet,
   Alert,
+  ScrollView,
 } from 'react-native';
+import AppIcon from '../AppIcon';
 import Avatar from '../Avatar';
 import { DoctorProfile } from '../../mock/doctorProfiles';
 import { bookingStore } from '../../mock/bookingStore';
 import { useAuth } from '../../context/AuthContext';
 import { Colors, Radius, Shadows, Spacing } from '../../theme';
+
+const formatMinutes = (total: number) => {
+  const h = Math.floor(total / 60);
+  const m = total % 60;
+  const ampm = h >= 12 ? 'pm' : 'am';
+  const hour = h % 12 === 0 ? 12 : h % 12;
+  return `${hour}:${String(m).padStart(2, '0')}${ampm}`;
+};
+
+/** 15-minute interval session slots, e.g. "10:00am - 10:15am". */
+const TIME_SLOTS: string[] = (() => {
+  const slots: string[] = [];
+  for (let t = 9 * 60; t < 17 * 60; t += 15) {
+    slots.push(`${formatMinutes(t)} - ${formatMinutes(t + 15)}`);
+  }
+  return slots;
+})();
 
 interface BookAppointmentModalProps {
   visible: boolean;
@@ -29,10 +48,12 @@ const BookAppointmentModal: React.FC<BookAppointmentModalProps> = ({
   const { user } = useAuth();
   const [timeSlot, setTimeSlot] = useState<string | null>(null);
   const [message, setMessage] = useState('');
+  const [slotDropdownOpen, setSlotDropdownOpen] = useState(false);
 
   const reset = () => {
     setTimeSlot(null);
     setMessage('');
+    setSlotDropdownOpen(false);
   };
 
   const handleClose = () => {
@@ -74,56 +95,100 @@ const BookAppointmentModal: React.FC<BookAppointmentModalProps> = ({
             </View>
           </View>
 
-          {/* Time slots */}
-          <Text style={styles.label}>Select Time Slot</Text>
-          <View style={styles.slotRow}>
-            {doctor?.timeSlots.map((slot) => {
-              const selected = timeSlot === slot;
-              return (
-                <TouchableOpacity
-                  key={slot}
-                  style={[styles.slotChip, selected && styles.slotChipActive]}
-                  onPress={() => setTimeSlot(slot)}
-                  activeOpacity={0.7}
+          <ScrollView
+            style={styles.body}
+            showsVerticalScrollIndicator={false}
+            nestedScrollEnabled
+            keyboardShouldPersistTaps="handled"
+          >
+            {/* Time slot dropdown */}
+            <Text style={styles.label}>Select Time Slot</Text>
+            <TouchableOpacity
+              style={styles.dropdownField}
+              onPress={() => setSlotDropdownOpen((o) => !o)}
+              activeOpacity={0.7}
+            >
+              <Text
+                style={timeSlot ? styles.dropdownValue : styles.dropdownPlaceholder}
+                numberOfLines={1}
+              >
+                {timeSlot ?? 'Choose the session slot...'}
+              </Text>
+              <AppIcon
+                name={slotDropdownOpen ? 'chevron-up' : 'chevron-down'}
+                size={18}
+                color={Colors.textSecondary}
+              />
+            </TouchableOpacity>
+
+            {slotDropdownOpen && (
+              <View style={styles.slotList}>
+                <ScrollView
+                  nestedScrollEnabled
+                  showsVerticalScrollIndicator={false}
+                  style={styles.slotListScroll}
                 >
-                  <Text style={[styles.slotText, selected && styles.slotTextActive]}>
-                    {slot}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
+                  {TIME_SLOTS.map((slot) => {
+                    const selected = timeSlot === slot;
+                    return (
+                      <TouchableOpacity
+                        key={slot}
+                        style={[styles.slotItem, selected && styles.slotItemActive]}
+                        onPress={() => {
+                          setTimeSlot(slot);
+                          setSlotDropdownOpen(false);
+                        }}
+                        activeOpacity={0.6}
+                      >
+                        <Text
+                          style={[
+                            styles.slotItemText,
+                            selected && styles.slotItemTextActive,
+                          ]}
+                        >
+                          {slot}
+                        </Text>
+                        {selected && (
+                          <AppIcon name="checkmark" size={16} color={Colors.primary} />
+                        )}
+                      </TouchableOpacity>
+                    );
+                  })}
+                </ScrollView>
+              </View>
+            )}
 
-          {/* Message */}
-          <Text style={styles.label}>Message</Text>
-          <TextInput
-            style={styles.messageInput}
-            placeholder="I am sick..."
-            placeholderTextColor={Colors.textTertiary}
-            value={message}
-            onChangeText={setMessage}
-            multiline
-            maxLength={500}
-            textAlignVertical="top"
-          />
+            {/* Message */}
+            <Text style={styles.label}>Message</Text>
+            <TextInput
+              style={styles.messageInput}
+              placeholder="I am sick..."
+              placeholderTextColor={Colors.textTertiary}
+              value={message}
+              onChangeText={setMessage}
+              multiline
+              maxLength={500}
+              textAlignVertical="top"
+            />
 
-          {/* Actions */}
-          <View style={styles.actionRow}>
-            <TouchableOpacity
-              style={[styles.actionBtn, styles.cancelBtn]}
-              onPress={handleClose}
-              activeOpacity={0.85}
-            >
-              <Text style={styles.cancelText}>Cancel</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.actionBtn, styles.sendBtn]}
-              onPress={handleSend}
-              activeOpacity={0.85}
-            >
-              <Text style={styles.sendText}>Send Request</Text>
-            </TouchableOpacity>
-          </View>
+            {/* Actions */}
+            <View style={styles.actionRow}>
+              <TouchableOpacity
+                style={[styles.actionBtn, styles.cancelBtn]}
+                onPress={handleClose}
+                activeOpacity={0.85}
+              >
+                <Text style={styles.cancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.actionBtn, styles.sendBtn]}
+                onPress={handleSend}
+                activeOpacity={0.85}
+              >
+                <Text style={styles.sendText}>Send Request</Text>
+              </TouchableOpacity>
+            </View>
+          </ScrollView>
         </View>
       </View>
     </Modal>
@@ -141,10 +206,14 @@ const styles = StyleSheet.create({
   sheet: {
     width: '100%',
     maxWidth: 420,
+    maxHeight: '92%',
     backgroundColor: Colors.background,
     borderRadius: Radius.xl,
     padding: Spacing.xl,
     ...Shadows.raised,
+  },
+  body: {
+    flexGrow: 0,
   },
   header: {
     flexDirection: 'row',
@@ -171,31 +240,61 @@ const styles = StyleSheet.create({
     color: Colors.text,
     marginBottom: Spacing.sm,
   },
-  slotRow: {
+  dropdownField: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: Spacing.sm,
-    marginBottom: Spacing.lg,
-  },
-  slotChip: {
-    paddingHorizontal: Spacing.md,
-    paddingVertical: 8,
-    borderRadius: Radius.round,
+    alignItems: 'center',
+    justifyContent: 'space-between',
     backgroundColor: Colors.inputBackground,
+    borderRadius: Radius.md,
     borderWidth: 1,
     borderColor: Colors.border,
+    paddingHorizontal: Spacing.lg,
+    height: 50,
+    marginBottom: Spacing.sm,
   },
-  slotChipActive: {
-    backgroundColor: Colors.primary,
-    borderColor: Colors.primary,
+  dropdownValue: {
+    flex: 1,
+    fontSize: 15,
+    color: Colors.text,
+    marginRight: Spacing.sm,
   },
-  slotText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: Colors.textSecondary,
+  dropdownPlaceholder: {
+    flex: 1,
+    fontSize: 15,
+    color: Colors.textTertiary,
+    marginRight: Spacing.sm,
   },
-  slotTextActive: {
-    color: Colors.white,
+  slotList: {
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderRadius: Radius.md,
+    backgroundColor: Colors.card,
+    overflow: 'hidden',
+    marginBottom: Spacing.lg,
+    ...Shadows.raised,
+  },
+  slotListScroll: {
+    maxHeight: 180,
+  },
+  slotItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.md,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: Colors.border,
+  },
+  slotItemActive: {
+    backgroundColor: Colors.primarySoft,
+  },
+  slotItemText: {
+    flex: 1,
+    fontSize: 14,
+    color: Colors.text,
+  },
+  slotItemTextActive: {
+    fontWeight: '700',
+    color: Colors.primary,
   },
   messageInput: {
     minHeight: 90,
