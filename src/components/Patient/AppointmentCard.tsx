@@ -1,11 +1,11 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import dayjs from 'dayjs';
-import AppIcon from './AppIcon';
-import Avatar from './Avatar';
+import AppIcon from '../AppIcon';
+import Avatar from '../Avatar';
 import StatusBadge from './StatusBadge';
-import { Chat } from '../types';
-import { Colors, Radius, Shadows, Spacing, responsiveSize } from '../theme';
+import { Chat } from '../../types';
+import { Colors, Radius, Shadows, Spacing, responsiveSize } from '../../theme';
 
 interface AppointmentCardProps {
   chat: Chat;

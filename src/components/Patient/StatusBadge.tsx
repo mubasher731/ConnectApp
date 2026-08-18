@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { SessionStatus } from '../types';
-import { Colors, Radius, Spacing } from '../theme';
+import { SessionStatus } from '../../types';
+import { Colors, Radius, Spacing } from '../../theme';
 
 const STATUS_META: Record<
   SessionStatus,

@@ -16,7 +16,7 @@ import {
   URGENCY_META,
   SEVERITY_META,
 } from '../../mock/doctorData';
-import DoctorPill from './components/DoctorPill';
+import DoctorPill from '../../components/Doctor/DoctorPill';
 import { Colors, Radius, Shadows, Spacing, responsiveSize } from '../../theme';
 
 type FilterKey = 'all' | 'in_progress' | 'completed' | 'closed';

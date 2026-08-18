@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { Radius, Spacing } from '../../../theme';
+import { Radius, Spacing } from '../../theme';
 
 interface DoctorPillProps {
   label: string;

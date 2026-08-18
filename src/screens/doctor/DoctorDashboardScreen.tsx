@@ -16,7 +16,7 @@ import {
   APPOINTMENT_STATUS_META,
   URGENCY_META,
 } from '../../mock/doctorData';
-import DoctorPill from './components/DoctorPill';
+import DoctorPill from '../../components/Doctor/DoctorPill';
 import { Colors, Radius, Shadows, Spacing, responsiveSize } from '../../theme';
 
 interface StatConfig {
