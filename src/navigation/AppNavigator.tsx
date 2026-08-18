@@ -159,7 +159,10 @@ const AppNavigator: React.FC = () => {
             <Stack.Screen
               name="Doctors"
               component={DoctorsScreen}
-              options={{ title: 'Doctors' }}
+              options={{
+                title: 'Doctors',
+                headerTitleStyle: styles.doctorsHeaderTitle,
+              }}
             />
             <Stack.Screen
               name="Directory"
@@ -195,6 +198,11 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontWeight: '700',
     fontSize: 17,
+  },
+  doctorsHeaderTitle: {
+    fontWeight: '800',
+    fontSize: 26,
+    letterSpacing: -0.5,
   },
   tabLabel: {
     fontSize: 11,

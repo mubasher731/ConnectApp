@@ -17,8 +17,8 @@ const DoctorsScreen: React.FC<{ navigation: any }> = () => {
   return (
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Doctors</Text>
-        <Text style={styles.headerSub}>Find a doctor and book an appointment</Text>
+        <Text style={styles.headerTitle}>Find the Right Care for You</Text>
+        <Text style={styles.headerSub}>Choose a trusted healthcare professional and book your appointment with ease.</Text>
       </View>
 
       <FlatList
@@ -59,13 +59,13 @@ const styles = StyleSheet.create({
     paddingBottom: Spacing.md,
   },
   headerTitle: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: '800',
     color: Colors.text,
     letterSpacing: -0.5,
   },
   headerSub: {
-    fontSize: 14,
+    fontSize: 16,
     color: Colors.textSecondary,
     marginTop: 2,
   },

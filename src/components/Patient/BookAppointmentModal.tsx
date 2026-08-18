@@ -13,25 +13,9 @@ import AppIcon from '../AppIcon';
 import Avatar from '../Avatar';
 import { DoctorProfile } from '../../mock/doctorProfiles';
 import { bookingStore } from '../../mock/bookingStore';
+import { TIME_SLOTS } from '../../mock/timeSlots';
 import { useAuth } from '../../context/AuthContext';
 import { Colors, Radius, Shadows, Spacing } from '../../theme';
-
-const formatMinutes = (total: number) => {
-  const h = Math.floor(total / 60);
-  const m = total % 60;
-  const ampm = h >= 12 ? 'pm' : 'am';
-  const hour = h % 12 === 0 ? 12 : h % 12;
-  return `${hour}:${String(m).padStart(2, '0')}${ampm}`;
-};
-
-/** 15-minute interval session slots, e.g. "10:00am - 10:15am". */
-const TIME_SLOTS: string[] = (() => {
-  const slots: string[] = [];
-  for (let t = 9 * 60; t < 17 * 60; t += 15) {
-    slots.push(`${formatMinutes(t)} - ${formatMinutes(t + 15)}`);
-  }
-  return slots;
-})();
 
 interface BookAppointmentModalProps {
   visible: boolean;
@@ -46,9 +30,16 @@ const BookAppointmentModal: React.FC<BookAppointmentModalProps> = ({
   onClose,
 }) => {
   const { user } = useAuth();
+  const patientId = String(user?.id ?? 'guest-patient');
   const [timeSlot, setTimeSlot] = useState<string | null>(null);
   const [message, setMessage] = useState('');
   const [slotDropdownOpen, setSlotDropdownOpen] = useState(false);
+
+  const slotUnavailableAlert = () =>
+    Alert.alert(
+      'Slot Unavailable',
+      '⚠️ This slot has already been booked by another patient. Please select a different time.'
+    );
 
   const reset = () => {
     setTimeSlot(null);
@@ -57,14 +48,42 @@ const BookAppointmentModal: React.FC<BookAppointmentModalProps> = ({
   };
 
   const handleClose = () => {
+    if (doctor && timeSlot) {
+      bookingStore.releaseSlot(doctor.id, timeSlot, patientId);
+    }
     reset();
     onClose();
+  };
+
+  const handleSelectSlot = (slot: string) => {
+    if (!doctor) return;
+    const result = bookingStore.reserveSlot(
+      doctor.id,
+      slot,
+      patientId,
+      user?.name || 'Patient'
+    );
+    if (!result.ok) {
+      slotUnavailableAlert();
+      return;
+    }
+    // Release the previously held slot (if any) before switching.
+    if (timeSlot && timeSlot !== slot) {
+      bookingStore.releaseSlot(doctor.id, timeSlot, patientId);
+    }
+    setTimeSlot(slot);
+    setSlotDropdownOpen(false);
   };
 
   const handleSend = () => {
     if (!doctor) return;
     if (!timeSlot) {
       Alert.alert('Select a time slot', 'Please choose an available time slot.');
+      return;
+    }
+    // Re-check before sending: the slot may have been taken while the modal was open.
+    if (bookingStore.isSlotBooked(doctor.id, timeSlot, patientId)) {
+      slotUnavailableAlert();
       return;
     }
     bookingStore.create({
@@ -74,6 +93,7 @@ const BookAppointmentModal: React.FC<BookAppointmentModalProps> = ({
       timeSlot,
       message: message.trim() || 'No message provided',
     });
+    bookingStore.releaseSlot(doctor.id, timeSlot, patientId);
     Alert.alert('Request Sent', `Your appointment request to ${doctor.name} has been sent.`);
     handleClose();
   };
@@ -129,25 +149,34 @@ const BookAppointmentModal: React.FC<BookAppointmentModalProps> = ({
                   style={styles.slotListScroll}
                 >
                   {TIME_SLOTS.map((slot) => {
+                    const status = doctor
+                      ? bookingStore.getSlotStatus(doctor.id, slot, patientId)
+                      : 'free';
                     const selected = timeSlot === slot;
+                    const booked = status === 'booked';
                     return (
                       <TouchableOpacity
                         key={slot}
-                        style={[styles.slotItem, selected && styles.slotItemActive]}
-                        onPress={() => {
-                          setTimeSlot(slot);
-                          setSlotDropdownOpen(false);
-                        }}
+                        style={[
+                          styles.slotItem,
+                          selected && styles.slotItemActive,
+                          booked && !selected && styles.slotItemBooked,
+                        ]}
+                        onPress={() => handleSelectSlot(slot)}
                         activeOpacity={0.6}
                       >
                         <Text
                           style={[
                             styles.slotItemText,
                             selected && styles.slotItemTextActive,
+                            booked && !selected && styles.slotItemTextBooked,
                           ]}
                         >
                           {slot}
                         </Text>
+                        {booked && !selected && (
+                          <Text style={styles.slotBookedTag}>Booked</Text>
+                        )}
                         {selected && (
                           <AppIcon name="checkmark" size={16} color={Colors.primary} />
                         )}
@@ -295,6 +324,23 @@ const styles = StyleSheet.create({
   slotItemTextActive: {
     fontWeight: '700',
     color: Colors.primary,
+  },
+  slotItemBooked: {
+    opacity: 0.55,
+  },
+  slotItemTextBooked: {
+    color: Colors.textTertiary,
+    textDecorationLine: 'line-through',
+  },
+  slotBookedTag: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: Colors.error,
+    backgroundColor: Colors.errorSoft,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 2,
+    borderRadius: Radius.round,
+    overflow: 'hidden',
   },
   messageInput: {
     minHeight: 90,
