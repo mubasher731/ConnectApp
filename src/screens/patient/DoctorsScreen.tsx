@@ -3,15 +3,27 @@ import { View, Text, FlatList, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { BookAppointmentModal, DoctorCard, EmptyState } from '../../components';
 import { MOCK_DOCTOR_PROFILES, DoctorProfile } from '../../mock/doctorProfiles';
+import { MockSession } from '../../services/mockSessionStore';
 import { Colors, Spacing } from '../../theme';
 
-const DoctorsScreen: React.FC<{ navigation: any }> = () => {
+const DoctorsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const [bookingDoctor, setBookingDoctor] = useState<DoctorProfile | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
 
   const openBooking = (doctor: DoctorProfile) => {
     setBookingDoctor(doctor);
     setModalVisible(true);
+  };
+
+  /** Called after a successful booking — open the persistent chat with the doctor. */
+  const handleBooked = (session: MockSession) => {
+    setModalVisible(false);
+    setBookingDoctor(null);
+    navigation.navigate('ChatDetail', {
+      chatId: session.id,
+      participantName: session.doctorName,
+      isMock: true,
+    });
   };
 
   return (
@@ -43,6 +55,7 @@ const DoctorsScreen: React.FC<{ navigation: any }> = () => {
           setModalVisible(false);
           setBookingDoctor(null);
         }}
+        onBooked={handleBooked}
       />
     </SafeAreaView>
   );

@@ -10,23 +10,64 @@ import { useFocusEffect } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppointmentCard, EmptyState } from '../../components';
 import { CHAT_FILTERS, ChatFilterKey } from '../../context/appData';
+import { useAuth } from '../../context/AuthContext';
 import { chatService } from '../../services';
+import { mockSessionStore, MockSession } from '../../services/mockSessionStore';
 import { Chat } from '../../types';
 import { Colors, Radius, Spacing, responsiveSize } from '../../theme';
 
+/** Map an AsyncStorage mock session to a Chat row. */
+const mapMockToChat = (s: MockSession, meId: number): Chat => {
+  const isPatient = s.patientId === meId;
+  const otherName = isPatient ? s.doctorName : s.patientName;
+  const lastMessage =
+    s.status === 'scheduled'
+      ? 'Session scheduled'
+      : s.status === 'active'
+      ? 'Session active'
+      : 'Session completed';
+  return {
+    id: s.id,
+    participantId: String(isPatient ? s.doctorId : s.patientId),
+    participantName: otherName,
+    participantOnline: false,
+    lastMessage,
+    lastMessageAt: s.scheduledStart,
+    unreadCount: 0,
+    isTyping: false,
+    status: s.status,
+    durationMinutes: s.durationMinutes + s.extendedBy,
+    startTime: s.scheduledStart,
+    endTime: null,
+    isMock: true,
+  };
+};
+
 const ChatsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
+  const { user } = useAuth();
   const [chats, setChats] = useState<Chat[]>([]);
+  const [mockChats, setMockChats] = useState<Chat[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<ChatFilterKey>('all');
 
+  const allChats = useMemo(
+    () =>
+      [...mockChats, ...chats].sort((a, b) =>
+        b.lastMessageAt.localeCompare(a.lastMessageAt)
+      ),
+    [mockChats, chats]
+  );
+
   const filteredChats = useMemo(() => {
-    if (filter === 'all') return chats;
+    if (filter === 'all') return allChats;
     if (filter === 'upcoming') {
-      return chats.filter((c) => c.status === 'scheduled' || c.status === 'active');
+      return allChats.filter(
+        (c) => c.status === 'scheduled' || c.status === 'active'
+      );
     }
-    if (filter === 'consulted') return chats.filter((c) => c.status === 'completed');
-    return chats.filter((c) => c.status === 'missed');
-  }, [chats, filter]);
+    if (filter === 'consulted') return allChats.filter((c) => c.status === 'completed');
+    return allChats.filter((c) => c.status === 'missed');
+  }, [allChats, filter]);
 
   // Re-fetch every time the screen gains focus (mount + returning to it), so
   // "See All" always shows the complete, fresh sessions list.
@@ -37,16 +78,29 @@ const ChatsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
       chatService
         .getChats()
         .then((data) => mounted && setChats(data))
-        .catch(() => mounted && setChats([]))
+        .catch(() => mounted && setChats([]));
+      // Merge AsyncStorage mock sessions (patient-doctor chats).
+      mockSessionStore
+        .listSessionsForUser(user?.id ?? 0)
+        .then((sessions) => {
+          if (!mounted) return;
+          setMockChats(sessions.map((s) => mapMockToChat(s, user?.id ?? 0)));
+        })
+        .catch(() => {})
         .finally(() => mounted && setLoading(false));
       return () => {
         mounted = false;
       };
-    }, [])
+    }, [user?.id])
   );
 
   const navigateToChat = useCallback(
-    (chat: Chat) => navigation.navigate('ChatDetail', { chatId: chat.id, participantName: chat.participantName }),
+    (chat: Chat) =>
+      navigation.navigate('ChatDetail', {
+        chatId: chat.id,
+        participantName: chat.participantName,
+        isMock: chat.isMock,
+      }),
     [navigation]
   );
 
@@ -58,8 +112,8 @@ const ChatsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Chats</Text>
-        {chats.length > 0 && (
-          <Text style={styles.headerCount}>{chats.length} conversations</Text>
+        {allChats.length > 0 && (
+          <Text style={styles.headerCount}>{allChats.length} conversations</Text>
         )}
       </View>
 

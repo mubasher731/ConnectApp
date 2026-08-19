@@ -14,11 +14,12 @@ import {
 import dayjs from 'dayjs';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useHeaderHeight } from '@react-navigation/elements';
-import { AppIcon, Avatar, EmptyState } from '../../components';
+import { AppIcon, Avatar, EmptyState, SessionExtensionAlert } from '../../components';
 import { socketService } from '../../api/socket';
 import { useAuth } from '../../context/AuthContext';
 import { CHAT_EMOJIS } from '../../context/appData';
 import { chatService, sessionService } from '../../services';
+import { mockSessionStore, MockSession, MockMessage } from '../../services/mockSessionStore';
 import { Message, Session, SessionStatus } from '../../types';
 import { Colors, Radius, Shadows, Spacing, responsiveSize } from '../../theme';
 
@@ -26,6 +27,9 @@ interface ChatDetailScreenProps {
   route: any;
   navigation: any;
 }
+
+/** Union of a message row and the "Previous Sessions" history separator. */
+type DisplayItem = Message | { kind: 'historySeparator'; count: number };
 
 const formatTime = (ts: string) =>
   dayjs(ts).isValid() ? dayjs(ts).format('hh:mm A') : ts;
@@ -104,6 +108,14 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
   const [session, setSession] = useState<Session | null>(null);
   const [status, setStatus] = useState<SessionStatus>('scheduled');
   const [now, setNow] = useState(() => Date.now());
+  // AsyncStorage-backed mock session mode (replaces the backend for demos).
+  const isMock = !!route.params?.isMock || String(chatId).startsWith('MS-');
+  const [mockSession, setMockSession] = useState<MockSession | null>(null);
+  const [mockMessages, setMockMessages] = useState<Message[]>([]);
+  const [pastMessages, setPastMessages] = useState<Message[]>([]);
+  const [showExtension, setShowExtension] = useState(false);
+  const [demoEndOverride, setDemoEndOverride] = useState<number | null>(null);
+  const extensionFiredForEnd = useRef<number | null>(null);
   const listRef = useRef<FlatList>(null);
   // Dedup guards: seen server message ids + unconfirmed optimistic messages.
   const seenIds = useRef<Set<string>>(new Set());
@@ -124,6 +136,7 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
   }, [navigation, participantName, online, otherTyping]);
 
   useEffect(() => {
+    if (isMock) return; // mock sessions are AsyncStorage-only
     let mounted = true;
 
     const loadMessages = async () => {
@@ -253,7 +266,43 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
       socket?.off('userJoined', onUserJoined);
       if (chatId) socketService.leaveSession(chatId);
     };
-  }, [chatId, user?.id]);
+  }, [chatId, user?.id, isMock]);
+
+  // ---- Mock session loader (AsyncStorage) ----
+  useEffect(() => {
+    if (!isMock || !chatId) return;
+    let mounted = true;
+    (async () => {
+      const found = await mockSessionStore.getSession(String(chatId));
+      if (!mounted || !found) return;
+      setMockSession(found);
+      const [msgs, history] = await Promise.all([
+        mockSessionStore.getMessages(found.id),
+        mockSessionStore.getHistoryForPair(
+          found.patientId,
+          found.doctorId,
+          found.id
+        ),
+      ]);
+      if (!mounted) return;
+      const mapToMessage = (m: MockMessage): Message => ({
+        id: m.id,
+        sessionId: m.sessionId,
+        senderId: m.senderId,
+        senderRole: m.senderRole,
+        text: m.text,
+        type: m.type,
+        createdAt: m.createdAt,
+        isRead: true,
+        sentByMe: m.senderId === user?.id,
+      });
+      setMockMessages(msgs.map(mapToMessage));
+      setPastMessages(history.map(mapToMessage));
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, [chatId, isMock, user?.id]);
 
   // Tick once per second to drive the real-time countdown timer.
   useEffect(() => {
@@ -262,20 +311,56 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
   }, []);
 
   // ---- Countdown + input locking (derived from session metadata) ----
-  const durationMs = (session?.duration_minutes ?? 0) * 60 * 1000;
-  const scheduledAt = session?.scheduled_start ? dayjs(session.scheduled_start) : null;
-  const startAt = session?.actual_start ? dayjs(session.actual_start) : null;
-  const endAtMs = startAt
+  const mockStartMs =
+    isMock && mockSession ? dayjs(mockSession.scheduledStart).valueOf() : null;
+  const mockComputedEndMs =
+    mockStartMs !== null && mockSession
+      ? mockStartMs +
+        (mockSession.durationMinutes + mockSession.extendedBy) * 60_000
+      : null;
+  const mockEndMs = demoEndOverride ?? mockComputedEndMs;
+
+  const durationMs = isMock
+    ? (mockSession?.durationMinutes ?? 0) * 60 * 1000
+    : (session?.duration_minutes ?? 0) * 60 * 1000;
+  const scheduledAt = isMock
+    ? mockStartMs !== null
+      ? dayjs(mockStartMs)
+      : null
+    : session?.scheduled_start
+    ? dayjs(session.scheduled_start)
+    : null;
+  const startAt = isMock
+    ? null
+    : session?.actual_start
+    ? dayjs(session.actual_start)
+    : null;
+  const endAtMs = isMock
+    ? mockEndMs
+    : startAt
     ? startAt.valueOf() + durationMs
     : scheduledAt
     ? scheduledAt.valueOf() + durationMs
     : null;
 
-  const isBeforeStart = !!scheduledAt && status === 'scheduled' && now < scheduledAt.valueOf();
+  const mockActive =
+    isMock &&
+    mockStartMs !== null &&
+    mockEndMs !== null &&
+    now >= mockStartMs &&
+    now < mockEndMs;
+
+  const isBeforeStart = isMock
+    ? mockStartMs !== null && now < mockStartMs
+    : !!scheduledAt && status === 'scheduled' && now < scheduledAt.valueOf();
   const hasEnded = endAtMs !== null && now >= endAtMs;
   // Locked until the session officially starts; unlocks while active and
   // locks again the moment the timer reaches zero.
-  const locked = chatDisabled || !session || isBeforeStart || hasEnded;
+  const locked =
+    chatDisabled ||
+    (isMock ? !mockSession : !session) ||
+    isBeforeStart ||
+    hasEnded;
 
   let countdownLabel: string | null = null;
   let countdownTone: 'start' | 'remaining' | 'ended' = 'remaining';
@@ -300,9 +385,29 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
     ? 'Session starts soon'
     : 'Session ended';
 
-  const sendMessage = useCallback(() => {
+  const sendMessage = useCallback(async () => {
     const trimmed = inputText.trim();
-    if (!trimmed || !chatId || chatDisabled || !session || isBeforeStart || hasEnded) return;
+    if (
+      !trimmed ||
+      !chatId ||
+      chatDisabled ||
+      (isMock ? !mockActive : !session || isBeforeStart || hasEnded)
+    )
+      return;
+
+    // Mock mode: persist the message to AsyncStorage.
+    if (isMock && mockSession) {
+      const saved = await mockSessionStore.addMessage(mockSession, {
+        senderId: user?.id ?? 0,
+        senderRole: user?.role_id === 3 ? 'doctor' : 'patient',
+        text: trimmed,
+        type: 'text',
+      });
+      setMockMessages((prev) => [...prev, { ...saved, sentByMe: true }]);
+      setInputText('');
+      setShowEmoji(false);
+      return;
+    }
 
     socketService.sendTypingStopped(chatId);
     const localId = `local-${Date.now()}`;
@@ -328,7 +433,19 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
 
     setInputText('');
     setShowEmoji(false);
-  }, [chatId, inputText, chatDisabled, user?.id, session, isBeforeStart, hasEnded]);
+  }, [
+    chatId,
+    inputText,
+    chatDisabled,
+    user?.id,
+    session,
+    isBeforeStart,
+    hasEnded,
+    isMock,
+    mockSession,
+    mockActive,
+    user?.role_id,
+  ]);
 
   const handleChangeText = (text: string) => {
     const wasEmpty = inputText.trim().length === 0;
@@ -353,27 +470,118 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
     setInputText((prev) => prev + emoji);
   };
 
-  const renderItem = ({ item, index }: { item: Message; index: number }) => {
-    const prev = messages[index - 1];
-    const showDate = !prev || !dayjs(item.createdAt).isSame(dayjs(prev.createdAt), 'day');
-    const isGroupStart = !prev || prev.sentByMe !== item.sentByMe || showDate;
+  // ---- Session extension alert (doctor, 1 minute before end) ----
+  const isDoctorRole = user?.role_id === 3;
+
+  useEffect(() => {
+    if (!isMock || !isDoctorRole || mockEndMs === null) return;
+    const remaining = mockEndMs - now;
+    if (remaining > 60_000) {
+      // Re-arm when the session gets extended (new end time).
+      extensionFiredForEnd.current = null;
+      return;
+    }
+    if (remaining <= 0) return; // already ended — no alert
+    if (extensionFiredForEnd.current !== mockEndMs) {
+      extensionFiredForEnd.current = mockEndMs;
+      setShowExtension(true);
+    }
+  }, [now, mockEndMs, isMock, isDoctorRole]);
+
+  const handleExtensionCancel = () => setShowExtension(false);
+
+  const handleExtend = async () => {
+    setShowExtension(false);
+    if (!mockSession) return;
+    const newExtendedBy = (mockSession.extendedBy ?? 0) + 5;
+    await mockSessionStore.updateSession(mockSession.id, {
+      extendedBy: newExtendedBy,
+    });
+    const sys = await mockSessionStore.addSystemMessage(
+      mockSession,
+      'Session extended by 5 minutes'
+    );
+    setMockSession({ ...mockSession, extendedBy: newExtendedBy });
+    setDemoEndOverride(null); // resume real (extended) end time
+    setMockMessages((prev) => [
+      ...prev,
+      {
+        id: sys.id,
+        sessionId: chatId,
+        senderId: 0,
+        text: sys.text,
+        type: 'system',
+        createdAt: sys.createdAt,
+        isRead: true,
+        sentByMe: false,
+      },
+    ]);
+  };
+
+  // Combined render list: previous-session history → separator → current session.
+  const displayItems: DisplayItem[] = isMock
+    ? [
+        ...(pastMessages.length > 0
+          ? [
+              ...pastMessages,
+              { kind: 'historySeparator' as const, count: pastMessages.length },
+            ]
+          : []),
+        ...mockMessages,
+      ]
+    : messages;
+
+  const renderItem = ({ item, index }: { item: DisplayItem; index: number }) => {
+    // History separator between previous sessions and the current one.
+    if (item && typeof item === 'object' && 'kind' in item) {
+      return (
+        <View style={styles.historySeparator}>
+          <View style={styles.historyLine} />
+          <Text style={styles.historySeparatorText}>Previous Sessions — read only</Text>
+          <View style={styles.historyLine} />
+        </View>
+      );
+    }
+
+    const message = item as Message;
+    const prev = displayItems[index - 1];
+    const prevMsg =
+      prev && typeof prev === 'object' && 'kind' in prev
+        ? null
+        : (prev as Message | undefined);
+    const showDate =
+      !prevMsg || !dayjs(message.createdAt).isSame(dayjs(prevMsg.createdAt), 'day');
+    const isGroupStart =
+      !prevMsg || prevMsg.sentByMe !== message.sentByMe || showDate;
     const grouped = !isGroupStart;
+
+    // System messages (e.g. "Session extended by 5 minutes") render centered.
+    if (message.type === 'system') {
+      return (
+        <View style={styles.systemMessageRow}>
+          <View style={styles.systemBubble}>
+            <AppIcon name="time-outline" size={13} color={Colors.textSecondary} />
+            <Text style={styles.systemText}>{message.text}</Text>
+          </View>
+        </View>
+      );
+    }
 
     return (
       <View>
         {showDate && (
           <View style={styles.dateSeparator}>
-            <Text style={styles.dateSeparatorText}>{formatDay(item.createdAt)}</Text>
+            <Text style={styles.dateSeparatorText}>{formatDay(message.createdAt)}</Text>
           </View>
         )}
         <View
           style={[
             styles.messageRow,
-            item.sentByMe ? styles.messageRowSent : styles.messageRowReceived,
+            message.sentByMe ? styles.messageRowSent : styles.messageRowReceived,
             grouped && styles.messageRowGrouped,
           ]}
         >
-          {!item.sentByMe && (
+          {!message.sentByMe && (
             <View style={styles.avatarSlot}>
               {isGroupStart ? <Avatar name={participantName || '?'} size={30} /> : null}
             </View>
@@ -382,27 +590,27 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
             <View
               style={[
                 styles.messageBubble,
-                item.sentByMe ? styles.sentBubble : styles.receivedBubble,
+                message.sentByMe ? styles.sentBubble : styles.receivedBubble,
               ]}
             >
               <Text
                 style={[
                   styles.messageText,
-                  item.sentByMe ? styles.sentText : styles.receivedText,
+                  message.sentByMe ? styles.sentText : styles.receivedText,
                 ]}
               >
-                {item.text}
+                {message.text}
               </Text>
               <View style={styles.bubbleMeta}>
                 <Text
                   style={[
                     styles.bubbleTime,
-                    item.sentByMe ? styles.sentTimeText : styles.receivedTimeText,
+                    message.sentByMe ? styles.sentTimeText : styles.receivedTimeText,
                   ]}
                 >
-                  {formatTime(item.createdAt)}
+                  {formatTime(message.createdAt)}
                 </Text>
-                {item.sentByMe && (
+                {message.sentByMe && (
                   <View style={styles.checkIcon}>
                     <AppIcon name="checkmark-done" size={14} color={Colors.white} />
                   </View>
@@ -476,10 +684,27 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
           </View>
         ) : null}
 
+        {/* Doctor demo shortcut: fast-forward to the last minute so the
+            extension alert is easy to showcase without waiting. */}
+        {isMock && isDoctorRole && !showExtension && mockEndMs !== null && !hasEnded ? (
+          <TouchableOpacity
+            style={styles.demoSkip}
+            onPress={() => setDemoEndOverride(Date.now() + 60_000)}
+            activeOpacity={0.7}
+          >
+            <AppIcon name="fast-forward-outline" size={14} color={Colors.primary} />
+            <Text style={styles.demoSkipText}>Demo: skip to last minute</Text>
+          </TouchableOpacity>
+        ) : null}
+
         <FlatList
           ref={listRef}
-          data={messages}
-          keyExtractor={(item) => String(item.id)}
+          data={displayItems}
+          keyExtractor={(item) =>
+            item && typeof item === 'object' && 'kind' in item
+              ? `history-sep-${(item as { count: number }).count}`
+              : String((item as Message).id)
+          }
           renderItem={renderItem}
           contentContainerStyle={styles.messagesList}
           showsVerticalScrollIndicator={false}
@@ -562,6 +787,13 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
           </View>
         </View>
       </KeyboardAvoidingView>
+
+      <SessionExtensionAlert
+        visible={showExtension}
+        secondsLeft={60}
+        onCancel={handleExtensionCancel}
+        onExtend={handleExtend}
+      />
     </SafeAreaView>
   );
 };
@@ -778,17 +1010,16 @@ const styles = StyleSheet.create({
   sendButton: {
     backgroundColor: Colors.white,
     marginLeft: Spacing.sm,
-    marginRight: 0,
+    marginRight: Spacing.md,
   },
   textInputWrapper: {
     flex: 1,
     flexDirection: 'row',
-    alignItems: 'flex-end',
+    alignItems: 'center',
     backgroundColor: Colors.white,
     borderRadius: 22,
     paddingLeft: Spacing.lg,
     paddingRight: Spacing.xs,
-    paddingVertical: 6,
     minHeight: 44,
   },
   textInput: {
@@ -796,7 +1027,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: Colors.text,
     maxHeight: 100,
-    paddingVertical: 4,
+    paddingVertical: 0,
   },
   inputActions: {
     flexDirection: 'row',
@@ -811,6 +1042,58 @@ const styles = StyleSheet.create({
   inputActionActive: {
     backgroundColor: Colors.primarySoft,
     borderRadius: Radius.round,
+  },
+  historySeparator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginVertical: Spacing.lg,
+  },
+  historyLine: {
+    flex: 1,
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: Colors.border,
+    marginHorizontal: Spacing.md,
+  },
+  historySeparatorText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: Colors.textSecondary,
+    textAlign: 'center',
+  },
+  systemMessageRow: {
+    alignItems: 'center',
+    marginVertical: Spacing.sm,
+  },
+  systemBubble: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.surface,
+    borderRadius: Radius.round,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 6,
+  },
+  systemText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: Colors.textSecondary,
+    marginLeft: Spacing.xs,
+  },
+  demoSkip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'center',
+    backgroundColor: Colors.primarySoft,
+    borderRadius: Radius.round,
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.sm,
+    marginVertical: Spacing.sm,
+  },
+  demoSkipText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: Colors.primary,
+    marginLeft: Spacing.xs,
   },
 });
 

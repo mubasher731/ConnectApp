@@ -48,6 +48,8 @@ export interface Chat {
   startTime?: string | null;
   /** Session end time when known (actual_end). */
   endTime?: string | null;
+  /** True for AsyncStorage-backed mock sessions. */
+  isMock?: boolean;
 }
 
 export interface Message {
@@ -93,5 +95,8 @@ export interface AppNotification {
   body: string;
   createdAt: string;
   read: boolean;
+  /** Targeted user — personalized notifications are shown only to them. */
+  userId?: number;
+  userRole?: 'patient' | 'doctor';
 }
 

@@ -8,6 +8,7 @@ import { StatusBar } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import AppNavigator from './src/navigation/AppNavigator';
 import { AuthProvider } from './src/context/AuthContext';
+import { MockSessionProvider } from './src/context/MockSessionProvider';
 import { Colors } from './src/theme/colors';
 
 function App() {
@@ -18,7 +19,9 @@ function App() {
         backgroundColor={Colors.background}
       />
       <AuthProvider>
-        <AppNavigator />
+        <MockSessionProvider>
+          <AppNavigator />
+        </MockSessionProvider>
       </AuthProvider>
     </SafeAreaProvider>
   );

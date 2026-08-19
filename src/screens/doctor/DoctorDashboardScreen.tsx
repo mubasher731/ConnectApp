@@ -6,6 +6,7 @@ import {
   ScrollView,
   TouchableOpacity,
   StyleSheet,
+  Alert,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -20,6 +21,7 @@ import { useAuth } from '../../context/AuthContext';
 import { DASHBOARD_STATS, URGENCY_FILTER_OPTIONS, UrgencyFilter } from '../../context/appData';
 import { MOCK_APPOINTMENTS, URGENCY_META } from '../../mock/doctorData';
 import { bookingStore, BookingRequest } from '../../mock/bookingStore';
+import { mockNotificationCenter } from '../../services/mockNotificationCenter';
 import { Colors, Radius, Shadows, Spacing, responsiveSize } from '../../theme';
 
 const DoctorDashboardScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
@@ -73,9 +75,35 @@ const DoctorDashboardScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
     }, [refreshRequests])
   );
 
-  const handleRequestAction = (id: string, status: 'accepted' | 'rejected') => {
+  const handleRequestAction = async (id: string, status: 'accepted' | 'rejected') => {
+    const req = requests.find((r) => r.id === id);
     bookingStore.update(id, status);
     refreshRequests();
+    if (!req || status !== 'accepted') return;
+
+    // Meeting confirmed → both sides get a personalized notification.
+    const doctorNameShort = req.doctorName.replace(/^Dr\.\s*/, '');
+    await mockNotificationCenter
+      .add(
+        'appointment',
+        '✅ Appointment Confirmed',
+        `✅ Appointment confirmed with Dr. ${doctorNameShort} at ${req.timeSlot}`,
+        { userId: req.patientId, role: 'patient' }
+      )
+      .catch(() => {});
+    await mockNotificationCenter
+      .add(
+        'appointment',
+        'Appointment Scheduled',
+        `Appointment with ${req.patientName} at ${req.timeSlot}`,
+        { userId: req.doctorId, role: 'doctor' }
+      )
+      .catch(() => {});
+
+    Alert.alert(
+      'Appointment Accepted',
+      `Meeting scheduled with ${req.patientName} at ${req.timeSlot}. The patient has been notified.`
+    );
   };
 
   return (

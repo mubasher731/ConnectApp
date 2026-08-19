@@ -21,6 +21,7 @@ export { default as ListItemSeparator } from './State/ListItemSeparator';
 export { default as NotificationCard } from './Card/NotificationCard';
 export { default as PrimaryButton } from './Button/PrimaryButton';
 export { default as RecentAppointmentCard } from './Card/RecentAppointmentCard';
+export { default as SessionExtensionAlert } from './SessionExtensionAlert';
 export { default as StatCard } from './Card/StatCard';
 export { default as StatusBadge } from './Patient/StatusBadge';
 export { default as UserDirectoryCard } from './Card/UserDirectoryCard';

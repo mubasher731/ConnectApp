@@ -8,6 +8,7 @@ import { heightPercentageToDP as hp } from 'react-native-responsive-screen';
 import { AppIcon } from '../components';
 import { useAuth } from '../context/AuthContext';
 import { Colors } from '../theme/colors';
+import { navigationRef } from './navigationRef';
 
 import SplashScreen from '../screens/splash/SplashScreen';
 import LoginScreen from '../screens/auth/LoginScreen';
@@ -128,7 +129,7 @@ const AppNavigator: React.FC = () => {
   const isDoctor = user?.role_id === 3;
 
   return (
-    <NavigationContainer theme={navTheme}>
+    <NavigationContainer ref={navigationRef} theme={navTheme}>
       <Stack.Navigator
         screenOptions={{
           headerStyle: { backgroundColor: Colors.background },

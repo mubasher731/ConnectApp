@@ -16,6 +16,8 @@ export interface BookingRequest {
   doctorId: number;
   doctorName: string;
   patientName: string;
+  /** Patient user id — used to target confirmation notifications. */
+  patientId?: number;
   timeSlot: string;
   message: string;
   status: BookingStatus;

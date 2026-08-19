@@ -5,25 +5,39 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { EmptyState, ListItemSeparator, NotificationCard } from '../../components';
-import { notificationService } from '../../services/dataService';
+import { useAuth } from '../../context/AuthContext';
+import { mockNotificationCenter } from '../../services/mockNotificationCenter';
+import { appEvents } from '../../services/appEvents';
 import { AppNotification } from '../../types';
 import { Colors, Spacing } from '../../theme';
 
 const NotificationsScreen: React.FC = () => {
+  const { user } = useAuth();
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let mounted = true;
-    notificationService
-      .getNotifications()
-      .then((data) => mounted && setNotifications(data))
-      .catch(() => mounted && setNotifications([]))
+    const load = async () => {
+      // Only this user's notifications (personalized by user_id + role).
+      const data = await mockNotificationCenter.listForUser(user?.id);
+      if (mounted) setNotifications(data);
+    };
+    load()
+      .catch(() => {})
       .finally(() => mounted && setLoading(false));
+
+    // Live: prepend only notifications meant for this user.
+    const off = appEvents.on('notification', (n) => {
+      if (n.userId !== undefined && n.userId !== user?.id) return;
+      setNotifications((prev) => [n, ...prev.filter((x) => x.id !== n.id)]);
+    });
+
     return () => {
       mounted = false;
+      off();
     };
-  }, []);
+  }, [user?.id]);
 
   const renderItem = ({ item }: { item: AppNotification }) => (
     <NotificationCard notification={item} />
