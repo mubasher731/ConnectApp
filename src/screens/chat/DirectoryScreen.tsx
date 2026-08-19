@@ -1,19 +1,16 @@
 import React, { useEffect, useState } from 'react';
 import {
-  View,
-  Text,
   FlatList,
   StyleSheet,
-  TouchableOpacity,
   Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { AppIcon, Avatar, EmptyState } from '../../components';
+import { EmptyState, ListItemSeparator, UserDirectoryCard } from '../../components';
 import { socketService } from '../../api/socket';
 import { useAuth } from '../../context/AuthContext';
 import { chatService, userService } from '../../services';
 import { User } from '../../types';
-import { Colors, Radius, Shadows, Spacing, responsiveSize } from '../../theme';
+import { Colors, Spacing } from '../../theme';
 
 interface DirectoryScreenProps {
   route: any;
@@ -68,36 +65,11 @@ const DirectoryScreen: React.FC<DirectoryScreenProps> = ({ route, navigation }) 
   };
 
   const renderItem = ({ item }: { item: User }) => (
-    <TouchableOpacity style={styles.item} activeOpacity={0.7}>
-      <Avatar name={item.name} size={52} />
-      <View style={styles.content}>
-        <Text style={styles.name} numberOfLines={1}>
-          {item.name}
-        </Text>
-        <Text style={styles.email} numberOfLines={1}>
-          {item.email}
-        </Text>
-      </View>
-      <View style={styles.actions}>
-        <View style={styles.roleBadge}>
-          <Text style={styles.roleText}>
-            {item.role_id === 3 ? 'Doctor' : 'Patient'}
-          </Text>
-        </View>
-        <TouchableOpacity
-          style={styles.consultButton}
-          onPress={() => startConsultation(item)}
-          disabled={startingId !== null}
-          activeOpacity={0.8}
-        >
-          {startingId === item.id ? (
-            <Text style={styles.consultButtonText}>…</Text>
-          ) : (
-            <AppIcon name="chatbubble-ellipses" size={18} color={Colors.white} />
-          )}
-        </TouchableOpacity>
-      </View>
-    </TouchableOpacity>
+    <UserDirectoryCard
+      user={item}
+      starting={startingId === item.id}
+      onStart={() => startConsultation(item)}
+    />
   );
 
   return (
@@ -108,7 +80,7 @@ const DirectoryScreen: React.FC<DirectoryScreenProps> = ({ route, navigation }) 
         renderItem={renderItem}
         contentContainerStyle={styles.list}
         showsVerticalScrollIndicator={false}
-        ItemSeparatorComponent={() => <View style={styles.separator} />}
+        ItemSeparatorComponent={<ListItemSeparator />}
         refreshing={loading}
         ListEmptyComponent={
           <EmptyState
@@ -132,63 +104,6 @@ const styles = StyleSheet.create({
     paddingTop: Spacing.lg,
     paddingBottom: Spacing.xxl,
     flexGrow: 1,
-  },
-  item: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Colors.card,
-    borderRadius: Radius.lg,
-    padding: Spacing.md,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    ...Shadows.card,
-  },
-  content: {
-    flex: 1,
-    marginLeft: Spacing.md,
-  },
-  name: {
-    fontSize: responsiveSize(16),
-    fontWeight: '600',
-    color: Colors.text,
-    marginBottom: 2,
-  },
-  email: {
-    fontSize: responsiveSize(13),
-    color: Colors.textSecondary,
-  },
-  roleBadge: {
-    backgroundColor: Colors.primarySoft,
-    borderRadius: Radius.round,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: 6,
-    marginBottom: Spacing.sm,
-  },
-  roleText: {
-    fontSize: responsiveSize(12),
-    fontWeight: '600',
-    color: Colors.primary,
-  },
-  actions: {
-    alignItems: 'flex-end',
-    marginLeft: Spacing.sm,
-  },
-  consultButton: {
-    width: 38,
-    height: 38,
-    borderRadius: Radius.round,
-    backgroundColor: Colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...Shadows.primary,
-  },
-  consultButtonText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: Colors.white,
-  },
-  separator: {
-    height: Spacing.sm,
   },
 });
 

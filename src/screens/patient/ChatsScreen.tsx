@@ -9,23 +9,15 @@ import {
 import { useFocusEffect } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppointmentCard, EmptyState } from '../../components';
+import { CHAT_FILTERS, ChatFilterKey } from '../../context/appData';
 import { chatService } from '../../services';
 import { Chat } from '../../types';
 import { Colors, Radius, Spacing, responsiveSize } from '../../theme';
 
-type FilterKey = 'all' | 'upcoming' | 'consulted' | 'no_show';
-
-const FILTERS: { key: FilterKey; label: string }[] = [
-  { key: 'all', label: 'All' },
-  { key: 'upcoming', label: 'Upcoming' },
-  { key: 'consulted', label: 'Consulted' },
-  { key: 'no_show', label: 'No Show' },
-];
-
 const ChatsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const [chats, setChats] = useState<Chat[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState<FilterKey>('all');
+  const [filter, setFilter] = useState<ChatFilterKey>('all');
 
   const filteredChats = useMemo(() => {
     if (filter === 'all') return chats;
@@ -73,7 +65,7 @@ const ChatsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
 
       {/* Status filter chips */}
       <View style={styles.filterRow}>
-        {FILTERS.map((f) => {
+        {CHAT_FILTERS.map((f) => {
           const active = filter === f.key;
           return (
             <TouchableOpacity

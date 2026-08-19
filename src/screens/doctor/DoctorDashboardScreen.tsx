@@ -9,50 +9,18 @@ import {
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { AppIcon, Avatar } from '../../components';
-import { useAuth } from '../../context/AuthContext';
 import {
-  MOCK_APPOINTMENTS,
-  APPOINTMENT_STATUS_META,
-  URGENCY_META,
-} from '../../mock/doctorData';
+  AppointmentRequestCard,
+  AppIcon,
+  Avatar,
+  RecentAppointmentCard,
+  StatCard,
+} from '../../components';
+import { useAuth } from '../../context/AuthContext';
+import { DASHBOARD_STATS, URGENCY_FILTER_OPTIONS, UrgencyFilter } from '../../context/appData';
+import { MOCK_APPOINTMENTS, URGENCY_META } from '../../mock/doctorData';
 import { bookingStore, BookingRequest } from '../../mock/bookingStore';
-import DoctorPill from '../../components/Doctor/DoctorPill';
 import { Colors, Radius, Shadows, Spacing, responsiveSize } from '../../theme';
-
-interface StatConfig {
-  key: 'totalAssigned' | 'awaitingAction' | 'activeSessions' | 'completedSessions';
-  label: string;
-  icon: string;
-  color: string;
-  bg: string;
-}
-
-const STATS: StatConfig[] = [
-  { key: 'totalAssigned', label: 'Total Assigned', icon: 'people-outline', color: Colors.primary, bg: Colors.primarySoft },
-  { key: 'awaitingAction', label: 'Awaiting Action', icon: 'time-outline', color: '#F59E0B', bg: '#FEF3E0' },
-  { key: 'activeSessions', label: 'Active Sessions', icon: 'pulse-outline', color: Colors.success, bg: Colors.successSoft },
-  { key: 'completedSessions', label: 'Completed', icon: 'checkmark-done-outline', color: Colors.info, bg: '#E8F0FE' },
-];
-
-type UrgencyFilter = 'all' | 'high' | 'medium' | 'low';
-
-const URGENCY_OPTIONS: { value: UrgencyFilter; label: string; color: string }[] = [
-  { value: 'all', label: 'All Urgencies', color: Colors.textTertiary },
-  { value: 'high', label: 'High', color: URGENCY_META.high.color },
-  { value: 'medium', label: 'Medium', color: URGENCY_META.medium.color },
-  { value: 'low', label: 'Low', color: URGENCY_META.low.color },
-];
-
-const StatCard: React.FC<{ config: StatConfig; value: number }> = ({ config, value }) => (
-  <View style={styles.statCard}>
-    <View style={[styles.statIcon, { backgroundColor: config.bg }]}>
-      <AppIcon name={config.icon} size={20} color={config.color} />
-    </View>
-    <Text style={styles.statValue}>{value}</Text>
-    <Text style={styles.statLabel}>{config.label}</Text>
-  </View>
-);
 
 const DoctorDashboardScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const { user } = useAuth();
@@ -139,7 +107,7 @@ const DoctorDashboardScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
 
         {/* Statistics */}
         <View style={styles.statsGrid}>
-          {STATS.map((config) => (
+          {DASHBOARD_STATS.map((config) => (
             <StatCard key={config.key} config={config} value={stats[config.key]} />
           ))}
         </View>
@@ -171,57 +139,14 @@ const DoctorDashboardScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
         {pendingRequests.length === 0 ? (
           <Text style={styles.emptyText}>No incoming appointment requests.</Text>
         ) : (
-          pendingRequests.map((req) => {
-            const statusMeta = { label: 'Pending', color: '#F59E0B', bg: '#FEF3E0' };
-            return (
-              <View key={req.id} style={styles.appointmentCard}>
-                <View style={styles.appointmentTop}>
-                  <View style={styles.patientInfo}>
-                    <Avatar name={req.patientName} size={40} />
-                    <View style={styles.patientMeta}>
-                      <Text style={styles.patientName}>{req.patientName}</Text>
-                      <Text style={styles.patientSub}>Requested {req.timeSlot}</Text>
-                    </View>
-                  </View>
-                  <DoctorPill
-                    label={statusMeta.label}
-                    color={statusMeta.color}
-                    bg={statusMeta.bg}
-                  />
-                </View>
-
-                <View style={styles.appointmentRow}>
-                  <AppIcon
-                    name="chatbubble-ellipses-outline"
-                    size={14}
-                    color={Colors.textTertiary}
-                  />
-                  <Text style={styles.appointmentMeta} numberOfLines={2}>
-                    {req.message}
-                  </Text>
-                </View>
-
-                <View style={styles.actionRow}>
-                  <TouchableOpacity
-                    style={[styles.actionBtn, styles.acceptBtn]}
-                    onPress={() => handleRequestAction(req.id, 'accepted')}
-                    activeOpacity={0.85}
-                  >
-                    <AppIcon name="checkmark" size={16} color={Colors.white} />
-                    <Text style={styles.actionText}>Accept</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[styles.actionBtn, styles.rejectBtn]}
-                    onPress={() => handleRequestAction(req.id, 'rejected')}
-                    activeOpacity={0.85}
-                  >
-                    <AppIcon name="close" size={16} color={Colors.white} />
-                    <Text style={styles.actionText}>Reject</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            );
-          })
+          pendingRequests.map((req) => (
+            <AppointmentRequestCard
+              key={req.id}
+              request={req}
+              onAccept={() => handleRequestAction(req.id, 'accepted')}
+              onReject={() => handleRequestAction(req.id, 'rejected')}
+            />
+          ))
         )}
 
         {/* Recent Appointments */}
@@ -253,7 +178,7 @@ const DoctorDashboardScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
 
           {dropdownOpen && (
             <View style={styles.dropdownMenu}>
-              {URGENCY_OPTIONS.map((option) => {
+              {URGENCY_FILTER_OPTIONS.map((option) => {
                 const selected = urgencyFilter === option.value;
                 return (
                   <TouchableOpacity
@@ -285,40 +210,13 @@ const DoctorDashboardScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
         {filtered.length === 0 ? (
           <Text style={styles.emptyText}>No appointments match your search or filters.</Text>
         ) : (
-          filtered.map((a) => {
-            const status = APPOINTMENT_STATUS_META[a.status];
-            const urgency = URGENCY_META[a.urgency];
-            return (
-              <View key={a.id} style={styles.appointmentCard}>
-                <View style={styles.appointmentTop}>
-                  <View style={styles.patientInfo}>
-                    <Avatar name={a.patientName} size={40} />
-                    <View style={styles.patientMeta}>
-                      <Text style={styles.patientName}>{a.patientName}</Text>
-                      <Text style={styles.patientSub}>
-                        {a.patientId} · {a.date}
-                      </Text>
-                    </View>
-                  </View>
-                  <DoctorPill label={status.label} color={status.color} bg={status.bg} />
-                </View>
-
-                <View style={styles.appointmentRow}>
-                  <AppIcon name="time-outline" size={14} color={Colors.textTertiary} />
-                  <Text style={styles.appointmentMeta}>{a.time}</Text>
-                  <DoctorPill label={urgency.label} color={urgency.color} bg={urgency.bg} />
-                </View>
-
-                <TouchableOpacity
-                  style={styles.viewBtn}
-                  onPress={() => navigation.navigate('Consultations')}
-                  activeOpacity={0.85}
-                >
-                  <Text style={styles.viewText}>View Details</Text>
-                </TouchableOpacity>
-              </View>
-            );
-          })
+          filtered.map((a) => (
+            <RecentAppointmentCard
+              key={a.id}
+              appointment={a}
+              onViewDetails={() => navigation.navigate('Consultations')}
+            />
+          ))
         )}
       </ScrollView>
     </SafeAreaView>
@@ -382,34 +280,6 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     justifyContent: 'space-between',
     marginBottom: Spacing.lg,
-  },
-  statCard: {
-    width: '48%',
-    backgroundColor: Colors.card,
-    borderRadius: Radius.lg,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    padding: Spacing.md,
-    marginBottom: Spacing.md,
-    ...Shadows.card,
-  },
-  statIcon: {
-    width: 38,
-    height: 38,
-    borderRadius: Radius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: Spacing.sm,
-  },
-  statValue: {
-    fontSize: responsiveSize(26),
-    fontWeight: '800',
-    color: Colors.text,
-  },
-  statLabel: {
-    fontSize: responsiveSize(13),
-    color: Colors.textSecondary,
-    marginTop: 2,
   },
   searchBar: {
     flexDirection: 'row',
@@ -505,93 +375,6 @@ const styles = StyleSheet.create({
     color: Colors.textTertiary,
     textAlign: 'center',
     paddingVertical: Spacing.xl,
-  },
-  appointmentCard: {
-    backgroundColor: Colors.card,
-    borderRadius: Radius.lg,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    padding: Spacing.md,
-    marginBottom: Spacing.md,
-    ...Shadows.card,
-  },
-  appointmentTop: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: Spacing.sm,
-  },
-  patientInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-    marginRight: Spacing.sm,
-  },
-  patientMeta: {
-    marginLeft: Spacing.md,
-    flex: 1,
-  },
-  patientName: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: Colors.text,
-  },
-  patientSub: {
-    fontSize: 12,
-    color: Colors.textTertiary,
-    marginTop: 2,
-  },
-  appointmentRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  appointmentMeta: {
-    fontSize: 13,
-    color: Colors.textSecondary,
-    marginLeft: Spacing.sm,
-    marginRight: Spacing.sm,
-  },
-  actionRow: {
-    flexDirection: 'row',
-    marginTop: Spacing.md,
-    paddingTop: Spacing.md,
-    borderTopWidth: 1,
-    borderTopColor: Colors.border,
-  },
-  actionBtn: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: Spacing.sm + 2,
-    borderRadius: Radius.md,
-    marginRight: Spacing.sm,
-  },
-  acceptBtn: {
-    backgroundColor: Colors.success,
-  },
-  rejectBtn: {
-    backgroundColor: Colors.error,
-    marginRight: 0,
-  },
-  actionText: {
-    color: Colors.white,
-    fontSize: 14,
-    fontWeight: '700',
-    marginLeft: Spacing.xs,
-  },
-  viewBtn: {
-    marginTop: Spacing.md,
-    paddingVertical: Spacing.sm + 2,
-    borderRadius: Radius.md,
-    borderWidth: 1,
-    borderColor: Colors.primary,
-    alignItems: 'center',
-  },
-  viewText: {
-    color: Colors.primary,
-    fontSize: 14,
-    fontWeight: '700',
   },
 });
 

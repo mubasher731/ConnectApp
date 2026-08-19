@@ -10,23 +10,10 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppIcon, AppointmentCard, Avatar, EmptyState } from '../../components';
 import { useAuth } from '../../context/AuthContext';
+import { QUICK_ACTIONS } from '../../context/appData';
 import { chatService } from '../../services/dataService';
 import { Chat } from '../../types';
 import { Colors, Radius, Spacing, responsiveSize } from '../../theme';
-
-interface QuickAction {
-  key: string;
-  icon: string;
-  label: string;
-  tint: string;
-  color: string;
-  target?: 'Chats' | 'Calls' | 'Doctors';
-}
-
-const STATIC_ACTIONS: QuickAction[] = [
-  { key: 'chats', icon: 'chatbubble-ellipses', label: 'Messages', tint: Colors.primarySoft, color: Colors.primary, target: 'Chats' },
-  { key: 'calls', icon: 'call', label: 'Calls', tint: Colors.successSoft, color: Colors.success, target: 'Calls' },
-];
 
 const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const { user } = useAuth();
@@ -60,20 +47,6 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
 
   const displayName = user?.name ?? '';
 
-  const directoryAction: QuickAction = {
-    key: 'directory',
-    icon: 'people',
-    label: 'Doctors',
-    tint: '#E8F0FE',
-    color: Colors.info,
-    target: 'Doctors',
-  };
-  const quickActions: QuickAction[] = [
-    STATIC_ACTIONS[0],
-    STATIC_ACTIONS[1],
-    directoryAction,
-  ];
-
   return (
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       {/* Header */}
@@ -99,7 +72,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
 
       {/* Quick Actions */}
       <View style={styles.quickActions}>
-        {quickActions.map((action) => (
+        {QUICK_ACTIONS.map((action) => (
           <TouchableOpacity
             key={action.key}
             style={styles.actionButton}

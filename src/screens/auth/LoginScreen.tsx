@@ -8,16 +8,13 @@ import {
 } from 'react-native';
 import { AuthScreenLayout, FormInput, PrimaryButton } from '../../components';
 import { useAuth } from '../../context/AuthContext';
+import { DOCTOR_DEMO_CREDENTIALS } from '../../context/appData';
 import { validators, FieldErrors } from '../../utils/validation';
 import { Colors, Spacing } from '../../theme';
 
 interface LoginScreenProps {
   navigation: any;
 }
-
-/** Reserved demo doctor credentials (mock login until backend is ready). */
-const DOCTOR_EMAIL = 'doctor@fountain.com';
-const DOCTOR_PASSWORD = '12345678';
 
 const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
   const { signIn, signInAsDoctor } = useAuth();
@@ -41,7 +38,8 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
       // Auto-detect the doctor demo credentials → mock doctor login.
       // Everything else goes through the normal patient backend login.
       const isDoctor =
-        email.trim().toLowerCase() === DOCTOR_EMAIL && password === DOCTOR_PASSWORD;
+        email.trim().toLowerCase() === DOCTOR_DEMO_CREDENTIALS.email &&
+        password === DOCTOR_DEMO_CREDENTIALS.password;
       if (isDoctor) {
         await signInAsDoctor({ email, password });
       } else {
@@ -110,7 +108,9 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
         <Text style={styles.forgotText}>Forgot password?</Text>
       </TouchableOpacity>
 
-      <Text style={styles.demoHint}>Doctor demo: doctor@fountain.com / 12345678</Text>
+      <Text style={styles.demoHint}>
+        Doctor demo: {DOCTOR_DEMO_CREDENTIALS.email} / {DOCTOR_DEMO_CREDENTIALS.password}
+      </Text>
 
       <PrimaryButton
         title="Sign In"
