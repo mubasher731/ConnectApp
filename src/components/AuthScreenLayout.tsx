@@ -9,8 +9,8 @@ import {
 } from 'react-native';
 import { Colors, Spacing } from '../theme';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import AuthHeader from './AuthHeader';
-import BrandLogo from './BrandLogo';
+import AuthHeader from './Header/AuthHeader';
+import BrandLogo from './Icon/BrandLogo';
 
 interface AuthScreenLayoutProps {
   /** Screen title shown in the header (aligned with the back arrow). */

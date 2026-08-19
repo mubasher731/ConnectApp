@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, ViewStyle } from 'react-native';
-import { Colors } from '../theme';
+import { Colors } from '../../theme';
 
 type AvatarShape = 'circle' | 'squircle';
 

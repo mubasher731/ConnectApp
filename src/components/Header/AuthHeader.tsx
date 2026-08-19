@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import AppIcon from './AppIcon';
-import { Colors, Spacing } from '../theme';
+import AppIcon from '../Icon/AppIcon';
+import { Colors, Spacing } from '../../theme';
 
 interface AuthHeaderProps {
   title: string;

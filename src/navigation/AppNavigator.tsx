@@ -16,7 +16,7 @@ import ForgotPasswordScreen from '../screens/auth/ForgotPasswordScreen';
 import HomeScreen from '../screens/patient/HomeScreen';
 import ChatsScreen from '../screens/patient/ChatsScreen';
 import ChatDetailScreen from '../screens/chat/ChatDetailScreen';
-import NotificationsScreen from '../screens/NotificationsScreen';
+import NotificationsScreen from '../screens/notification/NotificationsScreen';
 import DirectoryScreen from '../screens/chat/DirectoryScreen';
 import CallsScreen from '../screens/patient/CallsScreen';
 import ProfileScreen from '../screens/patient/ProfileScreen';

@@ -7,8 +7,8 @@ import {
   StyleSheet,
   TextInputProps,
 } from 'react-native';
-import AppIcon from './AppIcon';
-import { Colors, Radius, Spacing } from '../theme';
+import AppIcon from '../Icon/AppIcon';
+import { Colors, Radius, Spacing } from '../../theme';
 
 interface FormInputProps extends TextInputProps {
   label: string;

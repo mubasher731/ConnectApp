@@ -9,8 +9,8 @@ import {
   Alert,
   ScrollView,
 } from 'react-native';
-import AppIcon from '../AppIcon';
-import Avatar from '../Avatar';
+import AppIcon from '../Icon/AppIcon';
+import Avatar from '../Icon/Avatar';
 import { DoctorProfile } from '../../mock/doctorProfiles';
 import { bookingStore } from '../../mock/bookingStore';
 import { TIME_SLOTS } from '../../mock/timeSlots';

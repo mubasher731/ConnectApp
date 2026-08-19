@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { Colors, Spacing } from '../theme';
+import { Colors, Spacing } from '../../theme';
 
 interface BrandLogoProps {
   /** Display size of the logo mark. */

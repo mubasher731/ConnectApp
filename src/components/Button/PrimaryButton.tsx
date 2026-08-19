@@ -6,7 +6,7 @@ import {
   StyleSheet,
   ViewStyle,
 } from 'react-native';
-import { Colors, Radius, Shadows, responsiveSize } from '../theme';
+import { Colors, Radius, Shadows, responsiveSize } from '../../theme';
 
 interface PrimaryButtonProps {
   title: string;

@@ -7,10 +7,10 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { AppIcon, EmptyState } from '../components';
-import { notificationService } from '../services/dataService';
-import { AppNotification, NotificationKind } from '../types';
-import { Colors, Radius, Shadows, Spacing, responsiveSize } from '../theme';
+import { AppIcon, EmptyState } from '../../components';
+import { notificationService } from '../../services/dataService';
+import { AppNotification, NotificationKind } from '../../types';
+import { Colors, Radius, Shadows, Spacing, responsiveSize } from '../../theme';
 
 const KIND_META: Record<
   NotificationKind,

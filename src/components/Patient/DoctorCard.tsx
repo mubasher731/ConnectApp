@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import Avatar from '../Avatar';
+import Avatar from '../Icon/Avatar';
 import { DoctorProfile } from '../../mock/doctorProfiles';
 import { Colors, Radius, Shadows, Spacing } from '../../theme';
 
