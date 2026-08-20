@@ -62,8 +62,9 @@ const mapMessage = (
     text: raw.content ?? '',
     type: raw.type ?? 'text',
     createdAt: raw.created_at ?? '',
-    isRead: raw.status === 'read',
+    isRead: raw.status === 'read' || raw.is_read === true,
     sentByMe,
+    mediaUrl: raw.media_url ?? null,
   };
 };
 

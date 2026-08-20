@@ -9,6 +9,7 @@ export interface MessageRaw {
   type?: string;
   media_url?: string | null;
   status?: string;
+  is_read?: boolean;
   created_at: string;
 }
 
@@ -91,8 +92,19 @@ export const sessionService = {
   /** Send a message (text/photo/file/voice) in an active conversation. */
   async sendMessage(
     id: string | number,
-    payload: { content: string; type?: string }
+    payload: { content?: string; type?: string; files?: any[] }
   ): Promise<MessageRaw> {
+    // Media messages go as multipart/form-data.
+    if (payload.files && payload.files.length > 0) {
+      const form = new FormData();
+      if (payload.content) form.append('content', payload.content);
+      form.append('type', payload.type ?? 'photo');
+      payload.files.forEach((f) => form.append('files', f));
+      const { data } = await api.post(`/api/conversations/${id}/messages`, form, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      return (data?.data ?? data) as MessageRaw;
+    }
     const { data } = await api.post(`/api/conversations/${id}/messages`, {
       type: 'text',
       ...payload,

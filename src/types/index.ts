@@ -70,6 +70,8 @@ export interface Message {
   createdAt: string;
   isRead?: boolean;
   sentByMe: boolean;
+  /** Media URL for photo/file/voice messages (relative to the backend host). */
+  mediaUrl?: string | null;
 }
 
 export type CallDirection = 'incoming' | 'outgoing' | 'missed';

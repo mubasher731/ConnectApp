@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -20,6 +20,7 @@ import {
 } from '../../components';
 import { useAuth } from '../../context/AuthContext';
 import { DASHBOARD_STATS } from '../../context/appData';
+import { socketService } from '../../api/socket';
 import { sessionService } from '../../services';
 import { Conversation } from '../../types';
 import { Colors, Radius, Spacing, responsiveSize } from '../../theme';
@@ -73,6 +74,20 @@ const DoctorDashboardScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
       refresh();
     }, [refresh])
   );
+
+  // Live: refresh when a new request arrives or a decision/status changes.
+  useEffect(() => {
+    const socket = socketService.getSocket();
+    const refreshLive = () => refresh();
+    socket?.on('chat-request', refreshLive);
+    socket?.on('chat-decision', refreshLive);
+    socket?.on('session-timer-update', refreshLive);
+    return () => {
+      socket?.off('chat-request', refreshLive);
+      socket?.off('chat-decision', refreshLive);
+      socket?.off('session-timer-update', refreshLive);
+    };
+  }, [refresh]);
 
   const handleRequestAction = async (id: string, status: 'approved' | 'rejected') => {
     try {

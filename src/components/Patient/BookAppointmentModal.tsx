@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -49,12 +49,8 @@ const BookAppointmentModal: React.FC<BookAppointmentModalProps> = ({
   const [timeSlot, setTimeSlot] = useState<string | null>(null);
   const [message, setMessage] = useState('');
   const [slotDropdownOpen, setSlotDropdownOpen] = useState(false);
-  const [slotStatus, setSlotStatus] = useState<
-    'idle' | 'checking' | 'available' | 'booked'
-  >('idle');
   const [sending, setSending] = useState(false);
   const [selectedDate, setSelectedDate] = useState(() => new Date());
-  const checkTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Next 7 days for the date selector.
   const dayOptions = useMemo(() => {
@@ -69,34 +65,20 @@ const BookAppointmentModal: React.FC<BookAppointmentModalProps> = ({
     return opts;
   }, []);
 
-  const slotUnavailableAlert = () =>
-    Alert.alert(
-      'Slot Unavailable',
-      '⚠️ This slot has already been booked. Please select a different time.'
-    );
-
-  const clearCheck = () => {
-    if (checkTimer.current) {
-      clearTimeout(checkTimer.current);
-      checkTimer.current = null;
-    }
-  };
-
   const reset = () => {
-    clearCheck();
     setTimeSlot(null);
     setMessage('');
     setSlotDropdownOpen(false);
-    setSlotStatus('idle');
   };
 
   // Fresh state every time the modal opens.
   useEffect(() => {
     if (visible) {
-      reset();
+      setTimeSlot(null);
+      setMessage('');
+      setSlotDropdownOpen(false);
       setSelectedDate(new Date());
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible]);
 
   const handleClose = () => {
@@ -104,33 +86,17 @@ const BookAppointmentModal: React.FC<BookAppointmentModalProps> = ({
     onClose();
   };
 
-  /** Select a slot → simulated 10-second availability check (server is source of truth). */
+  /** Select a slot. The server is the source of truth — it validates on POST. */
   const handleSelectSlot = (slot: string) => {
     if (!doctor) return;
     setTimeSlot(slot);
     setSlotDropdownOpen(false);
-    setSlotStatus('checking');
-    clearCheck();
-    checkTimer.current = setTimeout(() => {
-      // All listed slots come from the doctor's availability; the backend
-      // re-validates on POST and returns 400 if the slot was just taken.
-      setSlotStatus('available');
-      checkTimer.current = null;
-    }, 10_000);
   };
 
   const handleSend = async () => {
     if (!doctor) return;
     if (!timeSlot) {
       Alert.alert('Select a time slot', 'Please choose an available time slot.');
-      return;
-    }
-    if (slotStatus === 'checking') {
-      Alert.alert('Still checking', 'Please wait while we verify availability.');
-      return;
-    }
-    if (slotStatus !== 'available') {
-      slotUnavailableAlert();
       return;
     }
 
@@ -221,7 +187,6 @@ const BookAppointmentModal: React.FC<BookAppointmentModalProps> = ({
                     onPress={() => {
                       setSelectedDate(opt.date);
                       setTimeSlot(null);
-                      setSlotStatus('idle');
                       setSlotDropdownOpen(false);
                     }}
                     activeOpacity={0.7}
@@ -301,23 +266,11 @@ const BookAppointmentModal: React.FC<BookAppointmentModalProps> = ({
               </View>
             )}
 
-            {/* Slot availability status (10s check result) */}
-            {slotStatus === 'checking' && (
-              <View style={styles.statusRow}>
-                <ActivityIndicator size="small" color={Colors.primary} />
-                <Text style={styles.statusChecking}>Checking availability...</Text>
-              </View>
-            )}
-            {slotStatus === 'available' && (
+            {/* Slot status */}
+            {timeSlot && (
               <View style={styles.statusRow}>
                 <AppIcon name="checkmark-circle" size={18} color={Colors.success} />
                 <Text style={styles.statusAvailable}>Available</Text>
-              </View>
-            )}
-            {slotStatus === 'booked' && (
-              <View style={styles.statusRow}>
-                <AppIcon name="close-circle" size={18} color={Colors.error} />
-                <Text style={styles.statusBooked}>Already Booked</Text>
               </View>
             )}
 
@@ -348,11 +301,11 @@ const BookAppointmentModal: React.FC<BookAppointmentModalProps> = ({
                 style={[
                   styles.actionBtn,
                   styles.sendBtn,
-                  (slotStatus !== 'available' || sending) && styles.sendBtnDisabled,
+                  (!timeSlot || sending) && styles.sendBtnDisabled,
                 ]}
                 onPress={handleSend}
                 activeOpacity={0.85}
-                disabled={slotStatus !== 'available' || sending}
+                disabled={!timeSlot || sending}
               >
                 {sending ? (
                   <ActivityIndicator size="small" color={Colors.white} />

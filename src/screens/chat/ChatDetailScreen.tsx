@@ -10,12 +10,15 @@ import {
   Platform,
   Animated,
   ScrollView,
+  Image,
+  Linking,
 } from 'react-native';
 import dayjs from 'dayjs';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useHeaderHeight } from '@react-navigation/elements';
 import { AppIcon, Avatar, EmptyState, SessionExtensionAlert } from '../../components';
 import { socketService } from '../../api/socket';
+import { getApiBaseUrl } from '../../api/config';
 import { useAuth } from '../../context/AuthContext';
 import { CHAT_EMOJIS } from '../../context/appData';
 import { chatService, sessionService } from '../../services';
@@ -29,6 +32,12 @@ interface ChatDetailScreenProps {
 
 const formatTime = (ts: string) =>
   dayjs(ts).isValid() ? dayjs(ts).format('hh:mm A') : ts;
+
+/** Absolute URL for a backend-relative media path. */
+const mediaFullUrl = (u?: string | null): string | null => {
+  if (!u) return null;
+  return u.startsWith('http') ? u : `${getApiBaseUrl()}${u}`;
+};
 
 const formatDay = (ts: string) => {
   const d = dayjs(ts);
@@ -162,6 +171,7 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
         createdAt: raw.created_at ?? new Date().toISOString(),
         isRead: raw.is_read === true || raw.status === 'read',
         sentByMe,
+        mediaUrl: raw.media_url ?? null,
       };
     };
 
@@ -442,14 +452,40 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
                 item.sentByMe ? styles.sentBubble : styles.receivedBubble,
               ]}
             >
-              <Text
-                style={[
-                  styles.messageText,
-                  item.sentByMe ? styles.sentText : styles.receivedText,
-                ]}
-              >
-                {item.text}
-              </Text>
+              {item.mediaUrl && item.type === 'photo' ? (
+                <Image
+                  source={{ uri: mediaFullUrl(item.mediaUrl) ?? undefined }}
+                  style={styles.mediaImage}
+                  resizeMode="cover"
+                />
+              ) : item.mediaUrl ? (
+                <TouchableOpacity
+                  style={styles.mediaChip}
+                  onPress={() =>
+                    Linking.openURL(mediaFullUrl(item.mediaUrl) ?? '').catch(() => {})
+                  }
+                  activeOpacity={0.7}
+                >
+                  <AppIcon
+                    name={item.type === 'voice' ? 'mic-outline' : 'document-attach-outline'}
+                    size={18}
+                    color={Colors.text}
+                  />
+                  <Text style={styles.mediaChipText}>
+                    {item.type === 'voice' ? 'Voice message' : 'File attachment'}
+                  </Text>
+                </TouchableOpacity>
+              ) : null}
+              {item.text ? (
+                <Text
+                  style={[
+                    styles.messageText,
+                    item.sentByMe ? styles.sentText : styles.receivedText,
+                  ]}
+                >
+                  {item.text}
+                </Text>
+              ) : null}
               <View style={styles.bubbleMeta}>
                 <Text
                   style={[
@@ -763,6 +799,27 @@ const styles = StyleSheet.create({
   messageText: {
     fontSize: 15,
     lineHeight: 21,
+  },
+  mediaImage: {
+    width: 200,
+    height: 170,
+    borderRadius: Radius.sm,
+    marginBottom: Spacing.xs,
+  },
+  mediaChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(127,127,127,0.12)',
+    borderRadius: Radius.sm,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    marginBottom: Spacing.xs,
+  },
+  mediaChipText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: Colors.text,
+    marginLeft: Spacing.sm,
   },
   sentText: {
     color: Colors.white,
