@@ -25,7 +25,7 @@ const mapConversationToChat = (c: Conversation, meId: number): Chat => {
 
   return {
     id: String(c.id),
-    participantId: String(otherId),
+    participantId: String(c.peer_user_id ?? otherId),
     participantName: otherName,
     participantOnline: c.peer_online ?? false,
     lastMessage,

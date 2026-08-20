@@ -3,7 +3,8 @@
  *
  * The app talks to the Fountain Backend over REST + Socket.IO.
  * A runtime discovery call to GET /api/config can override the base URL;
- * otherwise we use the live public URL below (ngrok tunnel → localhost:5001).
+ * otherwise we use the live ngrok tunnel below (public → localhost:5001),
+ * which is reachable from Android/iOS devices and emulators.
  */
 export const FALLBACK_BASE_URL = 'https://nonrefractional-superradically-emiko.ngrok-free.dev';
 

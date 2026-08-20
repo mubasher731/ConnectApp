@@ -44,6 +44,8 @@ const DoctorConsultationsScreen: React.FC = () => {
   const filtered = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
     return conversations.filter((c) => {
+      // Pending requests belong on the Dashboard — never show them here.
+      if (c.state === 'pending') return false;
       if (filter === 'active') {
         if (c.state !== 'active' && c.state !== 'in_progress') return false;
       } else if (filter === 'ended') {
@@ -60,7 +62,9 @@ const DoctorConsultationsScreen: React.FC = () => {
       <View style={styles.header}>
         <View style={styles.headerTextBlock}>
           <Text style={styles.headerTitle}>My Consultations</Text>
-          <Text style={styles.headerSub}>{conversations.length} total requests</Text>
+          <Text style={styles.headerSub}>
+            {conversations.filter((c) => c.state !== 'pending').length} total requests
+          </Text>
         </View>
         <TouchableOpacity
           style={styles.searchIconButton}

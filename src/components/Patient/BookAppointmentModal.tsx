@@ -165,8 +165,15 @@ const BookAppointmentModal: React.FC<BookAppointmentModalProps> = ({
           },
         ]
       );
-    } catch {
-      slotUnavailableAlert();
+    } catch (err) {
+      // Surface the real backend error (e.g. slot outside availability,
+      // duplicate pending request) instead of a misleading generic message.
+      Alert.alert(
+        'Booking Failed',
+        err instanceof Error && err.message
+          ? err.message
+          : 'Unable to book this slot. Please try again.'
+      );
     } finally {
       setSending(false);
     }
