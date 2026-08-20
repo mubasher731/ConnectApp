@@ -8,123 +8,112 @@
 
 ## Overview
 
-Built a full production-ready healthcare chat application from an empty prototype through a
-role-based (Patient + Doctor) app with **authentication, mock booking, persistent chat,
-personalized notifications, and session lifecycle features** — all using local/mock data
-until the backend endpoints are wired in.
+Built a complete healthcare chat application from an empty prototype through a **role-based
+(Patient + Doctor) app with authentication, booking, persistent chat, notifications and session
+lifecycle** — first as a fully mock/offline demo, then **integrated end-to-end with the live
+Fountain Backend** (REST + Socket.IO), with **all mock data removed**.
 
 ---
 
-## 1. App Foundation & UI Shell
+## Phase A — App Foundation & Features (Prototype / Mock)
 
+### 1. App Foundation & UI Shell
 - **Task:** Design and scaffold a modern, Apple-inspired React Native chat app named **ConnectApp**.
-- **Description:** Set up the project structure (screens, components, theme, navigation), an animated **Splash screen**, a **Welcome screen**, and the **Main App** with a **bottom tab bar** (Home, Chats, Calls, Profile).
-- **Key Deliverables Submitted:**
-  - Animated splash + welcome screens
-  - Bottom tab navigation with custom branded styling
-  - Central design-token theme (`Colors`, `Spacing`, `Radius`, `Shadows`, `responsiveSize`)
-- **Skills Gained:** React Native project scaffolding, React Navigation (stack + tabs), design-token theming, responsive layout thinking.
+- **Description:** Project structure (screens, components, theme, navigation), an animated **Splash screen**, a **Welcome screen**, and the **Main App** with a **bottom tab bar** (Home, Chats, Calls, Profile).
+- **Key Deliverables:** Animated splash/welcome screens, tab navigation with custom branding, central design-token theme (`Colors`, `Spacing`, `Radius`, `Shadows`, `responsiveSize`).
+- **Skills:** RN scaffolding, React Navigation (stack + tabs), design-token theming, responsive layout.
 
-## 2. Authentication & Backend Integration
+### 2. Authentication & Backend Foundation
+- **Task:** Production-ready auth + backend connectivity.
+- **Description:** **Login / Signup / Forgot Password** screens with validation, **JWT session persistence** (AsyncStorage), API client, Socket.IO service, and runtime backend URL discovery.
+- **Key Deliverables:** Auth screens + `AuthContext`, token store, REST/socket clients, `/api/config` discovery.
+- **Skills:** Secure auth flows, JWT management, REST + WebSocket integration.
 
-- **Task:** Transition from prototype to production-ready with a complete, secure auth system.
-- **Description:** Built dedicated **Login** and **Signup** screens with validation, and integrated the app with the **Fountain Backend** (ngrok + local LAN) including JWT session persistence and a real-time Socket.IO connection.
-- **Key Deliverables Submitted:**
-  - Login / Signup / Forgot Password screens with field validation
-  - Auth context (`AuthContext`) + token persistence in AsyncStorage
-  - API client, socket service, and runtime backend URL discovery
-- **Skills Gained:** Secure auth flows, JWT session management, REST + WebSocket integration, environment configuration.
+### 3. Role-Based Modules (Patient & Doctor)
+- **Task:** Two distinct experiences.
+- **Description:** Separate **Doctor** and **Patient** module folders with their own screens (Doctor Dashboard, Consultations; Patient Home, Chats, Calls, Profile) and `components/Doctor|Patient` subfolders.
+- **Key Deliverables:** Doctor module, Patient module, organized `src/screens/` + `src/components/` structure.
+- **Skills:** Role-based routing, feature-module organization, mock-data modeling.
 
-## 3. Role-Based Modules (Patient & Doctor)
+### 4. Doctor Booking & Appointment Flow (Prototype)
+- **Task:** Patients find doctors and book with a realistic slot selector.
+- **Description:** **Doctors screen**, doctor cards, and a **booking modal** with a custom **15-minute interval time-slot dropdown**.
+- **Key Deliverables:** Doctor directory + cards, booking modal with 15-min slots, mock booking store + dashboard **Appointment Requests** (Accept/Reject).
+- **Skills:** Modals, dropdown UI patterns, mock state management.
 
-- **Task:** Build two distinct experiences for patients and doctors.
-- **Description:** Created separate **Doctor** and **Patient** module folders, each with its own screens (Doctor Dashboard, Consultations; Patient Home, Chats, Calls, Profile), plus clean sub-folders under `components/` for Doctor/Patient-specific UI.
-- **Key Deliverables Submitted:**
-  - Doctor module (Dashboard, Consultations) with mock data
-  - Patient module with quick actions, recent conversations, call log, profile
-  - Organized `src/screens/` and `src/components/` folder structure
-- **Skills Gained:** Role-based routing, feature-module organization, mock-data modeling.
-
-## 4. Doctor Booking & Appointment Flow
-
-- **Task:** Let patients find doctors and book appointments with a realistic slot selector.
-- **Description:** Built a **Doctors screen**, doctor cards, and a **booking modal** with a custom **15-minute interval time-slot dropdown** (`10:00am - 10:15am`, etc.).
-- **Key Deliverables Submitted:**
-  - Doctor directory with profile cards + "Book Appointment"
-  - Booking modal with auto-generated 15-minute slot dropdown
-  - Mock booking store + doctor dashboard **Appointment Requests** (Accept/Reject)
-- **Skills Gained:** Form/modals, dropdown UI patterns, mock state management.
-
-## 5. Booking Intelligence (Slot Conflicts & Availability)
-
+### 5. Booking Intelligence (Slot Conflicts & Availability)
 - **Task:** Simulate real-time slot availability and prevent double-booking.
-- **Description:** Added a **60-second slot lock** so selecting a slot reserves it; if another patient tries to book the same slot during the window, they see an "already booked" alert. Then added a **10-second availability check** with spinner → ✅ Available / ❌ Already Booked (Send button enabled/disabled accordingly).
-- **Key Deliverables Submitted:**
-  - `bookingStore` with 60s reservation locks + conflict detection
-  - 10-second simulated availability check UI in the booking modal
-  - "Booked" tags in the slot dropdown
-- **Skills Gained:** Concurrency/state-machine design, simulated API delays, user feedback UX (loading/success/error).
+- **Description:** **60-second slot lock** on selection + conflict alert; a **10-second availability check** with spinner → ✅ Available / ❌ Already Booked.
+- **Key Deliverables:** Slot-lock booking store, availability-check UX, "Booked" tags.
+- **Skills:** Concurrency/state-machine design, simulated API delays, loading/success/error UX.
 
-## 6. Code Architecture Refactor
+### 6. Code Architecture Refactor
+- **Task:** Standardize the codebase.
+- **Description:** Extracted repeated views into reusable **Card components** (`components/Card/`) and moved all static screen data into **`context/appData.ts`**, exported via the component barrel.
+- **Key Deliverables:** 8 reusable cards, centralized static data, shared list separator, slimmer screens.
+- **Skills:** Component abstraction, DRY refactoring, barrel exports, folder conventions.
 
-- **Task:** Clean up and standardize the codebase structure.
-- **Description:** Extracted repeated views into reusable **Card components** under `components/Card/` and moved all static screen data (filters, metas, actions, demo credentials) into a single **`context/appData.ts`**, all exported through the component barrel.
-- **Key Deliverables Submitted:**
-  - 8 reusable cards (StatCard, CallCard, NotificationCard, DoctorAppointmentCard, RecentAppointmentCard, AppointmentRequestCard, UserDirectoryCard, AppointmentCard)
-  - Centralized static-data module + shared list-item separator
-  - Reduced screen files by hundreds of lines
-- **Skills Gained:** Component abstraction, DRY refactoring, barrel exports, maintainable folder conventions.
+### 7. Persistent Chat History (WhatsApp Style, Prototype)
+- **Task:** Chat persists forever between the same patient & doctor.
+- **Description:** **AsyncStorage engine** so rebooking a doctor reopens the **entire history from all previous sessions** with a **"Previous Sessions — read only"** divider (only when history exists) and original timestamps.
+- **Key Deliverables:** AsyncStorage session/message store, history separator + read-only rendering, seeded demo history.
+- **Skills:** Local persistence, data modeling, chat-history UX, WhatsApp-style grouping/date chips.
 
-## 7. Persistent Chat History (WhatsApp Style)
+### 8. Pre-Session Notifications (5 Minutes Before, Prototype)
+- **Task:** Notify both roles 5 minutes before a session.
+- **Description:** Global ticker fires a **role-specific notification** at the 5-minute mark (Patient: "⏰ Session Starting Soon" + **Join Session**; Doctor: "⏰ Upcoming Session" + **View Details**), persisted to the Notifications tab.
+- **Key Deliverables:** `MockSessionProvider` scheduler, notification center + event emitter, notifications screen.
+- **Skills:** Timers/scheduling, alert deep-linking, event-driven UI.
 
-- **Task:** Make chat persist forever between the same patient and doctor.
-- **Description:** Implemented an **AsyncStorage-backed session/message engine** so that when a patient books with a doctor they've consulted before, the chat reopens with the **entire conversation history from all previous sessions**, separated by a **"Previous Sessions — read only"** divider (only when history exists), with original timestamps preserved.
-- **Key Deliverables Submitted:**
-  - `mockSessionStore` (AsyncStorage persistence for sessions + messages)
-  - History separator + read-only past-session rendering in the chat screen
-  - Seeded demo history for instant demonstration
-- **Skills Gained:** Local persistence, data modeling, chat history UX, WhatsApp-style grouping/date chips.
+### 9. Session Extension Alert (1 Minute Before End, Prototype)
+- **Task:** Doctor extends a session 1 minute before it ends.
+- **Description:** **Full-screen alert** at 60s remaining — "⏰ Session ending in 60 seconds" with **Cancel** / **Extend +5 min**; extend resets the timer + broadcasts a system message; ignoring auto-ends.
+- **Key Deliverables:** `SessionExtensionAlert` component, extension state + system messages, doctor demo shortcut.
+- **Skills:** Custom full-screen modals, session timing logic, in-chat system messages.
 
-## 8. Pre-Session Notifications (5 Minutes Before)
+### 10. Personalized Notifications & Complete Booking Flow (Prototype)
+- **Task:** Role-scoped notifications + end-to-end booking → accept → confirm.
+- **Description:** Notifications stored with **user_id + role** and filtered per login; completed flow (patient books → doctor gets "📋 New booking" → **Accepts** → both get confirmation, meeting scheduled at the selected slot time).
+- **Key Deliverables:** User-scoped notifications, confirmation notifications, doctor Accept action.
+- **Skills:** User/role data scoping, multi-step flow design, cross-role communication.
 
-- **Task:** Notify both patient and doctor exactly 5 minutes before a session.
-- **Description:** Built a global ticker that fires a **role-specific notification** at the 5-minute mark — Patient: "⏰ Session Starting Soon" + **Join Session**; Doctor: "⏰ Upcoming Session" + **View Details** — with action buttons and persistence to the Notifications tab.
-- **Key Deliverables Submitted:**
-  - `MockSessionProvider` (1s scheduler, status transitions, reminder firing)
-  - `mockNotificationCenter` + event emitter + global navigation ref
-  - Notifications screen wired to persisted/live notifications
-- **Skills Gained:** Timers/scheduling, background logic, deep-link navigation from alerts, event-driven UI updates.
+### 11. UI Polish & Responsiveness
+- **Task:** Polished, responsive UI.
+- **Description:** Enlarged Doctors header, **centered chat input** (equal margins + vertically centered placeholder), fixed tab-bar cut-off, responsive across **280px–560px**.
+- **Key Deliverables:** Balanced headers, symmetric composer, responsive tab bar + layouts.
+- **Skills:** Responsive design, safe-area handling, pixel alignment, cross-device QA.
 
-## 9. Session Extension Alert (1 Minute Before End)
+---
 
-- **Task:** Let the doctor extend a session 1 minute before it ends.
-- **Description:** Added a **full-screen alert** on the doctor's screen at 60 seconds remaining — "⏰ Session ending in 60 seconds" with **Cancel** / **Extend +5 min**. Extending resets the timer and broadcasts a "Session extended by 5 minutes" system message; ignoring auto-ends the session.
-- **Key Deliverables Submitted:**
-  - `SessionExtensionAlert` full-screen modal component
-  - Extension state in the mock session engine (extendedBy + system messages)
-  - Doctor demo shortcut to fast-forward to the last minute
-- **Skills Gained:** Custom full-screen modals, session timing logic, in-chat system messages, countdown handling.
+## Phase B — Live Backend Integration (Fountain Backend)
 
-## 10. Personalized Notifications & Complete Booking Flow
+### 12. Full Real-Backend Integration & Mock Removal
+- **Task:** Wire the frontend to the **live Fountain Backend** and remove all mock/dummy data.
+- **Description:** Rewrote the data layer to the real contract — **conversations** (`GET/POST /api/conversations`, messages, status, extend, end), **doctor availability/requests**, **notifications**, and **role-specific auth** (`role_id 3 = Doctor`, `4 = Patient`, flat `{ message, data }` envelope). Deleted the entire `src/mock/` layer plus mock session/notification stores.
+- **Key Deliverables:**
+  - `sessionService` (conversation/message/request/status/extend/end/availability/notification endpoints)
+  - `dataService` (conversation → chat mapping, `peer_user_id` presence, peer grouping)
+  - Real booking (`POST /api/conversations`), real doctor requests + **Accept/Reject via `PUT .../status`**
+  - Real notifications UI (`GET /api/notification/all`)
+- **Skills:** API contract integration, envelope/error handling, removing legacy mock layers safely.
 
-- **Task:** Ensure each role sees only their own notifications, and complete the end-to-end booking → accept → confirmation flow.
-- **Description:** Stored notifications with **user_id + role** and filtered them per logged-in user. Completed the flow: patient picks a slot (10s check) → sends → **doctor gets "📋 New booking from [Patient]"** → doctor **Accepts** → **both get confirmation** ("✅ Appointment confirmed with Dr. [Name]", "Appointment with [Patient]") — and the meeting is scheduled at the selected slot time.
-- **Key Deliverables Submitted:**
-  - User-scoped notifications (filtered by login)
-  - Patient + Doctor confirmation notifications on accept
-  - Mock session scheduled at the selected slot time
-  - Doctor Accept action with visual confirmation
-- **Skills Gained:** User/role data scoping, multi-step business flow design, cross-role communication via notifications.
+### 13. Real-Time Chat & Socket Layer
+- **Task:** Live messaging, presence, typing, and session events.
+- **Description:** Fixed the **socket to authenticate with the JWT** (auth + query handshake), switched to `websocket` transport, and matched the verified event contract (`join-conversation`, `new-message`, `typing`, `session-timer-update`, `session-ended`, `chat-decision`, `user-online/offline`, `user-joined/left`), all payloads unwrapped from `{ data: {...} }`. Added room re-join on reconnect and live dashboard refresh on `chat-request`.
+- **Key Deliverables:** Authenticated socket singleton, room tracking, verified event handlers, presence (online/offline dot), typing indicator.
+- **Skills:** Socket.IO auth + real-time events, reconnect handling, event-driven UI.
 
-## 11. UI Polish & Responsiveness
+### 14. Booking & Doctor Workflow on the Live Backend
+- **Task:** Correct booking + approval-gated sessions.
+- **Description:** Booking now **allows future dates** (7-day picker), **disables past slots**, requires the backend's **3–5 word reason**, and **surfaces the real backend error** on failure (removed the fake 10s check). Pending conversations show **"Awaiting doctor approval"** (locked, no countdown); countdown only once `in_progress`/`active`. Doctor **Consultations exclude pending**; pending requests live on the Dashboard with Accept/Reject.
+- **Key Deliverables:** Date + slot picker, pending-state chat banner/lock, dashboard request flow, real error handling.
+- **Skills:** State-machine UI (pending/in_progress/active/ended), validation parity with backend, error surfacing.
 
-- **Task:** Make the app look polished and work on all screen sizes.
-- **Description:** Enlarged the Doctors screen header, **centered the chat input field** with equal margins and vertically centered placeholder, fixed the tab bar cut-off on various devices, and made layouts responsive across **280px–560px** widths.
-- **Key Deliverables Submitted:**
-  - Larger, balanced screen headers
-  - Symmetrical, properly centered chat composer
-  - Responsive tab bar + layout fixes across device sizes
-- **Skills Gained:** Responsive design, safe-area handling, pixel-perfect UI alignment, cross-device QA.
+### 15. Media, Session Divider & Final Polish (Live)
+- **Task:** Media messages, session boundary UI, and last-mile fixes.
+- **Description:** **Photo/file/voice rendering** (base-URL prepend, image + file/voice chips) and **multipart send support**; a **"New session" divider** that separates the previous (read-only) session history from the new session; chat list **grouped by peer** (one row per pair, most recent); full participant names in the chat header.
+- **Key Deliverables:** Media message UI, session-start divider + styles, peer-grouped chat list.
+- **Skills:** Media handling, chat-history UX, list de-duplication, defensive data shaping.
 
 ---
 
@@ -132,18 +121,20 @@ until the backend endpoints are wired in.
 
 | Area | Deliverable |
 |---|---|
-| Engine | `mockSessionStore`, `mockNotificationCenter`, `appEvents`, `MockSessionProvider`, `navigationRef` |
-| Booking | `bookingStore` (slot locks), 15-min slot dropdown, 10s availability check |
-| UI | 8 reusable cards, `SessionExtensionAlert`, themed screens |
-| Data | `context/appData.ts` (all static screen data) |
-| Navigation | Stack + bottom tabs, role-based routing, global nav ref |
-| Persistence | AsyncStorage for sessions, messages, notifications, auth token |
+| API | `config.ts` (live ngrok base URL), `sessionService` (conversations/messages/status/extend/end/availability/notifications), `dataService` (chat mapping + peer grouping) |
+| Real-time | `socket.ts` (JWT auth, `websocket`, verified events, room re-join) |
+| Booking | future-date + past-slot-disabled picker, 3–5 word reason, real error surfacing |
+| Doctor | Dashboard requests (Accept/Reject via `PUT /api/conversations/:id/status`), Consultations (pending excluded), live `chat-request` refresh |
+| Chat | pending "Awaiting approval" banner/lock, media rendering, "New session" divider |
+| Notifications | real `GET/PUT/DELETE /api/notification/*` + `fcm-token`, socket live refresh |
+| UI | 8 reusable cards, `SessionExtensionAlert`, themed screens, centered composer |
+| Data | `context/appData.ts` (static data), removed all `src/mock/**` |
 
 ## Skills Gained — Overall
-- React Native & React 19 development (hooks, contexts, state machines)
-- TypeScript & project architecture (components, barrels, data layer)
-- React Navigation (stack/tabs/deep navigation)
-- Local persistence (AsyncStorage) & offline-first mock backends
-- Real-time concepts (Socket.IO, timers, event emitters)
+- React Native & React 19 (hooks, contexts, state machines)
+- TypeScript architecture (components, barrels, data/service layer)
+- React Navigation (stack/tabs/deep links)
+- **REST + Socket.IO integration with a live backend** (auth, events, error handling)
+- Local persistence (AsyncStorage) and **mock-to-real migration**
 - Product thinking: role-based UX, notifications, session lifecycle
-- Code quality: tsc/eslint/jest validation discipline
+- Code quality: `tsc` / `eslint` / `jest` validation discipline
