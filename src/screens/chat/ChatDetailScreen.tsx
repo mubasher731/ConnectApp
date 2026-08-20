@@ -414,6 +414,20 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
     const isGroupStart = !prev || prev.sentByMe !== item.sentByMe || showDate;
     const grouped = !isGroupStart;
 
+    // Session boundary — horizontal divider separating the previous session's
+    // read-only history (messages above) from the new session (below).
+    if (item.type === 'session-start') {
+      return (
+        <View style={styles.sessionDivider}>
+          <View style={styles.sessionDividerLine} />
+          <Text style={styles.sessionDividerText}>
+            {item.text || 'New session'}
+          </Text>
+          <View style={styles.sessionDividerLine} />
+        </View>
+      );
+    }
+
     // System messages (e.g. "Session extended by 5 minutes") render centered.
     if (item.type === 'system') {
       return (
@@ -713,6 +727,23 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: Radius.round,
     overflow: 'hidden',
+  },
+  sessionDivider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: Spacing.lg,
+    gap: Spacing.sm,
+  },
+  sessionDividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: Colors.textTertiary,
+    opacity: 0.4,
+  },
+  sessionDividerText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: Colors.textSecondary,
   },
   noticeBanner: {
     flexDirection: 'row',

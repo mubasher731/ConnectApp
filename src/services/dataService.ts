@@ -69,11 +69,26 @@ const mapMessage = (
 };
 
 export const chatService = {
-  /** Conversations for the authenticated user → Chat rows. */
+  /** Conversations for the authenticated user → Chat rows (one per peer). */
   async getChats(): Promise<Chat[]> {
     const me = await authService.getMe();
     const conversations = await sessionService.getConversations();
-    return conversations.map((c) => mapConversationToChat(c, me.id));
+    // Defensive: keep only the most recent conversation per peer so the list
+    // shows one row per patient–doctor pair.
+    const byPeer = new Map<string, Conversation>();
+    for (const c of conversations) {
+      const peer = String(
+        c.peer_user_id ?? (c.patient_id === me.id ? c.doctor_id : c.patient_id)
+      );
+      const existing = byPeer.get(peer);
+      if (
+        !existing ||
+        new Date(c.scheduled_start).getTime() > new Date(existing.scheduled_start).getTime()
+      ) {
+        byPeer.set(peer, c);
+      }
+    }
+    return [...byPeer.values()].map((c) => mapConversationToChat(c, me.id));
   },
 
   /** Messages for a conversation (oldest → newest). */
