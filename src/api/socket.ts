@@ -95,17 +95,4 @@ export const socketService = {
   sendTypingStopped(conversationId: number | string): void {
     socket?.emit('typing', { conversationId, isTyping: false });
   },
-
-  /** Send a message over the socket (REST remains the source of truth). */
-  sendMessage(conversationId: number | string, content: string, type = 'text'): void {
-    socket?.emit('send-message', { conversationId, content, type });
-  },
-
-  /** Doctor decision on a booking request. */
-  requestDecision(
-    requestId: string,
-    decision: 'approved' | 'rejected' | 'rescheduled'
-  ): void {
-    socket?.emit('request-decision', { requestId, decision });
-  },
 };

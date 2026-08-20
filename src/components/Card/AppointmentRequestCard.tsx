@@ -1,76 +1,84 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import dayjs from 'dayjs';
 import AppIcon from '../Icon/AppIcon';
 import Avatar from '../Icon/Avatar';
 import DoctorPill from '../Doctor/DoctorPill';
-import { AppointmentRequest } from '../../types';
+import { CONVERSATION_STATE_META } from '../../context/appData';
+import { Conversation } from '../../types';
 import { Colors, Radius, Shadows, Spacing } from '../../theme';
 
 interface AppointmentRequestCardProps {
-  request: AppointmentRequest;
+  /** A pending conversation (state === 'pending'). */
+  request: Conversation;
   onAccept: () => void;
   onReject: () => void;
 }
-
-const PENDING_META = { label: 'Pending', color: '#F59E0B', bg: '#FEF3E0' };
 
 /** Incoming patient appointment request with Accept / Reject actions. */
 const AppointmentRequestCard: React.FC<AppointmentRequestCardProps> = ({
   request,
   onAccept,
   onReject,
-}) => (
-  <View style={styles.card}>
-    <View style={styles.top}>
-      <View style={styles.patientInfo}>
-        <Avatar name={`P${request.patient_id}`} size={40} />
-        <View style={styles.patientMeta}>
-          <Text style={styles.patientName}>Patient #{request.patient_id}</Text>
-          <Text style={styles.patientSub}>
-            {request.date} · {request.time_slot}
+}) => {
+  const meta = CONVERSATION_STATE_META[request.state] ?? CONVERSATION_STATE_META.pending;
+  const name = request.patient_name ?? `Patient #${request.patient_id}`;
+  const appt = request.appointment;
+  const sub = appt
+    ? `${appt.date} · ${appt.time_slot}`
+    : request.scheduled_start
+    ? dayjs(request.scheduled_start).format('MMM D, h:mm A')
+    : '';
+
+  return (
+    <View style={styles.card}>
+      <View style={styles.top}>
+        <View style={styles.patientInfo}>
+          <Avatar name={name} size={40} />
+          <View style={styles.patientMeta}>
+            <Text style={styles.patientName} numberOfLines={1}>
+              {name}
+            </Text>
+            {sub ? <Text style={styles.patientSub}>{sub}</Text> : null}
+          </View>
+        </View>
+        <DoctorPill label={meta.label} color={meta.color} bg={meta.bg} />
+      </View>
+
+      {appt?.reason ? (
+        <View style={styles.messageRow}>
+          <AppIcon
+            name="chatbubble-ellipses-outline"
+            size={14}
+            color={Colors.textTertiary}
+          />
+          <Text style={styles.message} numberOfLines={2}>
+            {appt.reason}
           </Text>
         </View>
-      </View>
-      <DoctorPill
-        label={PENDING_META.label}
-        color={PENDING_META.color}
-        bg={PENDING_META.bg}
-      />
-    </View>
+      ) : null}
 
-    {request.reason ? (
-      <View style={styles.messageRow}>
-        <AppIcon
-          name="chatbubble-ellipses-outline"
-          size={14}
-          color={Colors.textTertiary}
-        />
-        <Text style={styles.message} numberOfLines={2}>
-          {request.reason}
-        </Text>
+      <View style={styles.actionRow}>
+        <TouchableOpacity
+          style={[styles.actionBtn, styles.acceptBtn]}
+          onPress={onAccept}
+          activeOpacity={0.85}
+        >
+          <AppIcon name="checkmark" size={16} color={Colors.white} />
+          <Text style={styles.actionText}>Accept</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.actionBtn, styles.rejectBtn]}
+          onPress={onReject}
+          activeOpacity={0.85}
+        >
+          <AppIcon name="close" size={16} color={Colors.white} />
+          <Text style={styles.actionText}>Reject</Text>
+        </TouchableOpacity>
       </View>
-    ) : null}
-
-    <View style={styles.actionRow}>
-      <TouchableOpacity
-        style={[styles.actionBtn, styles.acceptBtn]}
-        onPress={onAccept}
-        activeOpacity={0.85}
-      >
-        <AppIcon name="checkmark" size={16} color={Colors.white} />
-        <Text style={styles.actionText}>Accept</Text>
-      </TouchableOpacity>
-      <TouchableOpacity
-        style={[styles.actionBtn, styles.rejectBtn]}
-        onPress={onReject}
-        activeOpacity={0.85}
-      >
-        <AppIcon name="close" size={16} color={Colors.white} />
-        <Text style={styles.actionText}>Reject</Text>
-      </TouchableOpacity>
     </View>
-  </View>
-);
+  );
+};
 
 const styles = StyleSheet.create({
   card: {

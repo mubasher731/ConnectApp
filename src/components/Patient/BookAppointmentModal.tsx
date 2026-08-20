@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -14,6 +14,7 @@ import AppIcon from '../Icon/AppIcon';
 import Avatar from '../Icon/Avatar';
 import { sessionService } from '../../services';
 import { BookingDoctor, Conversation } from '../../types';
+import { dateKey, daySlotsFor, isPastSlot } from '../../utils/slots';
 import { Colors, Radius, Shadows, Spacing } from '../../theme';
 
 interface BookAppointmentModalProps {
@@ -52,7 +53,21 @@ const BookAppointmentModal: React.FC<BookAppointmentModalProps> = ({
     'idle' | 'checking' | 'available' | 'booked'
   >('idle');
   const [sending, setSending] = useState(false);
+  const [selectedDate, setSelectedDate] = useState(() => new Date());
   const checkTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Next 7 days for the date selector.
+  const dayOptions = useMemo(() => {
+    const opts: { date: Date; label: string }[] = [];
+    for (let i = 0; i < 7; i++) {
+      const d = new Date();
+      d.setDate(d.getDate() + i);
+      const label =
+        i === 0 ? 'Today' : d.toLocaleDateString(undefined, { weekday: 'short' });
+      opts.push({ date: d, label: `${label} ${d.getDate()}` });
+    }
+    return opts;
+  }, []);
 
   const slotUnavailableAlert = () =>
     Alert.alert(
@@ -74,6 +89,15 @@ const BookAppointmentModal: React.FC<BookAppointmentModalProps> = ({
     setSlotDropdownOpen(false);
     setSlotStatus('idle');
   };
+
+  // Fresh state every time the modal opens.
+  useEffect(() => {
+    if (visible) {
+      reset();
+      setSelectedDate(new Date());
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visible]);
 
   const handleClose = () => {
     reset();
@@ -119,7 +143,7 @@ const BookAppointmentModal: React.FC<BookAppointmentModalProps> = ({
 
     setSending(true);
     try {
-      const date = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+      const date = dateKey(selectedDate); // YYYY-MM-DD of the selected day
       const conversation = await sessionService.createConversation({
         doctor_id: doctor.id,
         date,
@@ -148,7 +172,8 @@ const BookAppointmentModal: React.FC<BookAppointmentModalProps> = ({
     }
   };
 
-  const slots = doctor?.timeSlots ?? [];
+  const allSlots = doctor ? daySlotsFor(doctor.availability, selectedDate) : [];
+  const isSlotPast = (slot: string) => isPastSlot(slot, selectedDate);
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={handleClose}>
@@ -173,6 +198,35 @@ const BookAppointmentModal: React.FC<BookAppointmentModalProps> = ({
             nestedScrollEnabled
             keyboardShouldPersistTaps="handled"
           >
+            {/* Date selector */}
+            <Text style={styles.label}>Select Date</Text>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.dayRow}
+            >
+              {dayOptions.map((opt) => {
+                const active = selectedDate.toDateString() === opt.date.toDateString();
+                return (
+                  <TouchableOpacity
+                    key={opt.date.toISOString()}
+                    style={[styles.dayChip, active && styles.dayChipActive]}
+                    onPress={() => {
+                      setSelectedDate(opt.date);
+                      setTimeSlot(null);
+                      setSlotStatus('idle');
+                      setSlotDropdownOpen(false);
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[styles.dayChipText, active && styles.dayChipTextActive]}>
+                      {opt.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+
             {/* Time slot dropdown */}
             <Text style={styles.label}>Select Time Slot</Text>
             <TouchableOpacity
@@ -200,15 +254,21 @@ const BookAppointmentModal: React.FC<BookAppointmentModalProps> = ({
                   showsVerticalScrollIndicator={false}
                   style={styles.slotListScroll}
                 >
-                  {slots.length === 0 ? (
-                    <Text style={styles.noSlots}>No slots available today.</Text>
+                  {allSlots.length === 0 ? (
+                    <Text style={styles.noSlots}>No slots available on this day.</Text>
                   ) : (
-                    slots.map((slot) => {
+                    allSlots.map((slot) => {
+                      const disabled = isSlotPast(slot);
                       const selected = timeSlot === slot;
                       return (
                         <TouchableOpacity
                           key={slot}
-                          style={[styles.slotItem, selected && styles.slotItemActive]}
+                          disabled={disabled}
+                          style={[
+                            styles.slotItem,
+                            selected && styles.slotItemActive,
+                            disabled && styles.slotItemDisabled,
+                          ]}
                           onPress={() => handleSelectSlot(slot)}
                           activeOpacity={0.6}
                         >
@@ -216,13 +276,16 @@ const BookAppointmentModal: React.FC<BookAppointmentModalProps> = ({
                             style={[
                               styles.slotItemText,
                               selected && styles.slotItemTextActive,
+                              disabled && styles.slotItemDisabledText,
                             ]}
                           >
                             {formatSlotDisplay(slot)}
                           </Text>
-                          {selected && (
+                          {disabled ? (
+                            <Text style={styles.slotDisabledTag}>Past</Text>
+                          ) : selected ? (
                             <AppIcon name="checkmark" size={16} color={Colors.primary} />
-                          )}
+                          ) : null}
                         </TouchableOpacity>
                       );
                     })
@@ -398,6 +461,42 @@ const styles = StyleSheet.create({
   slotItemTextActive: {
     fontWeight: '700',
     color: Colors.primary,
+  },
+  slotItemDisabled: {
+    opacity: 0.5,
+  },
+  slotItemDisabledText: {
+    color: Colors.textTertiary,
+    textDecorationLine: 'line-through',
+  },
+  slotDisabledTag: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: Colors.textTertiary,
+  },
+  dayRow: {
+    paddingBottom: Spacing.sm,
+    gap: Spacing.sm,
+  },
+  dayChip: {
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 8,
+    borderRadius: Radius.round,
+    backgroundColor: Colors.inputBackground,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  dayChipActive: {
+    backgroundColor: Colors.primary,
+    borderColor: Colors.primary,
+  },
+  dayChipText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: Colors.textSecondary,
+  },
+  dayChipTextActive: {
+    color: Colors.white,
   },
   noSlots: {
     fontSize: 14,

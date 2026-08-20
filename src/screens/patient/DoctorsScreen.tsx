@@ -6,19 +6,6 @@ import { sessionService } from '../../services';
 import { BookingDoctor, Conversation } from '../../types';
 import { Colors, Spacing } from '../../theme';
 
-/** Generate 30-minute "HH:MM" slots within an availability window. */
-const buildSlots = (start: string, end: string): string[] => {
-  const toMin = (t: string) => {
-    const [h, m] = t.split(':').map(Number);
-    return (h || 0) * 60 + (m || 0);
-  };
-  const fmt = (min: number) =>
-    `${String(Math.floor(min / 60)).padStart(2, '0')}:${String(min % 60).padStart(2, '0')}`;
-  const out: string[] = [];
-  for (let t = toMin(start); t < toMin(end); t += 30) out.push(fmt(t));
-  return out;
-};
-
 const DoctorsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const [doctors, setDoctors] = useState<BookingDoctor[]>([]);
   const [loading, setLoading] = useState(true);
@@ -31,18 +18,16 @@ const DoctorsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     setError(null);
     try {
       const list = await sessionService.getAvailableDoctors();
-      const today = new Date().getDay();
-      const mapped: BookingDoctor[] = list.map((doc) => {
-        const day =
-          doc.availability.find((a) => a.day_of_week === today) ??
-          doc.availability[0];
-        return {
-          id: doc.id,
-          name: doc.full_name,
-          specialty: doc.specialization,
-          timeSlots: day ? buildSlots(day.start_time, day.end_time) : [],
-        };
-      });
+      const mapped: BookingDoctor[] = list.map((doc) => ({
+        id: doc.id,
+        name: doc.full_name,
+        specialty: doc.specialization,
+        availability: doc.availability.map((a) => ({
+          day_of_week: a.day_of_week,
+          start_time: a.start_time,
+          end_time: a.end_time,
+        })),
+      }));
       setDoctors(mapped);
     } catch {
       setError('Could not load doctors. Is the backend running?');

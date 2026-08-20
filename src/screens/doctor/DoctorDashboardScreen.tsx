@@ -21,17 +21,17 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import { DASHBOARD_STATS } from '../../context/appData';
 import { sessionService } from '../../services';
-import { AppointmentRequest, Conversation } from '../../types';
+import { Conversation } from '../../types';
 import { Colors, Radius, Spacing, responsiveSize } from '../../theme';
 
 const DoctorDashboardScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const { user } = useAuth();
   const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [requests, setRequests] = useState<AppointmentRequest[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
 
-  const pendingRequests = requests.filter((r) => r.status === 'pending');
+  // Pending requests = conversations awaiting the doctor's decision.
+  const pendingRequests = conversations.filter((c) => c.state === 'pending');
 
   const stats = useMemo(
     () => ({
@@ -59,15 +59,10 @@ const DoctorDashboardScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
   const refresh = useCallback(async () => {
     setLoading(true);
     try {
-      const [convs, reqs] = await Promise.all([
-        sessionService.getConversations(),
-        sessionService.getDoctorRequests(),
-      ]);
+      const convs = await sessionService.getConversations();
       setConversations(convs);
-      setRequests(reqs);
     } catch {
       setConversations([]);
-      setRequests([]);
     } finally {
       setLoading(false);
     }

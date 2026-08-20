@@ -169,8 +169,8 @@ export interface BookingDoctor {
   id: number;
   name: string;
   specialty?: string;
-  /** Available slots for the selected day as "HH:MM" (24h). */
-  timeSlots: string[];
+  /** Weekly availability windows used to build bookable slots per date. */
+  availability: { day_of_week: number; start_time: string; end_time: string }[];
 }
 
 /** Backend in-app notification (GET /api/notification/all). */
