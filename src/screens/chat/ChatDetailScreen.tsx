@@ -216,9 +216,16 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
     const onChatDecision = (payload: any) => {
       const { conversation_id, status } = unwrap(payload);
       if (conversation_id !== undefined && String(conversation_id) !== String(chatId)) return;
-      if (status === 'approved') setSessionNotice('Request approved — session scheduled');
-      else if (status === 'rescheduled') setSessionNotice('Request rescheduled by the doctor');
-      else if (status === 'rejected') setSessionNotice('Request rejected by the doctor');
+      if (status === 'approved') {
+        // Doctor approved → session moves to in_progress ("Starts in" countdown).
+        setConversation((prev) => (prev ? { ...prev, state: 'in_progress' } : prev));
+        setSessionNotice('Request approved — session scheduled');
+      } else if (status === 'rescheduled') {
+        setSessionNotice('Request rescheduled by the doctor');
+      } else if (status === 'rejected') {
+        setConversation((prev) => (prev ? { ...prev, state: 'ended' } : prev));
+        setSessionNotice('Request rejected by the doctor');
+      }
     };
 
     socket?.on('new-message', onNewMessage);
@@ -259,29 +266,44 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
     ? dayjs(conversation.scheduled_end).valueOf()
     : null;
 
-  const isBeforeStart = scheduledAtMs !== null && now < scheduledAtMs;
-  const hasEnded = endAtMs !== null && now >= endAtMs;
-  const locked = chatDisabled || !conversation || isBeforeStart || hasEnded;
+  const state = conversation?.state ?? null;
+  const isPending = state === 'pending';
+  const isBeforeStart =
+    !isPending && scheduledAtMs !== null && now < scheduledAtMs;
+  const hasEnded =
+    state === 'ended' || (endAtMs !== null && now >= endAtMs);
+  const locked =
+    chatDisabled || !conversation || isPending || isBeforeStart || hasEnded;
 
+  // State-driven banner: pending → awaiting approval; in_progress → starts in;
+  // active → remaining; ended → ended.
   let countdownLabel: string | null = null;
   let countdownTone: 'start' | 'remaining' | 'ended' = 'remaining';
-  if (isBeforeStart && scheduledAtMs !== null) {
+  if (isPending) {
+    countdownLabel = 'Awaiting doctor approval';
+    countdownTone = 'start';
+  } else if (state === 'ended') {
+    countdownLabel = 'Session ended';
+    countdownTone = 'ended';
+  } else if (state === 'in_progress' && scheduledAtMs !== null) {
     const secs = Math.max(0, Math.ceil((scheduledAtMs - now) / 1000));
     countdownLabel = `Starts in ${formatCountdown(secs)}`;
     countdownTone = 'start';
+  } else if (state === 'active' && endAtMs !== null) {
+    const secs = Math.max(0, Math.ceil((endAtMs - now) / 1000));
+    countdownLabel = secs === 0 ? 'Session ended' : `${formatCountdown(secs)} remaining`;
+    countdownTone = secs === 0 ? 'ended' : 'remaining';
   } else if (endAtMs !== null) {
     const secs = Math.max(0, Math.ceil((endAtMs - now) / 1000));
-    if (hasEnded) {
-      countdownLabel = 'Session ended';
-      countdownTone = 'ended';
-    } else {
-      countdownLabel = `${formatCountdown(secs)} remaining`;
-      countdownTone = 'remaining';
-    }
+    countdownLabel =
+      now >= endAtMs ? 'Session ended' : `${formatCountdown(secs)} remaining`;
+    countdownTone = now >= endAtMs ? 'ended' : 'remaining';
   }
 
   const inputPlaceholder = !locked
     ? 'Type a message'
+    : isPending
+    ? 'Awaiting doctor approval'
     : isBeforeStart
     ? 'Session starts soon'
     : 'Session ended';

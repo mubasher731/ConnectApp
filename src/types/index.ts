@@ -13,7 +13,12 @@ export interface User {
   updated_at?: string;
 }
 
-export type SessionStatus = 'scheduled' | 'active' | 'completed' | 'missed';
+export type SessionStatus =
+  | 'scheduled'
+  | 'active'
+  | 'completed'
+  | 'missed'
+  | 'pending';
 
 export interface Session {
   id: number;

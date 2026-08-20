@@ -32,7 +32,14 @@ const mapConversationToChat = (c: Conversation, meId: number): Chat => {
     lastMessageAt: c.scheduled_start ?? '',
     unreadCount: 0,
     isTyping: false,
-    status: c.state === 'ended' ? 'completed' : c.state === 'pending' ? 'scheduled' : 'active',
+    status:
+      c.state === 'pending'
+        ? 'pending'
+        : c.state === 'ended'
+        ? 'completed'
+        : c.state === 'in_progress'
+        ? 'scheduled'
+        : 'active',
     durationMinutes,
     startTime: c.actual_start ?? c.scheduled_start,
     endTime: c.actual_end ?? null,

@@ -11,6 +11,7 @@ const STATUS_META: Record<
   active: { label: 'Upcoming', bg: '#E8F0FE', color: Colors.info },
   completed: { label: 'Consulted', bg: Colors.successSoft, color: Colors.success },
   missed: { label: 'No Show', bg: Colors.errorSoft, color: Colors.error },
+  pending: { label: 'Pending', bg: Colors.warningSoft, color: Colors.warning },
 };
 
 /** Public accessor so cards can reuse the status label/colors. */
