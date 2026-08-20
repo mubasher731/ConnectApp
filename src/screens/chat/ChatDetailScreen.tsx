@@ -19,17 +19,13 @@ import { socketService } from '../../api/socket';
 import { useAuth } from '../../context/AuthContext';
 import { CHAT_EMOJIS } from '../../context/appData';
 import { chatService, sessionService } from '../../services';
-import { mockSessionStore, MockSession, MockMessage } from '../../services/mockSessionStore';
-import { Message, Session, SessionStatus } from '../../types';
+import { Conversation, Message } from '../../types';
 import { Colors, Radius, Shadows, Spacing, responsiveSize } from '../../theme';
 
 interface ChatDetailScreenProps {
   route: any;
   navigation: any;
 }
-
-/** Union of a message row and the "Previous Sessions" history separator. */
-type DisplayItem = Message | { kind: 'historySeparator'; count: number };
 
 const formatTime = (ts: string) =>
   dayjs(ts).isValid() ? dayjs(ts).format('hh:mm A') : ts;
@@ -84,9 +80,7 @@ const ChatHeaderTitle: React.FC<{ name: string; online: boolean }> = ({ name, on
   <View style={styles.headerTitleRow}>
     <Avatar name={name || '?'} size={34} online={online} />
     <View style={styles.headerTitleText}>
-      <Text style={styles.headerTitleName} numberOfLines={1}>
-        {name}
-      </Text>
+      <Text style={styles.headerTitleName}>{name}</Text>
       <Text style={styles.headerTitleStatus}>{online ? 'online' : 'offline'}</Text>
     </View>
   </View>
@@ -94,7 +88,7 @@ const ChatHeaderTitle: React.FC<{ name: string; online: boolean }> = ({ name, on
 
 const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }) => {
   const headerHeight = useHeaderHeight();
-  const { chatId, participantName, participantOnline } = route.params ?? {};
+  const { chatId, participantName } = route.params ?? {};
   const { user } = useAuth();
 
   const [messages, setMessages] = useState<Message[]>([]);
@@ -103,25 +97,18 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
   const [showEmoji, setShowEmoji] = useState(false);
   const [sessionNotice, setSessionNotice] = useState<string | null>(null);
   const [chatDisabled, setChatDisabled] = useState(false);
-  const [online, setOnline] = useState(!!participantOnline);
-  // Session metadata + countdown state.
-  const [session, setSession] = useState<Session | null>(null);
-  const [status, setStatus] = useState<SessionStatus>('scheduled');
+  const [online, setOnline] = useState(false);
+  const [conversation, setConversation] = useState<Conversation | null>(null);
   const [now, setNow] = useState(() => Date.now());
-  // AsyncStorage-backed mock session mode (replaces the backend for demos).
-  const isMock = !!route.params?.isMock || String(chatId).startsWith('MS-');
-  const [mockSession, setMockSession] = useState<MockSession | null>(null);
-  const [mockMessages, setMockMessages] = useState<Message[]>([]);
-  const [pastMessages, setPastMessages] = useState<Message[]>([]);
   const [showExtension, setShowExtension] = useState(false);
-  const [demoEndOverride, setDemoEndOverride] = useState<number | null>(null);
+  const [extensionSecondsLeft, setExtensionSecondsLeft] = useState(60);
   const extensionFiredForEnd = useRef<number | null>(null);
   const listRef = useRef<FlatList>(null);
-  // Dedup guards: seen server message ids + unconfirmed optimistic messages.
-  const seenIds = useRef<Set<string>>(new Set());
-  const optimisticRef = useRef<Map<string, Message>>(new Map());
   const typingTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastTypingSent = useRef(0);
+  const peerUserIdRef = useRef<number | null>(null);
+
+  const isDoctorRole = user?.role_id === 3;
 
   // Custom WhatsApp-style header (avatar + name + online status).
   useEffect(() => {
@@ -135,237 +122,151 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
     });
   }, [navigation, participantName, online, otherTyping]);
 
+  // Load conversation + messages, join the room, subscribe to real-time events.
   useEffect(() => {
-    if (isMock) return; // mock sessions are AsyncStorage-only
+    if (!chatId) return;
     let mounted = true;
 
-    const loadMessages = async () => {
+    const load = async () => {
       try {
-        const data = await chatService.getMessages(chatId);
-        if (mounted) setMessages(data);
+        const conv = await sessionService.getConversation(String(chatId));
+        if (mounted && conv) {
+          setConversation(conv);
+          peerUserIdRef.current = conv.peer_user_id ?? null;
+        }
+      } catch {
+        // ignore — messages may still load
+      }
+      try {
+        const msgs = await chatService.getMessages(chatId);
+        if (mounted) setMessages(msgs);
       } catch {
         if (mounted) setMessages([]);
       }
     };
-
-    if (chatId) {
-      loadMessages();
-      seenIds.current.clear(); // fresh room — reset dedup set
-      socketService.joinSession(chatId);
-      // Join via HTTP so the server attaches us to the room and marks active.
-      sessionService.joinSession(chatId, socketService.getSocket()?.id).catch(() => {});
-      // Fetch session details to power the countdown + input locking.
-      sessionService
-        .getSession(chatId)
-        .then((s) => {
-          if (!mounted) return;
-          setSession(s);
-          if (s?.status) setStatus(s.status);
-        })
-        .catch(() => {});
-    }
+    load();
+    socketService.joinSession(chatId);
 
     const socket = socketService.getSocket();
-    const onSessionMessage = (payload: any) => {
-      if (!mounted) return;
-      const raw = payload?.message ?? payload;
-      const id = raw.id ?? `s-${Date.now()}`;
-      // Skip any already-seen server message (dedup by id).
-      if (seenIds.current.has(String(id))) return;
-      seenIds.current.add(String(id));
-
-      const incoming: Message = {
-        id,
-        sessionId: raw.session_id ?? chatId,
-        senderId: raw.sender_id,
-        senderRole: raw.sender_role,
-        text: raw.message_text ?? '',
-        type: raw.message_type ?? 'text',
-        createdAt: raw.sent_at ?? new Date().toISOString(),
-        isRead: raw.is_read,
-        sentByMe: raw.sender_id === user?.id,
+    const mapIncoming = (raw: any): Message => {
+      const isPatient = user?.role_id === 4;
+      const role = raw.role ?? 'patient';
+      const sentByMe = (role === 'patient') === isPatient;
+      return {
+        id: raw.id ?? `s-${Date.now()}`,
+        sessionId: raw.conversation_id ?? chatId,
+        senderId: sentByMe ? user?.id ?? 0 : 0,
+        senderRole: role,
+        text: raw.content ?? '',
+        type: raw.type ?? 'text',
+        createdAt: raw.created_at ?? new Date().toISOString(),
+        isRead: raw.is_read === true || raw.status === 'read',
+        sentByMe,
       };
-
-      setMessages((prev) => {
-        // Exact id already rendered — never add a second copy.
-        if (prev.some((m) => m.id === id)) return prev;
-        // Our own message: the server confirmed it, so replace the optimistic
-        // copy (same text) instead of appending a duplicate.
-        if (incoming.sentByMe) {
-          const optimistic = [...optimisticRef.current.values()].find(
-            (o) => o.sentByMe && o.text === incoming.text
-          );
-          if (optimistic) {
-            optimisticRef.current.delete(String(optimistic.id));
-            return prev.map((m) => (m.id === optimistic.id ? incoming : m));
-          }
-        }
-        return [...prev, incoming];
-      });
     };
 
-    // New spec: typing/typingStopped — clear the indicator immediately on stop.
-    const onTyping = ({ userId }: { userId: number | string }) => {
-      if (userId === user?.id) return;
-      setOtherTyping(true);
+    // The backend wraps every socket payload in `{ data: {...} }`.
+    const unwrap = (payload: any) => payload?.data ?? payload;
+
+    const onNewMessage = (payload: any) => {
+      if (!mounted) return;
+      const raw = unwrap(payload);
+      const id = raw.id ?? `s-${Date.now()}`;
+      setMessages((prev) =>
+        prev.some((m) => String(m.id) === String(id))
+          ? prev
+          : [...prev, mapIncoming(raw)]
+      );
+    };
+    const onTyping = (payload: any) => {
+      const { conversationId, isTyping } = unwrap(payload);
+      if (conversationId !== undefined && String(conversationId) !== String(chatId)) return;
+      setOtherTyping(!!isTyping);
       if (typingTimeout.current) clearTimeout(typingTimeout.current);
-      typingTimeout.current = setTimeout(() => setOtherTyping(false), 3000);
-    };
-    const onTypingStopped = ({ userId }: { userId: number | string }) => {
-      if (userId === user?.id) return;
-      setOtherTyping(false);
-      if (typingTimeout.current) clearTimeout(typingTimeout.current);
-    };
-    const onUserPresence = ({ userId, online: isOnline }: { userId: number | string; online?: boolean }) => {
-      if (userId !== user?.id && typeof isOnline === 'boolean') setOnline(isOnline);
-    };
-
-    // Session lifecycle banners.
-    const onSessionStarted = () => {
-      setSessionNotice('Session started');
-      setStatus('active');
-      setChatDisabled(false);
-    };
-    const onSessionEnding = () => setSessionNotice('Session ends in 1 minute');
-    const onSessionEnded = () => {
-      setSessionNotice('Session ended');
-      setStatus('completed');
-      setChatDisabled(true);
-    };
-    const onSessionMissed = () => {
-      setSessionNotice('Session missed — nobody joined');
-      setStatus('missed');
-      setChatDisabled(true);
-    };
-    const onUserJoined = ({ userRole }: { userRole?: string }) => {
-      if (userRole) {
-        setSessionNotice(`${userRole === 'doctor' ? 'Doctor' : 'Patient'} joined the session`);
+      if (isTyping) {
+        typingTimeout.current = setTimeout(() => setOtherTyping(false), 3000);
       }
     };
+    const onSessionTimer = (payload: any) => {
+      const { conversationId, state } = unwrap(payload);
+      if (conversationId !== undefined && String(conversationId) !== String(chatId)) return;
+      if (state === 'active' || state === 'in_progress') {
+        setChatDisabled(false);
+        setSessionNotice(null);
+      }
+    };
+    const onSessionEnded = (payload: any) => {
+      const { conversationId } = unwrap(payload);
+      if (conversationId !== undefined && String(conversationId) !== String(chatId)) return;
+      setChatDisabled(true);
+      setSessionNotice('Session ended');
+    };
+    const onUserOnline = (payload: any) => {
+      const { userId, online: isOnline } = unwrap(payload);
+      if (userId !== undefined && userId === peerUserIdRef.current) setOnline(!!isOnline);
+    };
+    const onUserJoined = (payload: any) => {
+      const { userId } = unwrap(payload);
+      if (userId !== undefined && userId === peerUserIdRef.current) setOnline(true);
+    };
+    const onUserLeft = (payload: any) => {
+      const { userId } = unwrap(payload);
+      if (userId !== undefined && userId === peerUserIdRef.current) setOnline(false);
+    };
+    const onChatDecision = (payload: any) => {
+      const { conversation_id, status } = unwrap(payload);
+      if (conversation_id !== undefined && String(conversation_id) !== String(chatId)) return;
+      if (status === 'approved') setSessionNotice('Request approved — session scheduled');
+      else if (status === 'rescheduled') setSessionNotice('Request rescheduled by the doctor');
+      else if (status === 'rejected') setSessionNotice('Request rejected by the doctor');
+    };
 
-    socket?.on('sessionMessage', onSessionMessage);
+    socket?.on('new-message', onNewMessage);
     socket?.on('typing', onTyping);
-    socket?.on('typingStopped', onTypingStopped);
-    socket?.on('userPresence', onUserPresence);
-    socket?.on('sessionStarted', onSessionStarted);
-    socket?.on('sessionEnding', onSessionEnding);
-    socket?.on('sessionEnded', onSessionEnded);
-    socket?.on('sessionMissed', onSessionMissed);
-    socket?.on('userJoined', onUserJoined);
+    socket?.on('session-timer-update', onSessionTimer);
+    socket?.on('session-ended', onSessionEnded);
+    socket?.on('user-online', onUserOnline);
+    socket?.on('user-joined', onUserJoined);
+    socket?.on('user-left', onUserLeft);
+    socket?.on('chat-decision', onChatDecision);
 
     return () => {
       mounted = false;
-      socket?.off('sessionMessage', onSessionMessage);
+      socket?.off('new-message', onNewMessage);
       socket?.off('typing', onTyping);
-      socket?.off('typingStopped', onTypingStopped);
-      socket?.off('userPresence', onUserPresence);
-      socket?.off('sessionStarted', onSessionStarted);
-      socket?.off('sessionEnding', onSessionEnding);
-      socket?.off('sessionEnded', onSessionEnded);
-      socket?.off('sessionMissed', onSessionMissed);
-      socket?.off('userJoined', onUserJoined);
-      if (chatId) socketService.leaveSession(chatId);
+      socket?.off('session-timer-update', onSessionTimer);
+      socket?.off('session-ended', onSessionEnded);
+      socket?.off('user-online', onUserOnline);
+      socket?.off('user-joined', onUserJoined);
+      socket?.off('user-left', onUserLeft);
+      socket?.off('chat-decision', onChatDecision);
+      socketService.leaveSession(chatId);
     };
-  }, [chatId, user?.id, isMock]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chatId, user?.id]);
 
-  // ---- Mock session loader (AsyncStorage) ----
-  useEffect(() => {
-    if (!isMock || !chatId) return;
-    let mounted = true;
-    (async () => {
-      const found = await mockSessionStore.getSession(String(chatId));
-      if (!mounted || !found) return;
-      setMockSession(found);
-      const [msgs, history] = await Promise.all([
-        mockSessionStore.getMessages(found.id),
-        mockSessionStore.getHistoryForPair(
-          found.patientId,
-          found.doctorId,
-          found.id
-        ),
-      ]);
-      if (!mounted) return;
-      const mapToMessage = (m: MockMessage): Message => ({
-        id: m.id,
-        sessionId: m.sessionId,
-        senderId: m.senderId,
-        senderRole: m.senderRole,
-        text: m.text,
-        type: m.type,
-        createdAt: m.createdAt,
-        isRead: true,
-        sentByMe: m.senderId === user?.id,
-      });
-      setMockMessages(msgs.map(mapToMessage));
-      setPastMessages(history.map(mapToMessage));
-    })();
-    return () => {
-      mounted = false;
-    };
-  }, [chatId, isMock, user?.id]);
-
-  // Tick once per second to drive the real-time countdown timer.
+  // Tick once per second to drive the countdown timer.
   useEffect(() => {
     const interval = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(interval);
   }, []);
 
-  // ---- Countdown + input locking (derived from session metadata) ----
-  const mockStartMs =
-    isMock && mockSession ? dayjs(mockSession.scheduledStart).valueOf() : null;
-  const mockComputedEndMs =
-    mockStartMs !== null && mockSession
-      ? mockStartMs +
-        (mockSession.durationMinutes + mockSession.extendedBy) * 60_000
-      : null;
-  const mockEndMs = demoEndOverride ?? mockComputedEndMs;
-
-  const durationMs = isMock
-    ? (mockSession?.durationMinutes ?? 0) * 60 * 1000
-    : (session?.duration_minutes ?? 0) * 60 * 1000;
-  const scheduledAt = isMock
-    ? mockStartMs !== null
-      ? dayjs(mockStartMs)
-      : null
-    : session?.scheduled_start
-    ? dayjs(session.scheduled_start)
+  // ---- Countdown + input locking (derived from conversation timings) ----
+  const scheduledAtMs = conversation?.scheduled_start
+    ? dayjs(conversation.scheduled_start).valueOf()
     : null;
-  const startAt = isMock
-    ? null
-    : session?.actual_start
-    ? dayjs(session.actual_start)
-    : null;
-  const endAtMs = isMock
-    ? mockEndMs
-    : startAt
-    ? startAt.valueOf() + durationMs
-    : scheduledAt
-    ? scheduledAt.valueOf() + durationMs
+  const endAtMs = conversation?.scheduled_end
+    ? dayjs(conversation.scheduled_end).valueOf()
     : null;
 
-  const mockActive =
-    isMock &&
-    mockStartMs !== null &&
-    mockEndMs !== null &&
-    now >= mockStartMs &&
-    now < mockEndMs;
-
-  const isBeforeStart = isMock
-    ? mockStartMs !== null && now < mockStartMs
-    : !!scheduledAt && status === 'scheduled' && now < scheduledAt.valueOf();
+  const isBeforeStart = scheduledAtMs !== null && now < scheduledAtMs;
   const hasEnded = endAtMs !== null && now >= endAtMs;
-  // Locked until the session officially starts; unlocks while active and
-  // locks again the moment the timer reaches zero.
-  const locked =
-    chatDisabled ||
-    (isMock ? !mockSession : !session) ||
-    isBeforeStart ||
-    hasEnded;
+  const locked = chatDisabled || !conversation || isBeforeStart || hasEnded;
 
   let countdownLabel: string | null = null;
   let countdownTone: 'start' | 'remaining' | 'ended' = 'remaining';
-  if (isBeforeStart && scheduledAt) {
-    const secs = Math.max(0, Math.ceil((scheduledAt.valueOf() - now) / 1000));
+  if (isBeforeStart && scheduledAtMs !== null) {
+    const secs = Math.max(0, Math.ceil((scheduledAtMs - now) / 1000));
     countdownLabel = `Starts in ${formatCountdown(secs)}`;
     countdownTone = 'start';
   } else if (endAtMs !== null) {
@@ -385,29 +286,50 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
     ? 'Session starts soon'
     : 'Session ended';
 
-  const sendMessage = useCallback(async () => {
-    const trimmed = inputText.trim();
-    if (
-      !trimmed ||
-      !chatId ||
-      chatDisabled ||
-      (isMock ? !mockActive : !session || isBeforeStart || hasEnded)
-    )
-      return;
-
-    // Mock mode: persist the message to AsyncStorage.
-    if (isMock && mockSession) {
-      const saved = await mockSessionStore.addMessage(mockSession, {
-        senderId: user?.id ?? 0,
-        senderRole: user?.role_id === 3 ? 'doctor' : 'patient',
-        text: trimmed,
-        type: 'text',
-      });
-      setMockMessages((prev) => [...prev, { ...saved, sentByMe: true }]);
-      setInputText('');
-      setShowEmoji(false);
+  // ---- Session extension alert (doctor, 1 minute before end) ----
+  useEffect(() => {
+    if (!isDoctorRole || endAtMs === null) return;
+    const remaining = endAtMs - now;
+    if (remaining > 60_000) {
+      extensionFiredForEnd.current = null;
       return;
     }
+    if (remaining <= 0) return; // already ended — no alert
+    if (extensionFiredForEnd.current !== endAtMs) {
+      extensionFiredForEnd.current = endAtMs;
+      setExtensionSecondsLeft(Math.max(1, Math.ceil(remaining / 1000)));
+      setShowExtension(true);
+    }
+  }, [now, endAtMs, isDoctorRole]);
+
+  const handleExtensionCancel = () => setShowExtension(false);
+
+  const handleExtend = async () => {
+    setShowExtension(false);
+    if (!conversation) return;
+    try {
+      await sessionService.extendSession(conversation.id);
+    } catch {
+      // Still reflect the extension locally for the demo even if the call fails.
+    }
+    const newEnd = dayjs().add(5, 'minute').toISOString();
+    setConversation((prev) => (prev ? { ...prev, scheduled_end: newEnd } : prev));
+    const sys: Message = {
+      id: `sys-${Date.now()}`,
+      sessionId: chatId,
+      senderId: 0,
+      text: 'Session extended by 5 minutes',
+      type: 'system',
+      createdAt: new Date().toISOString(),
+      isRead: true,
+      sentByMe: false,
+    };
+    setMessages((prev) => [...prev, sys]);
+  };
+
+  const sendMessage = useCallback(async () => {
+    const trimmed = inputText.trim();
+    if (!trimmed || !chatId || locked) return;
 
     socketService.sendTypingStopped(chatId);
     const localId = `local-${Date.now()}`;
@@ -420,46 +342,30 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
       createdAt: new Date().toISOString(),
       sentByMe: true,
     };
-    optimisticRef.current.set(localId, optimistic);
     setMessages((prev) => [...prev, optimistic]);
 
-    // Send via REST (session must be active); remove the optimistic copy on failure.
-    chatService
-      .sendMessage({ sessionId: chatId, content: trimmed })
-      .catch(() => {
-        optimisticRef.current.delete(localId);
-        setMessages((prev) => prev.filter((m) => m.id !== localId));
-      });
-
+    try {
+      const saved = await chatService.sendMessage({ sessionId: chatId, content: trimmed });
+      setMessages((prev) =>
+        prev.map((m) => (m.id === localId ? { ...saved, id: saved.id } : m))
+      );
+    } catch {
+      setMessages((prev) => prev.filter((m) => m.id !== localId));
+    }
     setInputText('');
     setShowEmoji(false);
-  }, [
-    chatId,
-    inputText,
-    chatDisabled,
-    user?.id,
-    session,
-    isBeforeStart,
-    hasEnded,
-    isMock,
-    mockSession,
-    mockActive,
-    user?.role_id,
-  ]);
+  }, [chatId, inputText, locked, user?.id]);
 
   const handleChangeText = (text: string) => {
     const wasEmpty = inputText.trim().length === 0;
     const nowEmpty = text.trim().length === 0;
     setInputText(text);
     if (!chatId) return;
-
     const nowMs = Date.now();
     if (nowEmpty) {
-      // Emit typingStopped when the composer is cleared.
       if (!wasEmpty) socketService.sendTypingStopped(chatId);
       return;
     }
-    // Throttle typing signals to ~1/s (spec requirement).
     if (wasEmpty || nowMs - lastTypingSent.current > 1000) {
       lastTypingSent.current = nowMs;
       socketService.sendTyping(chatId);
@@ -470,98 +376,19 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
     setInputText((prev) => prev + emoji);
   };
 
-  // ---- Session extension alert (doctor, 1 minute before end) ----
-  const isDoctorRole = user?.role_id === 3;
-
-  useEffect(() => {
-    if (!isMock || !isDoctorRole || mockEndMs === null) return;
-    const remaining = mockEndMs - now;
-    if (remaining > 60_000) {
-      // Re-arm when the session gets extended (new end time).
-      extensionFiredForEnd.current = null;
-      return;
-    }
-    if (remaining <= 0) return; // already ended — no alert
-    if (extensionFiredForEnd.current !== mockEndMs) {
-      extensionFiredForEnd.current = mockEndMs;
-      setShowExtension(true);
-    }
-  }, [now, mockEndMs, isMock, isDoctorRole]);
-
-  const handleExtensionCancel = () => setShowExtension(false);
-
-  const handleExtend = async () => {
-    setShowExtension(false);
-    if (!mockSession) return;
-    const newExtendedBy = (mockSession.extendedBy ?? 0) + 5;
-    await mockSessionStore.updateSession(mockSession.id, {
-      extendedBy: newExtendedBy,
-    });
-    const sys = await mockSessionStore.addSystemMessage(
-      mockSession,
-      'Session extended by 5 minutes'
-    );
-    setMockSession({ ...mockSession, extendedBy: newExtendedBy });
-    setDemoEndOverride(null); // resume real (extended) end time
-    setMockMessages((prev) => [
-      ...prev,
-      {
-        id: sys.id,
-        sessionId: chatId,
-        senderId: 0,
-        text: sys.text,
-        type: 'system',
-        createdAt: sys.createdAt,
-        isRead: true,
-        sentByMe: false,
-      },
-    ]);
-  };
-
-  // Combined render list: previous-session history → separator → current session.
-  const displayItems: DisplayItem[] = isMock
-    ? [
-        ...(pastMessages.length > 0
-          ? [
-              ...pastMessages,
-              { kind: 'historySeparator' as const, count: pastMessages.length },
-            ]
-          : []),
-        ...mockMessages,
-      ]
-    : messages;
-
-  const renderItem = ({ item, index }: { item: DisplayItem; index: number }) => {
-    // History separator between previous sessions and the current one.
-    if (item && typeof item === 'object' && 'kind' in item) {
-      return (
-        <View style={styles.historySeparator}>
-          <View style={styles.historyLine} />
-          <Text style={styles.historySeparatorText}>Previous Sessions — read only</Text>
-          <View style={styles.historyLine} />
-        </View>
-      );
-    }
-
-    const message = item as Message;
-    const prev = displayItems[index - 1];
-    const prevMsg =
-      prev && typeof prev === 'object' && 'kind' in prev
-        ? null
-        : (prev as Message | undefined);
-    const showDate =
-      !prevMsg || !dayjs(message.createdAt).isSame(dayjs(prevMsg.createdAt), 'day');
-    const isGroupStart =
-      !prevMsg || prevMsg.sentByMe !== message.sentByMe || showDate;
+  const renderItem = ({ item, index }: { item: Message; index: number }) => {
+    const prev = messages[index - 1];
+    const showDate = !prev || !dayjs(item.createdAt).isSame(dayjs(prev.createdAt), 'day');
+    const isGroupStart = !prev || prev.sentByMe !== item.sentByMe || showDate;
     const grouped = !isGroupStart;
 
     // System messages (e.g. "Session extended by 5 minutes") render centered.
-    if (message.type === 'system') {
+    if (item.type === 'system') {
       return (
         <View style={styles.systemMessageRow}>
           <View style={styles.systemBubble}>
             <AppIcon name="time-outline" size={13} color={Colors.textSecondary} />
-            <Text style={styles.systemText}>{message.text}</Text>
+            <Text style={styles.systemText}>{item.text}</Text>
           </View>
         </View>
       );
@@ -571,17 +398,17 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
       <View>
         {showDate && (
           <View style={styles.dateSeparator}>
-            <Text style={styles.dateSeparatorText}>{formatDay(message.createdAt)}</Text>
+            <Text style={styles.dateSeparatorText}>{formatDay(item.createdAt)}</Text>
           </View>
         )}
         <View
           style={[
             styles.messageRow,
-            message.sentByMe ? styles.messageRowSent : styles.messageRowReceived,
+            item.sentByMe ? styles.messageRowSent : styles.messageRowReceived,
             grouped && styles.messageRowGrouped,
           ]}
         >
-          {!message.sentByMe && (
+          {!item.sentByMe && (
             <View style={styles.avatarSlot}>
               {isGroupStart ? <Avatar name={participantName || '?'} size={30} /> : null}
             </View>
@@ -590,27 +417,27 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
             <View
               style={[
                 styles.messageBubble,
-                message.sentByMe ? styles.sentBubble : styles.receivedBubble,
+                item.sentByMe ? styles.sentBubble : styles.receivedBubble,
               ]}
             >
               <Text
                 style={[
                   styles.messageText,
-                  message.sentByMe ? styles.sentText : styles.receivedText,
+                  item.sentByMe ? styles.sentText : styles.receivedText,
                 ]}
               >
-                {message.text}
+                {item.text}
               </Text>
               <View style={styles.bubbleMeta}>
                 <Text
                   style={[
                     styles.bubbleTime,
-                    message.sentByMe ? styles.sentTimeText : styles.receivedTimeText,
+                    item.sentByMe ? styles.sentTimeText : styles.receivedTimeText,
                   ]}
                 >
-                  {formatTime(message.createdAt)}
+                  {formatTime(item.createdAt)}
                 </Text>
-                {message.sentByMe && (
+                {item.sentByMe && (
                   <View style={styles.checkIcon}>
                     <AppIcon name="checkmark-done" size={14} color={Colors.white} />
                   </View>
@@ -684,27 +511,10 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
           </View>
         ) : null}
 
-        {/* Doctor demo shortcut: fast-forward to the last minute so the
-            extension alert is easy to showcase without waiting. */}
-        {isMock && isDoctorRole && !showExtension && mockEndMs !== null && !hasEnded ? (
-          <TouchableOpacity
-            style={styles.demoSkip}
-            onPress={() => setDemoEndOverride(Date.now() + 60_000)}
-            activeOpacity={0.7}
-          >
-            <AppIcon name="fast-forward-outline" size={14} color={Colors.primary} />
-            <Text style={styles.demoSkipText}>Demo: skip to last minute</Text>
-          </TouchableOpacity>
-        ) : null}
-
         <FlatList
           ref={listRef}
-          data={displayItems}
-          keyExtractor={(item) =>
-            item && typeof item === 'object' && 'kind' in item
-              ? `history-sep-${(item as { count: number }).count}`
-              : String((item as Message).id)
-          }
+          data={messages}
+          keyExtractor={(item) => String(item.id)}
           renderItem={renderItem}
           contentContainerStyle={styles.messagesList}
           showsVerticalScrollIndicator={false}
@@ -751,7 +561,7 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
                 onChangeText={handleChangeText}
                 multiline
                 maxLength={500}
-                onSubmitEditing={sendMessage}
+                onSubmitEditing={() => sendMessage()}
                 returnKeyType="send"
                 editable={!locked}
               />
@@ -765,7 +575,7 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
                   <AppIcon
                     name={showEmoji ? 'close' : 'happy-outline'}
                     size={20}
-                    color={chatDisabled ? Colors.textTertiary : showEmoji ? Colors.primary : Colors.textSecondary}
+                    color={locked ? Colors.textTertiary : showEmoji ? Colors.primary : Colors.textSecondary}
                   />
                 </TouchableOpacity>
               </View>
@@ -778,7 +588,7 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
                 locked && styles.buttonDisabled,
                 inputText.trim().length === 0 && styles.buttonDisabled,
               ]}
-              onPress={sendMessage}
+              onPress={() => sendMessage()}
               activeOpacity={0.85}
               disabled={locked || inputText.trim().length === 0}
             >
@@ -790,7 +600,7 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
 
       <SessionExtensionAlert
         visible={showExtension}
-        secondsLeft={60}
+        secondsLeft={extensionSecondsLeft}
         onCancel={handleExtensionCancel}
         onExtend={handleExtend}
       />
@@ -809,15 +619,18 @@ const styles = StyleSheet.create({
   headerTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    flex: 1,
   },
   headerTitleText: {
+    flex: 1,
+    flexShrink: 1,
     marginLeft: Spacing.sm,
   },
   headerTitleName: {
     fontSize: responsiveSize(16),
     fontWeight: '700',
     color: Colors.text,
-    maxWidth: '70%',
+    flexShrink: 1,
   },
   headerTitleStatus: {
     fontSize: 12,
@@ -975,6 +788,24 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.primary,
     marginHorizontal: 3,
   },
+  systemMessageRow: {
+    alignItems: 'center',
+    marginVertical: Spacing.sm,
+  },
+  systemBubble: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.surface,
+    borderRadius: Radius.round,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 6,
+  },
+  systemText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: Colors.textSecondary,
+    marginLeft: Spacing.xs,
+  },
   inputContainer: {
     borderTopWidth: 1,
     borderTopColor: Colors.primary,
@@ -1042,58 +873,6 @@ const styles = StyleSheet.create({
   inputActionActive: {
     backgroundColor: Colors.primarySoft,
     borderRadius: Radius.round,
-  },
-  historySeparator: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginVertical: Spacing.lg,
-  },
-  historyLine: {
-    flex: 1,
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: Colors.border,
-    marginHorizontal: Spacing.md,
-  },
-  historySeparatorText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: Colors.textSecondary,
-    textAlign: 'center',
-  },
-  systemMessageRow: {
-    alignItems: 'center',
-    marginVertical: Spacing.sm,
-  },
-  systemBubble: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Colors.surface,
-    borderRadius: Radius.round,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: 6,
-  },
-  systemText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: Colors.textSecondary,
-    marginLeft: Spacing.xs,
-  },
-  demoSkip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'center',
-    backgroundColor: Colors.primarySoft,
-    borderRadius: Radius.round,
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.sm,
-    marginVertical: Spacing.sm,
-  },
-  demoSkipText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: Colors.primary,
-    marginLeft: Spacing.xs,
   },
 });
 

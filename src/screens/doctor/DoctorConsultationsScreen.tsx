@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -6,56 +6,61 @@ import {
   FlatList,
   TouchableOpacity,
   StyleSheet,
+  ActivityIndicator,
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppIcon, DoctorAppointmentCard, EmptyState } from '../../components';
-import {
-  CONSULTATION_FILTERS,
-  ConsultationFilterKey,
-  SEVERITY_FILTER_OPTIONS,
-  SeverityFilter,
-} from '../../context/appData';
-import { MOCK_APPOINTMENTS, DoctorAppointment } from '../../mock/doctorData';
-import { Colors, Radius, Shadows, Spacing, responsiveSize } from '../../theme';
+import { CONSULTATION_FILTERS, ConsultationFilterKey } from '../../context/appData';
+import { sessionService } from '../../services';
+import { Conversation } from '../../types';
+import { Colors, Radius, Spacing, responsiveSize } from '../../theme';
 
-const DoctorConsultationsScreen: React.FC<{ navigation: any }> = () => {
+const DoctorConsultationsScreen: React.FC = () => {
+  const [conversations, setConversations] = useState<Conversation[]>([]);
   const [filter, setFilter] = useState<ConsultationFilterKey>('all');
-  const [severityFilter, setSeverityFilter] = useState<SeverityFilter>('all');
-  const [severityDropdownOpen, setSeverityDropdownOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const appointments = MOCK_APPOINTMENTS;
+  const [loading, setLoading] = useState(true);
 
-  const filtered = appointments.filter((a) => {
-    const matchesSearch =
-      a.patientName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      a.patientId.toLowerCase().includes(searchQuery.toLowerCase());
-    if (!matchesSearch) return false;
-    if (severityFilter !== 'all' && a.severity !== severityFilter) return false;
-    if (filter === 'all') return true;
-    if (filter === 'in_progress') {
-      return a.status === 'pending' || a.status === 'in_progress';
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const convs = await sessionService.getConversations();
+      setConversations(convs);
+    } catch {
+      setConversations([]);
+    } finally {
+      setLoading(false);
     }
-    if (filter === 'completed') return a.status === 'completed';
-    return a.status === 'closed';
-  });
+  }, []);
 
-  const severityLabel =
-    severityFilter === 'all'
-      ? 'All Severities'
-      : SEVERITY_FILTER_OPTIONS.find((o) => o.value === severityFilter)?.label ??
-        'All Severities';
-
-  const renderItem = ({ item }: { item: DoctorAppointment }) => (
-    <DoctorAppointmentCard appointment={item} />
+  useFocusEffect(
+    useCallback(() => {
+      load();
+    }, [load])
   );
+
+  const filtered = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    return conversations.filter((c) => {
+      if (filter === 'active') {
+        if (c.state !== 'active' && c.state !== 'in_progress') return false;
+      } else if (filter === 'ended') {
+        if (c.state !== 'ended') return false;
+      }
+      if (!q) return true;
+      const name = (c.patient_name ?? `Patient #${c.patient_id}`).toLowerCase();
+      return name.includes(q) || String(c.patient_id).includes(q);
+    });
+  }, [conversations, filter, searchQuery]);
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       <View style={styles.header}>
         <View style={styles.headerTextBlock}>
           <Text style={styles.headerTitle}>My Consultations</Text>
-          <Text style={styles.headerSub}>{appointments.length} total requests</Text>
+          <Text style={styles.headerSub}>{conversations.length} total requests</Text>
         </View>
         <TouchableOpacity
           style={styles.searchIconButton}
@@ -66,7 +71,7 @@ const DoctorConsultationsScreen: React.FC<{ navigation: any }> = () => {
         </TouchableOpacity>
       </View>
 
-      {/* Expandable search bar (appears when the search icon is tapped) */}
+      {/* Expandable search bar */}
       {searchOpen && (
         <View style={styles.searchRow}>
           <View style={styles.searchBar}>
@@ -99,56 +104,6 @@ const DoctorConsultationsScreen: React.FC<{ navigation: any }> = () => {
         </View>
       )}
 
-      {/* Severity filter dropdown */}
-      <View style={styles.dropdownWrap}>
-        <TouchableOpacity
-          style={[
-            styles.dropdownButton,
-            severityFilter !== 'all' && styles.dropdownButtonActive,
-          ]}
-          onPress={() => setSeverityDropdownOpen((o) => !o)}
-          activeOpacity={0.7}
-        >
-          <AppIcon name="funnel-outline" size={16} color={Colors.primary} />
-          <Text style={styles.dropdownLabel}>{severityLabel}</Text>
-          <AppIcon
-            name={severityDropdownOpen ? 'chevron-up' : 'chevron-down'}
-            size={16}
-            color={Colors.textSecondary}
-          />
-        </TouchableOpacity>
-
-        {severityDropdownOpen && (
-          <View style={styles.dropdownMenu}>
-            {SEVERITY_FILTER_OPTIONS.map((option) => {
-              const selected = severityFilter === option.value;
-              return (
-                <TouchableOpacity
-                  key={option.value}
-                  style={styles.dropdownItem}
-                  onPress={() => {
-                    setSeverityFilter(option.value);
-                    setSeverityDropdownOpen(false);
-                  }}
-                  activeOpacity={0.6}
-                >
-                  <View style={[styles.urgencyDot, { backgroundColor: option.color }]} />
-                  <Text
-                    style={[
-                      styles.dropdownItemText,
-                      selected && styles.dropdownItemTextSelected,
-                    ]}
-                  >
-                    {option.label}
-                  </Text>
-                  {selected && <AppIcon name="checkmark" size={16} color={Colors.primary} />}
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        )}
-      </View>
-
       {/* Status filters */}
       <View style={styles.filterRow}>
         {CONSULTATION_FILTERS.map((f) => {
@@ -168,21 +123,27 @@ const DoctorConsultationsScreen: React.FC<{ navigation: any }> = () => {
         })}
       </View>
 
-      <FlatList
-        data={filtered}
-        keyExtractor={(item) => item.id}
-        renderItem={renderItem}
-        contentContainerStyle={styles.listContainer}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-        ListEmptyComponent={
-          <EmptyState
-            icon="clipboard-outline"
-            title="No consultations"
-            message="No patients match the current filter or search."
-          />
-        }
-      />
+      {loading ? (
+        <View style={styles.center}>
+          <ActivityIndicator size="large" color={Colors.primary} />
+        </View>
+      ) : (
+        <FlatList
+          data={filtered}
+          keyExtractor={(item) => String(item.id)}
+          renderItem={({ item }) => <DoctorAppointmentCard conversation={item} />}
+          contentContainerStyle={styles.listContainer}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          ListEmptyComponent={
+            <EmptyState
+              icon="clipboard-outline"
+              title="No consultations"
+              message="No patients match the current filter or search."
+            />
+          }
+        />
+      )}
     </SafeAreaView>
   );
 };
@@ -191,6 +152,11 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.background,
+  },
+  center: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   header: {
     flexDirection: 'row',
@@ -222,63 +188,6 @@ const styles = StyleSheet.create({
     fontSize: responsiveSize(14),
     color: Colors.textSecondary,
     marginTop: 2,
-  },
-  dropdownWrap: {
-    paddingHorizontal: Spacing.xl,
-    marginBottom: Spacing.sm,
-  },
-  dropdownButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Colors.inputBackground,
-    borderRadius: Radius.md,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    paddingHorizontal: Spacing.lg,
-    height: 48,
-  },
-  dropdownButtonActive: {
-    borderColor: Colors.primary,
-    backgroundColor: Colors.primarySoft,
-  },
-  dropdownLabel: {
-    flex: 1,
-    fontSize: responsiveSize(15),
-    fontWeight: '600',
-    color: Colors.text,
-    marginLeft: Spacing.md,
-  },
-  dropdownMenu: {
-    backgroundColor: Colors.card,
-    borderRadius: Radius.md,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    marginTop: Spacing.sm,
-    overflow: 'hidden',
-    ...Shadows.raised,
-  },
-  dropdownItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.md,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: Colors.border,
-  },
-  dropdownItemText: {
-    flex: 1,
-    fontSize: 14,
-    color: Colors.text,
-    marginLeft: Spacing.md,
-  },
-  dropdownItemTextSelected: {
-    fontWeight: '700',
-    color: Colors.primary,
-  },
-  urgencyDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
   },
   filterRow: {
     flexDirection: 'row',

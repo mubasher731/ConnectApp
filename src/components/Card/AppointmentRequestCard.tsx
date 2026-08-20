@@ -3,16 +3,15 @@ import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import AppIcon from '../Icon/AppIcon';
 import Avatar from '../Icon/Avatar';
 import DoctorPill from '../Doctor/DoctorPill';
-import { BookingRequest } from '../../mock/bookingStore';
+import { AppointmentRequest } from '../../types';
 import { Colors, Radius, Shadows, Spacing } from '../../theme';
 
 interface AppointmentRequestCardProps {
-  request: BookingRequest;
+  request: AppointmentRequest;
   onAccept: () => void;
   onReject: () => void;
 }
 
-/** Pending request badge — fixed until the store surfaces richer statuses. */
 const PENDING_META = { label: 'Pending', color: '#F59E0B', bg: '#FEF3E0' };
 
 /** Incoming patient appointment request with Accept / Reject actions. */
@@ -24,10 +23,12 @@ const AppointmentRequestCard: React.FC<AppointmentRequestCardProps> = ({
   <View style={styles.card}>
     <View style={styles.top}>
       <View style={styles.patientInfo}>
-        <Avatar name={request.patientName} size={40} />
+        <Avatar name={`P${request.patient_id}`} size={40} />
         <View style={styles.patientMeta}>
-          <Text style={styles.patientName}>{request.patientName}</Text>
-          <Text style={styles.patientSub}>Requested {request.timeSlot}</Text>
+          <Text style={styles.patientName}>Patient #{request.patient_id}</Text>
+          <Text style={styles.patientSub}>
+            {request.date} · {request.time_slot}
+          </Text>
         </View>
       </View>
       <DoctorPill
@@ -37,16 +38,18 @@ const AppointmentRequestCard: React.FC<AppointmentRequestCardProps> = ({
       />
     </View>
 
-    <View style={styles.messageRow}>
-      <AppIcon
-        name="chatbubble-ellipses-outline"
-        size={14}
-        color={Colors.textTertiary}
-      />
-      <Text style={styles.message} numberOfLines={2}>
-        {request.message}
-      </Text>
-    </View>
+    {request.reason ? (
+      <View style={styles.messageRow}>
+        <AppIcon
+          name="chatbubble-ellipses-outline"
+          size={14}
+          color={Colors.textTertiary}
+        />
+        <Text style={styles.message} numberOfLines={2}>
+          {request.reason}
+        </Text>
+      </View>
+    ) : null}
 
     <View style={styles.actionRow}>
       <TouchableOpacity

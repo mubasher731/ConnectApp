@@ -5,6 +5,5 @@
  */
 export { authService } from './authService';
 export { chatService, callService, notificationService } from './dataService';
-export { mockAuthService } from './mockAuthService';
 export { sessionService } from './sessionService';
 export { userService } from './userService';

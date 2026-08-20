@@ -1,43 +1,64 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   FlatList,
   StyleSheet,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 import { EmptyState, ListItemSeparator, NotificationCard } from '../../components';
-import { useAuth } from '../../context/AuthContext';
-import { mockNotificationCenter } from '../../services/mockNotificationCenter';
-import { appEvents } from '../../services/appEvents';
-import { AppNotification } from '../../types';
+import { socketService } from '../../api/socket';
+import { sessionService } from '../../services';
+import { AppNotification, BackendNotification, NotificationKind } from '../../types';
 import { Colors, Spacing } from '../../theme';
 
+const kindFromType = (type: string): NotificationKind => {
+  if (type === 'chat_request' || type === 'chat-decision') return 'appointment';
+  return 'system';
+};
+
+const mapBackend = (n: BackendNotification): AppNotification => ({
+  id: String(n.id),
+  kind: kindFromType(n.type),
+  title: n.title,
+  body: n.body,
+  createdAt: n.created_at,
+  read: n.isRead,
+});
+
 const NotificationsScreen: React.FC = () => {
-  const { user } = useAuth();
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const { notifications: list } = await sessionService.getNotifications();
+      setNotifications(list.map(mapBackend));
+    } catch {
+      setNotifications([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // Refresh whenever the screen gains focus (mount + returning to it).
+  useFocusEffect(
+    useCallback(() => {
+      load();
+    }, [load])
+  );
+
+  // Live: reload when a new chat request / decision arrives over the socket.
   useEffect(() => {
-    let mounted = true;
-    const load = async () => {
-      // Only this user's notifications (personalized by user_id + role).
-      const data = await mockNotificationCenter.listForUser(user?.id);
-      if (mounted) setNotifications(data);
-    };
-    load()
-      .catch(() => {})
-      .finally(() => mounted && setLoading(false));
-
-    // Live: prepend only notifications meant for this user.
-    const off = appEvents.on('notification', (n) => {
-      if (n.userId !== undefined && n.userId !== user?.id) return;
-      setNotifications((prev) => [n, ...prev.filter((x) => x.id !== n.id)]);
-    });
-
+    const socket = socketService.getSocket();
+    const refresh = () => load();
+    socket?.on('chat-request', refresh);
+    socket?.on('chat-decision', refresh);
     return () => {
-      mounted = false;
-      off();
+      socket?.off('chat-request', refresh);
+      socket?.off('chat-decision', refresh);
     };
-  }, [user?.id]);
+  }, [load]);
 
   const renderItem = ({ item }: { item: AppNotification }) => (
     <NotificationCard notification={item} />
@@ -57,7 +78,7 @@ const NotificationsScreen: React.FC = () => {
           <EmptyState
             icon="notifications-outline"
             title="No notifications"
-            message="Updates about messages, appointments and prescriptions will appear here."
+            message="Updates about chat requests and appointments will appear here."
           />
         }
       />

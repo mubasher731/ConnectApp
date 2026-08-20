@@ -1,50 +1,43 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import AppIcon from '../Icon/AppIcon';
+import dayjs from 'dayjs';
 import Avatar from '../Icon/Avatar';
 import DoctorPill from '../Doctor/DoctorPill';
-import { APPOINTMENT_STATUS_META, URGENCY_META, DoctorAppointment } from '../../mock/doctorData';
+import { CONVERSATION_STATE_META } from '../../context/appData';
+import { Conversation } from '../../types';
 import { Colors, Radius, Shadows, Spacing } from '../../theme';
 
 interface RecentAppointmentCardProps {
-  appointment: DoctorAppointment;
+  conversation: Conversation;
   onViewDetails: () => void;
 }
 
 /** Compact appointment row on the doctor dashboard (view-only). */
 const RecentAppointmentCard: React.FC<RecentAppointmentCardProps> = ({
-  appointment,
+  conversation,
   onViewDetails,
 }) => {
-  const status = APPOINTMENT_STATUS_META[appointment.status];
-  const urgency = URGENCY_META[appointment.urgency];
+  const meta = CONVERSATION_STATE_META[conversation.state];
+  const start = dayjs(conversation.scheduled_start);
+  const name = conversation.patient_name ?? `Patient #${conversation.patient_id}`;
+  const timeLabel = start.isValid() ? start.format('MMM D, h:mm A') : '';
 
   return (
     <View style={styles.card}>
       <View style={styles.top}>
         <View style={styles.patientInfo}>
-          <Avatar name={appointment.patientName} size={40} />
+          <Avatar name={name} size={40} />
           <View style={styles.patientMeta}>
-            <Text style={styles.patientName}>{appointment.patientName}</Text>
-            <Text style={styles.patientSub}>
-              {appointment.patientId} · {appointment.date}
+            <Text style={styles.patientName} numberOfLines={1}>
+              {name}
             </Text>
+            {timeLabel ? <Text style={styles.patientSub}>{timeLabel}</Text> : null}
           </View>
         </View>
-        <DoctorPill label={status.label} color={status.color} bg={status.bg} />
+        <DoctorPill label={meta.label} color={meta.color} bg={meta.bg} />
       </View>
 
-      <View style={styles.metaRow}>
-        <AppIcon name="time-outline" size={14} color={Colors.textTertiary} />
-        <Text style={styles.meta}>{appointment.time}</Text>
-        <DoctorPill label={urgency.label} color={urgency.color} bg={urgency.bg} />
-      </View>
-
-      <TouchableOpacity
-        style={styles.viewBtn}
-        onPress={onViewDetails}
-        activeOpacity={0.85}
-      >
+      <TouchableOpacity style={styles.viewBtn} onPress={onViewDetails} activeOpacity={0.85}>
         <Text style={styles.viewText}>View Details</Text>
       </TouchableOpacity>
     </View>
@@ -86,16 +79,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: Colors.textTertiary,
     marginTop: 2,
-  },
-  metaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  meta: {
-    fontSize: 13,
-    color: Colors.textSecondary,
-    marginLeft: Spacing.sm,
-    marginRight: Spacing.sm,
   },
   viewBtn: {
     marginTop: Spacing.md,

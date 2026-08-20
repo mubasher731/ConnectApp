@@ -1,89 +1,111 @@
 import { authService } from './authService';
 import { sessionService, MessageRaw } from './sessionService';
-import { AppNotification, CallLog, Chat, Message, Session, User } from '../types';
+import { AppNotification, CallLog, Chat, Conversation, Message, User } from '../types';
 
-/** Map a backend session to the Chat list model ("other" participant = chat). */
-const mapSessionToChat = (session: Session, meId: number): Chat => {
-  const isPatient = session.patient_id === meId;
-  const otherId = isPatient ? session.doctor_id : session.patient_id;
-  const otherName = isPatient ? session.doctor_name : session.patient_name;
+/** Map a backend conversation to the Chat list model ("other" participant = chat). */
+const mapConversationToChat = (c: Conversation, meId: number): Chat => {
+  const isPatient = c.patient_id === meId;
+  const otherId = isPatient ? c.doctor_id : c.patient_id;
+  const otherName = isPatient ? c.doctor_name ?? 'Doctor' : c.patient_name ?? 'Patient';
+  let lastMessage = 'Session scheduled';
+  if (c.state === 'pending') lastMessage = 'Request pending';
+  else if (c.state === 'active' || c.state === 'in_progress') lastMessage = 'Session active';
+  else if (c.state === 'ended') lastMessage = 'Session ended';
+
+  const durationMinutes =
+    c.scheduled_start && c.scheduled_end
+      ? Math.max(
+          0,
+          Math.round(
+            (new Date(c.scheduled_end).getTime() - new Date(c.scheduled_start).getTime()) /
+              60_000
+          )
+        )
+      : undefined;
+
   return {
-    id: String(session.id),
+    id: String(c.id),
     participantId: String(otherId),
-    participantName: otherName ?? 'Participant',
-    participantOnline: false,
-    lastMessage: '',
-    lastMessageAt: session.scheduled_start ?? '',
+    participantName: otherName,
+    participantOnline: c.peer_online ?? false,
+    lastMessage,
+    lastMessageAt: c.scheduled_start ?? '',
     unreadCount: 0,
     isTyping: false,
-    status: session.status,
-    durationMinutes: session.duration_minutes,
-    startTime: session.actual_start ?? session.scheduled_start,
-    endTime: session.actual_end ?? null,
+    status: c.state === 'ended' ? 'completed' : c.state === 'pending' ? 'scheduled' : 'active',
+    durationMinutes,
+    startTime: c.actual_start ?? c.scheduled_start,
+    endTime: c.actual_end ?? null,
   };
 };
 
-/** Map a raw API message to the UI Message model. */
-const mapMessage = (raw: MessageRaw, meId: number, sessionId: string | number): Message => ({
-  id: raw.id,
-  sessionId: raw.session_id ?? sessionId,
-  senderId: raw.sender_id,
-  senderRole: raw.sender_role,
-  text: raw.message_text ?? '',
-  type: raw.message_type ?? 'text',
-  createdAt: raw.sent_at ?? '',
-  isRead: raw.is_read,
-  sentByMe: raw.sender_id === meId,
-});
+/** Map a raw backend message to the UI Message model. */
+const mapMessage = (
+  raw: MessageRaw,
+  meId: number,
+  isPatient: boolean,
+  conversationId: string | number
+): Message => {
+  const sentByMe = (raw.role === 'patient') === isPatient;
+  return {
+    id: raw.id,
+    sessionId: raw.conversation_id ?? conversationId,
+    senderId: sentByMe ? meId : 0,
+    senderRole: raw.role,
+    text: raw.content ?? '',
+    type: raw.type ?? 'text',
+    createdAt: raw.created_at ?? '',
+    isRead: raw.status === 'read',
+    sentByMe,
+  };
+};
 
 export const chatService = {
+  /** Conversations for the authenticated user → Chat rows. */
   async getChats(): Promise<Chat[]> {
     const me = await authService.getMe();
-    const isDoctor = me.role_id === 3;
-    const { sessions } = isDoctor
-      ? await sessionService.getDoctorSessions(1, 100)
-      : await sessionService.getPatientSessions(1, 100);
-    // One row per session — a participant can have multiple sessions
-    // scheduled, so each session becomes its own conversation entry.
-    return (sessions ?? []).map((session) => mapSessionToChat(session, me.id));
+    const conversations = await sessionService.getConversations();
+    return conversations.map((c) => mapConversationToChat(c, me.id));
   },
 
-  async getMessages(sessionId: string | number): Promise<Message[]> {
+  /** Messages for a conversation (oldest → newest). */
+  async getMessages(conversationId: string | number): Promise<Message[]> {
     const me = await authService.getMe();
-    const { messages } = await sessionService.getMessages(sessionId, 1, 100);
-    // Backend returns oldest → newest already; render as-is.
-    return (messages ?? []).map((m) => mapMessage(m, me.id, sessionId));
+    const isPatient = me.role_id === 4;
+    const raws = await sessionService.getMessages(conversationId);
+    return raws.map((m) => mapMessage(m, me.id, isPatient, conversationId));
   },
 
-  /** Send a message via REST (session must be active; socket pushes it to the room). */
-  async sendMessage({ sessionId, content }: { sessionId: string | number; content: string }): Promise<Message> {
+  /** Send a message (REST; socket broadcasts it to the room). */
+  async sendMessage({
+    sessionId,
+    content,
+  }: {
+    sessionId: string | number;
+    content: string;
+  }): Promise<Message> {
     const me = await authService.getMe();
-    const saved = await sessionService.sendMessage(sessionId, { message_text: content });
-    return mapMessage(saved, me.id, sessionId);
+    const isPatient = me.role_id === 4;
+    const saved = await sessionService.sendMessage(sessionId, { content });
+    return mapMessage(saved, me.id, isPatient, sessionId);
   },
 
-  /**
-   * Open a session with a user. Sessions are scheduled by the care team
-   * (admin) — this only finds an existing one; it does not create sessions.
-   */
+  /** Find an existing conversation with a user (used by the directory). */
   async getOrCreateSessionWith(other: User): Promise<Chat> {
     const me = await authService.getMe();
-    const isDoctor = me.role_id === 3;
-    const { sessions } = isDoctor
-      ? await sessionService.getDoctorSessions(1, 100)
-      : await sessionService.getPatientSessions(1, 100);
-    const found = (sessions ?? []).find(
-      (s) => s.patient_id === other.id || s.doctor_id === other.id
+    const conversations = await sessionService.getConversations();
+    const found = conversations.find(
+      (c) => c.patient_id === other.id || c.doctor_id === other.id
     );
     if (!found) {
-      throw new Error('No session with this user yet — it will appear once scheduled.');
+      throw new Error('No conversation with this user yet — it appears once scheduled.');
     }
-    return mapSessionToChat(found, me.id);
+    return mapConversationToChat(found, me.id);
   },
 };
 
 export const callService = {
-  // No call-history endpoint in the current session spec — returns empty.
+  // No call-history endpoint in the current API contract — returns empty.
   async getCallHistory(): Promise<CallLog[]> {
     return [];
   },

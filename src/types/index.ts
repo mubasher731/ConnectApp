@@ -100,3 +100,98 @@ export interface AppNotification {
   userRole?: 'patient' | 'doctor';
 }
 
+/* ------------------------------ backend models ------------------------------ */
+
+/** Conversation state values from the Fountain backend SessionTimer. */
+export type ConversationState = 'pending' | 'in_progress' | 'active' | 'ended';
+
+export interface ConversationAppointment {
+  id: number;
+  doctor_id: number;
+  patient_id: number;
+  status: string;
+  date: string;
+  time_slot: string;
+  reason: string;
+  created_at: string;
+  updated_at: string;
+}
+
+/** A chat conversation (session) between a patient and a doctor. */
+export interface Conversation {
+  id: string;
+  appointment_id?: number;
+  doctor_id: number;
+  patient_id: number;
+  state: ConversationState;
+  scheduled_start: string;
+  scheduled_end: string;
+  actual_start?: string | null;
+  actual_end?: string | null;
+  doctor_name?: string;
+  patient_name?: string;
+  appointment?: ConversationAppointment | null;
+  /** The other participant's user id (for socket presence). */
+  peer_user_id?: number;
+  /** Whether the peer currently has a connected socket. */
+  peer_online?: boolean;
+}
+
+/** Doctor directory entry from GET /api/doctor/availability. */
+export interface DoctorAvailability {
+  id: number;
+  full_name: string;
+  email?: string;
+  specialization?: string;
+  availability: {
+    day_of_week: number;
+    start_time: string;
+    end_time: string;
+    day_name?: string;
+    display?: string;
+  }[];
+}
+
+/** Pending appointment request from GET /api/doctor/requests. */
+export interface AppointmentRequest {
+  id: string;
+  patient_id: number;
+  doctor_id: number;
+  date: string;
+  time_slot: string;
+  reason?: string;
+  status: string;
+  created_at: string;
+}
+
+/** Normalized doctor model used by the Doctors screen + booking modal. */
+export interface BookingDoctor {
+  id: number;
+  name: string;
+  specialty?: string;
+  /** Available slots for the selected day as "HH:MM" (24h). */
+  timeSlots: string[];
+}
+
+/** Backend in-app notification (GET /api/notification/all). */
+export interface BackendNotification {
+  id: number;
+  sender_id?: number;
+  receiver_id: number;
+  email?: string;
+  title: string;
+  body: string;
+  type: string;
+  data?: {
+    conversation_id?: number;
+    appointment_id?: number;
+    doctor_id?: number;
+    patient_id?: number;
+    state?: string;
+  } | null;
+  isRead: boolean;
+  created_at: string;
+  read_at?: string | null;
+  deleted_at?: string | null;
+}
+

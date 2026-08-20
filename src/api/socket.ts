@@ -1,16 +1,19 @@
 import io, { Socket } from 'socket.io-client';
 import { getApiBaseUrl } from './config';
+import { tokenStore } from './client';
 
 let socket: Socket | null = null;
 let currentUser: { id: number | string; role_id: number } | null = null;
+/** Conversation rooms the client is currently joined to (re-joined on reconnect). */
+const joinedRooms = new Set<string>();
 
 const userRole = (): 'doctor' | 'patient' =>
   currentUser?.role_id === 3 ? 'doctor' : 'patient';
 
 /**
- * Socket.IO singleton for the Fountain session feature.
- * Rule: send = REST, receive = Socket.IO. The socket itself is unauthenticated;
- * registration happens via `addUser` after login.
+ * Socket.IO singleton for the Fountain chat feature.
+ * Rule: send = REST, receive = Socket.IO. The socket authenticates with the
+ * JWT (auth + query) so the server knows who is listening and routes events.
  */
 export const socketService = {
   /** Remember the logged-in user so events carry userId/userRole. */
@@ -19,24 +22,29 @@ export const socketService = {
   },
 
   /** Connect to the socket server (safe to call multiple times). */
-  connect(): Socket | null {
+  async connect(): Promise<Socket | null> {
     if (socket?.connected) return socket;
     if (socket) {
       socket.disconnect();
       socket = null;
     }
 
+    const token = await tokenStore.get();
     socket = io(getApiBaseUrl(), {
+      auth: token ? { token } : undefined,
+      query: token ? { token } : undefined,
       reconnection: true,
       reconnectionAttempts: 5,
       reconnectionDelay: 1000,
-      transports: ['websocket', 'polling'],
+      transports: ['websocket'],
     });
 
     socket.on('connect', () => {
       console.log('[socket] ✅ Connected:', socket?.id);
       // Re-register on reconnect so presence stays accurate.
       if (currentUser) socketService.addUser();
+      // Re-join any conversation rooms the user had open.
+      joinedRooms.forEach((id) => socketService.joinSession(id));
     });
     socket.on('disconnect', (reason) => {
       console.log('[socket] Disconnected:', reason);
@@ -52,6 +60,7 @@ export const socketService = {
   },
 
   disconnect(): void {
+    joinedRooms.clear();
     socket?.disconnect();
     socket = null;
   },
@@ -67,36 +76,36 @@ export const socketService = {
     socket?.emit('addUser', { userId: currentUser.id, userRole: userRole() });
   },
 
-  joinSession(sessionId: number | string): void {
-    if (!currentUser) return;
-    socket?.emit('joinSession', {
-      sessionId,
-      userId: currentUser.id,
-      userRole: userRole(),
-    });
+  joinSession(conversationId: number | string): void {
+    joinedRooms.add(String(conversationId));
+    socket?.emit('join-conversation', { conversationId });
   },
 
-  leaveSession(sessionId: number | string): void {
-    socket?.emit('leaveSession', { sessionId });
+  leaveSession(conversationId: number | string): void {
+    joinedRooms.delete(String(conversationId));
+    socket?.emit('leave-conversation', { conversationId });
   },
 
-  /** Signal typing (throttle ~1/s while typing). */
-  sendTyping(sessionId: number | string): void {
-    if (!currentUser) return;
-    socket?.emit('typing', {
-      sessionId,
-      userId: currentUser.id,
-      userRole: userRole(),
-    });
+  /** Signal typing (boolean form). */
+  sendTyping(conversationId: number | string): void {
+    socket?.emit('typing', { conversationId, isTyping: true });
   },
 
   /** Explicitly clear the peer's typing indicator. */
-  sendTypingStopped(sessionId: number | string): void {
-    if (!currentUser) return;
-    socket?.emit('typingStopped', {
-      sessionId,
-      userId: currentUser.id,
-      userRole: userRole(),
-    });
+  sendTypingStopped(conversationId: number | string): void {
+    socket?.emit('typing', { conversationId, isTyping: false });
+  },
+
+  /** Send a message over the socket (REST remains the source of truth). */
+  sendMessage(conversationId: number | string, content: string, type = 'text'): void {
+    socket?.emit('send-message', { conversationId, content, type });
+  },
+
+  /** Doctor decision on a booking request. */
+  requestDecision(
+    requestId: string,
+    decision: 'approved' | 'rejected' | 'rescheduled'
+  ): void {
+    socket?.emit('request-decision', { requestId, decision });
   },
 };

@@ -7,7 +7,6 @@ import React, {
   useState,
 } from 'react';
 import { authService, SignInParams, SignUpParams } from '../services/authService';
-import { mockAuthService } from '../services/mockAuthService';
 import { loadApiConfig } from '../api/client';
 import { socketService } from '../api/socket';
 import { User } from '../types';
@@ -52,10 +51,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   // Keyed on user id only: reconnect on login/logout, not on profile edits.
   useEffect(() => {
     if (!user?.id) return;
+    let cancelled = false;
     socketService.setUser(user);
-    const s = socketService.connect();
-    if (s) socketService.addUser();
-    return () => socketService.disconnect();
+    socketService.connect().then((s) => {
+      if (!cancelled && s) socketService.addUser();
+    });
+    return () => {
+      cancelled = true;
+      socketService.disconnect();
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id]);
 
@@ -69,9 +73,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     setUser(session.user);
   }, []);
 
-  // Mock doctor login (offline) until the backend doctor endpoints are ready.
+  // Doctor login uses the same auth endpoint (role detected by the backend).
   const signInAsDoctor = useCallback(async (params: { email: string; password: string }) => {
-    const session = await mockAuthService.signInAsDoctor(params.email, params.password);
+    const session = await authService.signIn(params);
     setUser(session.user);
   }, []);
 

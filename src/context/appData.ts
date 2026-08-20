@@ -4,8 +4,7 @@
  */
 
 import { Colors } from '../theme';
-import { URGENCY_META, SEVERITY_META } from '../mock/doctorData';
-import { CallDirection, NotificationKind } from '../types';
+import { CallDirection, ConversationState, NotificationKind } from '../types';
 
 /* ------------------------------ patient home ------------------------------ */
 
@@ -108,6 +107,17 @@ export const NOTIFICATION_KIND_META: Record<
 
 /* ------------------------- doctor dashboard stats -------------------------- */
 
+/** Conversation/session state label + colors for pills and filters. */
+export const CONVERSATION_STATE_META: Record<
+  ConversationState,
+  { label: string; color: string; bg: string }
+> = {
+  pending: { label: 'Pending', color: '#F59E0B', bg: '#FEF3E0' },
+  in_progress: { label: 'In Progress', color: '#3B82F6', bg: '#E8F0FE' },
+  active: { label: 'Active', color: '#5B67F1', bg: '#EEF0FE' },
+  ended: { label: 'Ended', color: '#6B7280', bg: '#F1F2F6' },
+};
+
 export type DashboardStatKey =
   | 'totalAssigned'
   | 'awaitingAction'
@@ -154,60 +164,26 @@ export const DASHBOARD_STATS: StatConfig[] = [
   },
 ];
 
-/* ------------------------ doctor dashboard urgency filter ------------------- */
-
-export type UrgencyFilter = 'all' | 'high' | 'medium' | 'low';
-
-export const URGENCY_FILTER_OPTIONS: {
-  value: UrgencyFilter;
-  label: string;
-  color: string;
-}[] = [
-  { value: 'all', label: 'All Urgencies', color: Colors.textTertiary },
-  { value: 'high', label: 'High', color: URGENCY_META.high.color },
-  { value: 'medium', label: 'Medium', color: URGENCY_META.medium.color },
-  { value: 'low', label: 'Low', color: URGENCY_META.low.color },
-];
-
 /* --------------------- doctor consultations screen ------------------------- */
 
-export type ConsultationFilterKey = 'all' | 'in_progress' | 'completed' | 'closed';
+export type ConsultationFilterKey = 'all' | 'active' | 'ended';
 
 /** Consultations screen — status filter chips. */
 export const CONSULTATION_FILTERS: {
   key: ConsultationFilterKey;
   label: string;
 }[] = [
-  { key: 'in_progress', label: 'In Progress' },
   { key: 'all', label: 'All Requests' },
-  { key: 'completed', label: 'Completed' },
-  { key: 'closed', label: 'Successfully closed' },
-];
-
-export type SeverityFilter = 'all' | 'mild' | 'moderate_severe' | 'severe';
-
-/** Consultations screen — severity filter options. */
-export const SEVERITY_FILTER_OPTIONS: {
-  value: SeverityFilter;
-  label: string;
-  color: string;
-}[] = [
-  { value: 'all', label: 'All Severities', color: Colors.textTertiary },
-  { value: 'mild', label: 'Mild', color: SEVERITY_META.mild.color },
-  {
-    value: 'moderate_severe',
-    label: 'Moderately Severe',
-    color: SEVERITY_META.moderate_severe.color,
-  },
-  { value: 'severe', label: 'Severe', color: SEVERITY_META.severe.color },
+  { key: 'active', label: 'Active' },
+  { key: 'ended', label: 'Ended' },
 ];
 
 /* ------------------------------- auth -------------------------------------- */
 
-/** Reserved demo doctor credentials (mock login until the backend is ready). */
+/** Demo doctor credentials (from the backend seed). */
 export const DOCTOR_DEMO_CREDENTIALS = {
   email: 'doctor@fountain.com',
-  password: '12345678',
+  password: 'Doctor@123',
 };
 
 /* ------------------------------- chat -------------------------------------- */

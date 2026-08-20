@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   StyleSheet,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -18,92 +19,82 @@ import {
   StatCard,
 } from '../../components';
 import { useAuth } from '../../context/AuthContext';
-import { DASHBOARD_STATS, URGENCY_FILTER_OPTIONS, UrgencyFilter } from '../../context/appData';
-import { MOCK_APPOINTMENTS, URGENCY_META } from '../../mock/doctorData';
-import { bookingStore, BookingRequest } from '../../mock/bookingStore';
-import { mockNotificationCenter } from '../../services/mockNotificationCenter';
-import { Colors, Radius, Shadows, Spacing, responsiveSize } from '../../theme';
+import { DASHBOARD_STATS } from '../../context/appData';
+import { sessionService } from '../../services';
+import { AppointmentRequest, Conversation } from '../../types';
+import { Colors, Radius, Spacing, responsiveSize } from '../../theme';
 
 const DoctorDashboardScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const { user } = useAuth();
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [requests, setRequests] = useState<AppointmentRequest[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const appointments = MOCK_APPOINTMENTS;
-  const [urgencyFilter, setUrgencyFilter] = useState<UrgencyFilter>('all');
-  const [dropdownOpen, setDropdownOpen] = useState(false);
-  // Incoming appointment requests from patients (mock store).
-  const [requests, setRequests] = useState<BookingRequest[]>(() =>
-    bookingStore.listForDoctor(user?.id ?? 2)
-  );
+  const [loading, setLoading] = useState(true);
+
   const pendingRequests = requests.filter((r) => r.status === 'pending');
 
   const stats = useMemo(
     () => ({
-      totalAssigned: appointments.length + requests.length,
-      awaitingAction:
-        appointments.filter((a) => a.status === 'pending').length +
-        pendingRequests.length,
-      activeSessions: appointments.filter((a) => a.status === 'in_progress').length,
-      completedSessions: appointments.filter(
-        (a) => a.status === 'completed' || a.status === 'closed'
+      totalAssigned: conversations.length,
+      awaitingAction: pendingRequests.length,
+      activeSessions: conversations.filter(
+        (c) => c.state === 'active' || c.state === 'in_progress'
       ).length,
+      completedSessions: conversations.filter((c) => c.state === 'ended').length,
     }),
-    [appointments, requests, pendingRequests]
+    [conversations, pendingRequests]
   );
 
-  const filtered = appointments.filter(
-    (a) =>
-      (urgencyFilter === 'all' || a.urgency === urgencyFilter) &&
-      (a.patientName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        a.patientId.toLowerCase().includes(searchQuery.toLowerCase()))
-  );
+  const recent = conversations.filter((c) => c.state !== 'pending');
 
-  const urgencyLabel =
-    urgencyFilter === 'all'
-      ? 'All Urgencies'
-      : `${URGENCY_META[urgencyFilter].label} · ${
-          appointments.filter((a) => a.urgency === urgencyFilter).length
-        }`;
+  const filteredRecent = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    return recent.filter((c) => {
+      if (!q) return true;
+      const name = (c.patient_name ?? `Patient #${c.patient_id}`).toLowerCase();
+      return name.includes(q) || String(c.patient_id).includes(q);
+    });
+  }, [recent, searchQuery]);
 
-  const refreshRequests = useCallback(() => {
-    setRequests(bookingStore.listForDoctor(user?.id ?? 2));
-  }, [user?.id]);
+  const refresh = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [convs, reqs] = await Promise.all([
+        sessionService.getConversations(),
+        sessionService.getDoctorRequests(),
+      ]);
+      setConversations(convs);
+      setRequests(reqs);
+    } catch {
+      setConversations([]);
+      setRequests([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
-  // Refresh incoming requests when the dashboard gains focus.
   useFocusEffect(
     useCallback(() => {
-      refreshRequests();
-    }, [refreshRequests])
+      refresh();
+    }, [refresh])
   );
 
-  const handleRequestAction = async (id: string, status: 'accepted' | 'rejected') => {
-    const req = requests.find((r) => r.id === id);
-    bookingStore.update(id, status);
-    refreshRequests();
-    if (!req || status !== 'accepted') return;
-
-    // Meeting confirmed → both sides get a personalized notification.
-    const doctorNameShort = req.doctorName.replace(/^Dr\.\s*/, '');
-    await mockNotificationCenter
-      .add(
-        'appointment',
-        '✅ Appointment Confirmed',
-        `✅ Appointment confirmed with Dr. ${doctorNameShort} at ${req.timeSlot}`,
-        { userId: req.patientId, role: 'patient' }
-      )
-      .catch(() => {});
-    await mockNotificationCenter
-      .add(
-        'appointment',
-        'Appointment Scheduled',
-        `Appointment with ${req.patientName} at ${req.timeSlot}`,
-        { userId: req.doctorId, role: 'doctor' }
-      )
-      .catch(() => {});
-
-    Alert.alert(
-      'Appointment Accepted',
-      `Meeting scheduled with ${req.patientName} at ${req.timeSlot}. The patient has been notified.`
-    );
+  const handleRequestAction = async (id: string, status: 'approved' | 'rejected') => {
+    try {
+      await sessionService.updateConversationStatus(id, { status });
+      Alert.alert(
+        status === 'approved' ? 'Request Approved' : 'Request Rejected',
+        status === 'approved'
+          ? 'The session has been scheduled and the patient notified.'
+          : 'The request has been rejected.'
+      );
+      await refresh();
+    } catch (err) {
+      Alert.alert(
+        'Action Failed',
+        err instanceof Error ? err.message : 'Could not update the request.'
+      );
+    }
   };
 
   return (
@@ -127,124 +118,83 @@ const DoctorDashboardScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
               activeOpacity={0.7}
             >
               <AppIcon name="notifications-outline" size={20} color={Colors.text} />
-              <View style={styles.notificationDot} />
             </TouchableOpacity>
             <Avatar name={user?.name || '?'} size={38} online />
           </View>
         </View>
 
-        {/* Statistics */}
-        <View style={styles.statsGrid}>
-          {DASHBOARD_STATS.map((config) => (
-            <StatCard key={config.key} config={config} value={stats[config.key]} />
-          ))}
-        </View>
-
-        {/* Search */}
-        <View style={styles.searchBar}>
-          <AppIcon name="search-outline" size={18} color={Colors.textTertiary} />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search patients by name or ID"
-            placeholderTextColor={Colors.textTertiary}
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            returnKeyType="search"
-          />
-          {searchQuery.length > 0 && (
-            <TouchableOpacity onPress={() => setSearchQuery('')}>
-              <AppIcon name="close-circle" size={18} color={Colors.textTertiary} />
-            </TouchableOpacity>
-          )}
-        </View>
-
-        {/* Appointment Requests */}
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Appointment Requests</Text>
-          <Text style={styles.seeAll}>{pendingRequests.length} incoming</Text>
-        </View>
-
-        {pendingRequests.length === 0 ? (
-          <Text style={styles.emptyText}>No incoming appointment requests.</Text>
+        {loading ? (
+          <View style={styles.center}>
+            <ActivityIndicator size="large" color={Colors.primary} />
+          </View>
         ) : (
-          pendingRequests.map((req) => (
-            <AppointmentRequestCard
-              key={req.id}
-              request={req}
-              onAccept={() => handleRequestAction(req.id, 'accepted')}
-              onReject={() => handleRequestAction(req.id, 'rejected')}
-            />
-          ))
-        )}
-
-        {/* Recent Appointments */}
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Recent Appointments</Text>
-          <TouchableOpacity onPress={() => navigation.navigate('Consultations')}>
-            <Text style={styles.seeAll}>See All</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Urgency filter dropdown */}
-        <View style={styles.dropdownWrap}>
-          <TouchableOpacity
-            style={[
-              styles.dropdownButton,
-              urgencyFilter !== 'all' && styles.dropdownButtonActive,
-            ]}
-            onPress={() => setDropdownOpen((o) => !o)}
-            activeOpacity={0.7}
-          >
-            <AppIcon name="funnel-outline" size={16} color={Colors.primary} />
-            <Text style={styles.dropdownLabel}>{urgencyLabel}</Text>
-            <AppIcon
-              name={dropdownOpen ? 'chevron-up' : 'chevron-down'}
-              size={16}
-              color={Colors.textSecondary}
-            />
-          </TouchableOpacity>
-
-          {dropdownOpen && (
-            <View style={styles.dropdownMenu}>
-              {URGENCY_FILTER_OPTIONS.map((option) => {
-                const selected = urgencyFilter === option.value;
-                return (
-                  <TouchableOpacity
-                    key={option.value}
-                    style={styles.dropdownItem}
-                    onPress={() => {
-                      setUrgencyFilter(option.value);
-                      setDropdownOpen(false);
-                    }}
-                    activeOpacity={0.6}
-                  >
-                    <View style={[styles.urgencyDot, { backgroundColor: option.color }]} />
-                    <Text
-                      style={[
-                        styles.dropdownItemText,
-                        selected && styles.dropdownItemTextSelected,
-                      ]}
-                    >
-                      {option.label}
-                    </Text>
-                    {selected && <AppIcon name="checkmark" size={16} color={Colors.primary} />}
-                  </TouchableOpacity>
-                );
-              })}
+          <>
+            {/* Statistics */}
+            <View style={styles.statsGrid}>
+              {DASHBOARD_STATS.map((config) => (
+                <StatCard key={config.key} config={config} value={stats[config.key]} />
+              ))}
             </View>
-          )}
-        </View>
 
-        {filtered.length === 0 ? (
-          <Text style={styles.emptyText}>No appointments match your search or filters.</Text>
-        ) : (
-          filtered.map((a) => (
-            <RecentAppointmentCard
-              key={a.id}
-              appointment={a}
-              onViewDetails={() => navigation.navigate('Consultations')}
-            />
-          ))
+            {/* Search */}
+            <View style={styles.searchBar}>
+              <AppIcon name="search-outline" size={18} color={Colors.textTertiary} />
+              <TextInput
+                style={styles.searchInput}
+                placeholder="Search patients by name or ID"
+                placeholderTextColor={Colors.textTertiary}
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+                returnKeyType="search"
+              />
+              {searchQuery.length > 0 && (
+                <TouchableOpacity onPress={() => setSearchQuery('')}>
+                  <AppIcon name="close-circle" size={18} color={Colors.textTertiary} />
+                </TouchableOpacity>
+              )}
+            </View>
+
+            {/* Appointment Requests */}
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Appointment Requests</Text>
+              <Text style={styles.seeAll}>{pendingRequests.length} incoming</Text>
+            </View>
+
+            {pendingRequests.length === 0 ? (
+              <Text style={styles.emptyText}>No incoming appointment requests.</Text>
+            ) : (
+              pendingRequests.map((req) => (
+                <AppointmentRequestCard
+                  key={req.id}
+                  request={req}
+                  onAccept={() => handleRequestAction(req.id, 'approved')}
+                  onReject={() => handleRequestAction(req.id, 'rejected')}
+                />
+              ))
+            )}
+
+            {/* Recent Appointments */}
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Recent Appointments</Text>
+              <TouchableOpacity onPress={() => navigation.navigate('Consultations')}>
+                <Text style={styles.seeAll}>See All</Text>
+              </TouchableOpacity>
+            </View>
+
+            {filteredRecent.length === 0 ? (
+              <Text style={styles.emptyText}>
+                {searchQuery ? 'No appointments match your search.' : 'No appointments yet.'}
+              </Text>
+            ) : (
+              filteredRecent.map((c) => (
+                <RecentAppointmentCard
+                  key={c.id}
+                  conversation={c}
+                  onViewDetails={() => navigation.navigate('Consultations')}
+                />
+              ))
+            )}
+          </>
         )}
       </ScrollView>
     </SafeAreaView>
@@ -259,6 +209,10 @@ const styles = StyleSheet.create({
   content: {
     paddingHorizontal: Spacing.xl,
     paddingBottom: 110,
+  },
+  center: {
+    paddingVertical: Spacing.xxl,
+    alignItems: 'center',
   },
   header: {
     flexDirection: 'row',
@@ -279,17 +233,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: Spacing.sm,
-  },
-  notificationDot: {
-    position: 'absolute',
-    top: 9,
-    right: 9,
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: Colors.error,
-    borderWidth: 1.5,
-    borderColor: Colors.white,
   },
   greeting: {
     fontSize: responsiveSize(15),
@@ -341,62 +284,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: Colors.primary,
-  },
-  dropdownWrap: {
-    marginBottom: Spacing.md,
-  },
-  dropdownButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Colors.inputBackground,
-    borderRadius: Radius.md,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    paddingHorizontal: Spacing.lg,
-    height: 48,
-  },
-  dropdownButtonActive: {
-    borderColor: Colors.primary,
-    backgroundColor: Colors.primarySoft,
-  },
-  dropdownLabel: {
-    flex: 1,
-    fontSize: 15,
-    fontWeight: '600',
-    color: Colors.text,
-    marginLeft: Spacing.md,
-  },
-  dropdownMenu: {
-    backgroundColor: Colors.card,
-    borderRadius: Radius.md,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    marginTop: Spacing.sm,
-    overflow: 'hidden',
-    ...Shadows.raised,
-  },
-  dropdownItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.md,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: Colors.border,
-  },
-  dropdownItemText: {
-    flex: 1,
-    fontSize: 14,
-    color: Colors.text,
-    marginLeft: Spacing.md,
-  },
-  dropdownItemTextSelected: {
-    fontWeight: '700',
-    color: Colors.primary,
-  },
-  urgencyDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
   },
   emptyText: {
     fontSize: 14,

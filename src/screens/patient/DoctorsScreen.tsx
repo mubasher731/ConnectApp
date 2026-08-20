@@ -1,28 +1,72 @@
-import React, { useState } from 'react';
-import { View, Text, FlatList, StyleSheet } from 'react-native';
+import React, { useCallback, useEffect, useState } from 'react';
+import { View, Text, FlatList, StyleSheet, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { BookAppointmentModal, DoctorCard, EmptyState } from '../../components';
-import { MOCK_DOCTOR_PROFILES, DoctorProfile } from '../../mock/doctorProfiles';
-import { MockSession } from '../../services/mockSessionStore';
+import { sessionService } from '../../services';
+import { BookingDoctor, Conversation } from '../../types';
 import { Colors, Spacing } from '../../theme';
 
+/** Generate 30-minute "HH:MM" slots within an availability window. */
+const buildSlots = (start: string, end: string): string[] => {
+  const toMin = (t: string) => {
+    const [h, m] = t.split(':').map(Number);
+    return (h || 0) * 60 + (m || 0);
+  };
+  const fmt = (min: number) =>
+    `${String(Math.floor(min / 60)).padStart(2, '0')}:${String(min % 60).padStart(2, '0')}`;
+  const out: string[] = [];
+  for (let t = toMin(start); t < toMin(end); t += 30) out.push(fmt(t));
+  return out;
+};
+
 const DoctorsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
-  const [bookingDoctor, setBookingDoctor] = useState<DoctorProfile | null>(null);
+  const [doctors, setDoctors] = useState<BookingDoctor[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [bookingDoctor, setBookingDoctor] = useState<BookingDoctor | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
 
-  const openBooking = (doctor: DoctorProfile) => {
+  const loadDoctors = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const list = await sessionService.getAvailableDoctors();
+      const today = new Date().getDay();
+      const mapped: BookingDoctor[] = list.map((doc) => {
+        const day =
+          doc.availability.find((a) => a.day_of_week === today) ??
+          doc.availability[0];
+        return {
+          id: doc.id,
+          name: doc.full_name,
+          specialty: doc.specialization,
+          timeSlots: day ? buildSlots(day.start_time, day.end_time) : [],
+        };
+      });
+      setDoctors(mapped);
+    } catch {
+      setError('Could not load doctors. Is the backend running?');
+      setDoctors([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadDoctors();
+  }, [loadDoctors]);
+
+  const openBooking = (doctor: BookingDoctor) => {
     setBookingDoctor(doctor);
     setModalVisible(true);
   };
 
-  /** Called after a successful booking — open the persistent chat with the doctor. */
-  const handleBooked = (session: MockSession) => {
+  const handleBooked = (conversation: Conversation) => {
     setModalVisible(false);
     setBookingDoctor(null);
     navigation.navigate('ChatDetail', {
-      chatId: session.id,
-      participantName: session.doctorName,
-      isMock: true,
+      chatId: conversation.id,
+      participantName: bookingDoctor?.name ?? 'Doctor',
     });
   };
 
@@ -30,23 +74,33 @@ const DoctorsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Find the Right Care for You</Text>
-        <Text style={styles.headerSub}>Choose a trusted healthcare professional and book your appointment with ease.</Text>
+        <Text style={styles.headerSub}>
+          Choose a trusted healthcare professional and book your appointment with ease.
+        </Text>
       </View>
 
-      <FlatList
-        data={MOCK_DOCTOR_PROFILES}
-        keyExtractor={(item) => String(item.id)}
-        renderItem={({ item }) => <DoctorCard doctor={item} onBook={openBooking} />}
-        contentContainerStyle={styles.listContainer}
-        showsVerticalScrollIndicator={false}
-        ListEmptyComponent={
-          <EmptyState
-            icon="people-outline"
-            title="No doctors yet"
-            message="Doctors will appear here once they are available."
-          />
-        }
-      />
+      {loading ? (
+        <View style={styles.center}>
+          <ActivityIndicator size="large" color={Colors.primary} />
+        </View>
+      ) : (
+        <FlatList
+          data={doctors}
+          keyExtractor={(item) => String(item.id)}
+          renderItem={({ item }) => <DoctorCard doctor={item} onBook={openBooking} />}
+          contentContainerStyle={styles.listContainer}
+          showsVerticalScrollIndicator={false}
+          ListEmptyComponent={
+            <EmptyState
+              icon="people-outline"
+              title={error ? 'Unable to load doctors' : 'No doctors yet'}
+              message={
+                error ?? 'Doctors will appear here once they are available.'
+              }
+            />
+          }
+        />
+      )}
 
       <BookAppointmentModal
         visible={modalVisible}
@@ -65,6 +119,11 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.background,
+  },
+  center: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   header: {
     paddingHorizontal: Spacing.xl,

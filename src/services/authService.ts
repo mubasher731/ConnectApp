@@ -43,7 +43,7 @@ export const authService = {
 
   /** Register a patient; optionally set the display name via /auth/profile. */
   async signUp({ name, email, password }: SignUpParams): Promise<AuthSession> {
-    const res = await api.post('/api/auth/register', { email, password, role: 'patient' });
+    const res = await api.post('/api/auth/signup', { email, password, role: 'patient' });
     const { user, token } = extractAuth(res);
     await tokenStore.setSession({ token, user });
     registerSocket(user);
