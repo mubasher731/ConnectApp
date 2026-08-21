@@ -243,6 +243,7 @@ const BookAppointmentModal: React.FC<BookAppointmentModalProps> = ({
               multiline
               maxLength={500}
               textAlignVertical="top"
+              keyboardAppearance="dark"
             />
 
             {/* Actions */}

@@ -1073,6 +1073,7 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
                   onSubmitEditing={() => sendMessage()}
                   returnKeyType="send"
                   editable={!locked}
+                  keyboardAppearance="dark"
                 />
                 <View style={styles.inputActions}>
                   <TouchableOpacity
@@ -1272,7 +1273,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.lg,
   },
   countdownBannerStart: {
-    backgroundColor: '#E8F0FE',
+    backgroundColor: Colors.infoSoft,
   },
   countdownBannerEnded: {
     backgroundColor: Colors.errorSoft,
@@ -1486,7 +1487,7 @@ const styles = StyleSheet.create({
   inputContainer: {
     borderTopWidth: 1,
     borderTopColor: Colors.primary,
-    backgroundColor: Colors.primary,
+    backgroundColor: Colors.inputBackground, // #151A33 input area
     paddingHorizontal: Spacing.md,
     paddingTop: Spacing.sm,
     paddingBottom: Platform.OS === 'ios' ? Spacing.md : Spacing.sm,
@@ -1516,7 +1517,9 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   sendButton: {
-    backgroundColor: Colors.white,
+    backgroundColor: Colors.inputBackground, // #151A33 voice/send button
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.10)',
     marginLeft: Spacing.sm,
     marginRight: Spacing.md,
   },
@@ -1524,8 +1527,10 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.white,
+    backgroundColor: Colors.inputBackground, // #151A33 input field
     borderRadius: 22,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.10)',
     paddingLeft: Spacing.lg,
     paddingRight: Spacing.xs,
     minHeight: 44,
@@ -1552,7 +1557,9 @@ const styles = StyleSheet.create({
     borderRadius: Radius.round,
   },
   attachButton: {
-    backgroundColor: Colors.inputBackground,
+    backgroundColor: Colors.inputBackground, // #151A33 "+" button
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.10)',
     marginRight: Spacing.sm,
   },
   recordingWrapper: {

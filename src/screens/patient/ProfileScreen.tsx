@@ -344,7 +344,7 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.xl,
   },
   modalContent: {
-    backgroundColor: Colors.white,
+    backgroundColor: Colors.card,
     borderRadius: Radius.xl,
     padding: Spacing.xl,
     width: '100%',

@@ -41,7 +41,7 @@ export const QUICK_ACTIONS: QuickAction[] = [
     key: 'directory',
     icon: 'people',
     label: 'Doctors',
-    tint: '#E8F0FE',
+    tint: Colors.infoSoft,
     color: Colors.info,
     target: 'Doctors',
   },
@@ -96,7 +96,7 @@ export const NOTIFICATION_KIND_META: Record<
   reminder: {
     icon: 'notifications',
     color: Colors.info,
-    tint: '#E8F0FE',
+    tint: Colors.infoSoft,
   },
   system: {
     icon: 'information-circle',
@@ -112,10 +112,10 @@ export const CONVERSATION_STATE_META: Record<
   ConversationState,
   { label: string; color: string; bg: string }
 > = {
-  pending: { label: 'Pending', color: '#F59E0B', bg: '#FEF3E0' },
-  in_progress: { label: 'In Progress', color: '#3B82F6', bg: '#E8F0FE' },
-  active: { label: 'Active', color: '#5B67F1', bg: '#EEF0FE' },
-  ended: { label: 'Ended', color: '#6B7280', bg: '#F1F2F6' },
+  pending: { label: 'Pending', color: Colors.warning, bg: Colors.warningSoft },
+  in_progress: { label: 'In Progress', color: Colors.info, bg: Colors.infoSoft },
+  active: { label: 'Active', color: Colors.primary, bg: Colors.primarySoft },
+  ended: { label: 'Ended', color: Colors.textSecondary, bg: Colors.inputBackground },
 };
 
 export type DashboardStatKey =
@@ -145,8 +145,8 @@ export const DASHBOARD_STATS: StatConfig[] = [
     key: 'awaitingAction',
     label: 'Awaiting Action',
     icon: 'time-outline',
-    color: '#F59E0B',
-    bg: '#FEF3E0',
+    color: Colors.warning,
+    bg: Colors.warningSoft,
   },
   {
     key: 'activeSessions',
@@ -160,7 +160,7 @@ export const DASHBOARD_STATS: StatConfig[] = [
     label: 'Completed',
     icon: 'checkmark-done-outline',
     color: Colors.info,
-    bg: '#E8F0FE',
+    bg: Colors.infoSoft,
   },
 ];
 

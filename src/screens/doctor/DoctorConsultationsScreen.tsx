@@ -88,6 +88,7 @@ const DoctorConsultationsScreen: React.FC = () => {
               onChangeText={setSearchQuery}
               autoFocus
               returnKeyType="search"
+              keyboardAppearance="dark"
             />
             {searchQuery.length > 0 && (
               <TouchableOpacity onPress={() => setSearchQuery('')}>

@@ -211,14 +211,14 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   tabBar: {
-    backgroundColor: Colors.primary,
+    backgroundColor: Colors.card, // #151A33 dark tab bar
     borderTopWidth: 0,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     paddingTop: 6,
     shadowColor: Colors.shadow,
     shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.06,
+    shadowOpacity: 0.4,
     shadowRadius: 16,
     elevation: 12,
   },

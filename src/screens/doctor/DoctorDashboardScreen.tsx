@@ -156,6 +156,7 @@ const DoctorDashboardScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
                 value={searchQuery}
                 onChangeText={setSearchQuery}
                 returnKeyType="search"
+                keyboardAppearance="dark"
               />
               {searchQuery.length > 0 && (
                 <TouchableOpacity onPress={() => setSearchQuery('')}>

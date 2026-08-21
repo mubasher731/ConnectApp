@@ -53,6 +53,7 @@ const FormInput: React.FC<FormInputProps> = ({
           onBlur={() => setFocused(false)}
           autoCapitalize={autoCapitalize}
           autoCorrect={false}
+          keyboardAppearance="dark"
           {...rest}
         />
         {secure && (
@@ -102,11 +103,11 @@ const styles = StyleSheet.create({
   },
   fieldFocused: {
     borderColor: Colors.primary,
-    backgroundColor: Colors.white,
+    backgroundColor: Colors.inputBackground,
   },
   fieldError: {
     borderColor: Colors.error,
-    backgroundColor: Colors.white,
+    backgroundColor: Colors.errorSoft,
   },
   input: {
     flex: 1,

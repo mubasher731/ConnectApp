@@ -1,50 +1,51 @@
 export const Colors = {
-  // Brand
-  primary: '#5B67F1',
-  primaryLight: '#7B85F5',
-  primaryDark: '#4A54D4',
-  primarySoft: '#EEF0FE',
-  primaryGradient: ['#5B67F1', '#8A7BF0'] as [string, string],
+  // Brand (lifted for contrast on dark surfaces)
+  primary: '#7C86FF',
+  primaryLight: '#A5ADFF',
+  primaryDark: '#5B67F1',
+  primarySoft: 'rgba(124, 134, 255, 0.16)',
+  primaryGradient: ['#7C86FF', '#8A7BF0'] as [string, string],
 
-  // Surfaces
-  background: '#FFFFFF',
-  surface: '#F6F7FB',
-  card: '#FFFFFF',
-  inputBackground: '#F2F3F8',
-  border: '#E7E9F0',
+  // Surfaces (dark, cool navy)
+  background: '#0B0F1F',
+  surface: '#11162B',
+  card: '#151A33',
+  inputBackground: '#151A33',
+  border: '#232B4A',
 
-  // Text
-  text: '#16181D',
-  textSecondary: '#6B7280',
-  textTertiary: '#A6ABB8',
+  // Text (light)
+  text: '#EDF0FA',
+  textSecondary: '#9AA3C4',
+  textTertiary: '#5F6B93',
   textOnPrimary: '#FFFFFF',
 
-  // Status
-  success: '#22C55E',
-  successSoft: '#E7F8EE',
-  error: '#EF4444',
-  errorSoft: '#FDEAEA',
-  warning: '#F59E0B',
-  warningSoft: '#FEF3E0',
-  info: '#3B82F6',
+  // Status (bright hues + translucent dark tints)
+  success: '#34D399',
+  successSoft: 'rgba(52, 211, 153, 0.14)',
+  error: '#F87171',
+  errorSoft: 'rgba(248, 113, 113, 0.14)',
+  warning: '#FBBF24',
+  warningSoft: 'rgba(251, 191, 36, 0.14)',
+  info: '#60A5FA',
+  infoSoft: 'rgba(96, 165, 250, 0.14)',
 
   // Chat
   chatBubbleSent: '#5B67F1',
-  chatBubbleReceived: '#F0F1F5',
+  chatBubbleReceived: '#1B2140',
 
   // Calls
-  incomingCall: '#22C55E',
-  outgoingCall: '#5B67F1',
-  missedCall: '#EF4444',
+  incomingCall: '#34D399',
+  outgoingCall: '#7C86FF',
+  missedCall: '#F87171',
 
   // Misc
   white: '#FFFFFF',
   black: '#000000',
-  overlay: 'rgba(15, 17, 26, 0.45)',
-  tabInactive: '#9AA1B0',
-  shadow: '#16181D',
+  overlay: 'rgba(2, 4, 14, 0.65)',
+  tabInactive: '#8C94B5',
+  shadow: '#000000',
 
-  // Splash
+  // Splash (already dark)
   splashBackground: '#151A33',
   splashIcon: '#8FA4FF',
   splashIconSoft: '#A9B8FF',

@@ -19,7 +19,6 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ navigation }) => {
   const { signUp } = useAuth();
 
   const [firstName, setFirstName] = useState('');
-  const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -32,7 +31,6 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ navigation }) => {
   const handleSubmit = async () => {
     const nextErrors: FieldErrors = {
       firstName: validators.firstName(firstName),
-      lastName: validators.lastName(lastName),
       email: validators.email(email),
       password: validators.password(password),
       confirmPassword: validators.confirmPassword(confirmPassword, password),
@@ -44,7 +42,7 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ navigation }) => {
     setLoading(true);
     try {
       await signUp({
-        name: `${firstName.trim()} ${lastName.trim()}`,
+        name: firstName.trim(),
         email,
         password,
       });
@@ -74,31 +72,17 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ navigation }) => {
       }
     >
       <FormInput
-        label="First name"
+        label="Full name"
         icon="person-outline"
-        placeholder="Jane"
+        placeholder="Jane Doe"
         autoCapitalize="words"
-        textContentType="givenName"
+        textContentType="name"
         value={firstName}
         onChangeText={(t) => {
           setFirstName(t);
           clearError('firstName');
         }}
         error={errors.firstName}
-      />
-
-      <FormInput
-        label="Last name"
-        icon="person-outline"
-        placeholder="Doe"
-        autoCapitalize="words"
-        textContentType="familyName"
-        value={lastName}
-        onChangeText={(t) => {
-          setLastName(t);
-          clearError('lastName');
-        }}
-        error={errors.lastName}
       />
 
       <FormInput
@@ -154,7 +138,6 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ navigation }) => {
         loading={loading}
         disabled={
           !firstName.trim() ||
-          !lastName.trim() ||
           !email.trim() ||
           !password ||
           !confirmPassword
