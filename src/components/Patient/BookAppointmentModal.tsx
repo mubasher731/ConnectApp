@@ -52,6 +52,7 @@ const BookAppointmentModal: React.FC<BookAppointmentModalProps> = ({
   const [message, setMessage] = useState('');
   const [sending, setSending] = useState(false);
   const [selectedDate, setSelectedDate] = useState(() => new Date());
+  const [slotOpen, setSlotOpen] = useState(false);
 
   // Next 7 days for the date selector.
   const dayOptions = useMemo(() => {
@@ -69,6 +70,7 @@ const BookAppointmentModal: React.FC<BookAppointmentModalProps> = ({
   const reset = () => {
     setTimeSlot(null);
     setMessage('');
+    setSlotOpen(false);
   };
 
   // Fresh state every time the modal opens.
@@ -77,6 +79,7 @@ const BookAppointmentModal: React.FC<BookAppointmentModalProps> = ({
       setTimeSlot(null);
       setMessage('');
       setSelectedDate(new Date());
+      setSlotOpen(false);
     }
   }, [visible]);
 
@@ -187,41 +190,94 @@ const BookAppointmentModal: React.FC<BookAppointmentModalProps> = ({
               })}
             </ScrollView>
 
-            {/* Time slot grid */}
+            {/* Time slot dropdown */}
             <Text style={styles.label}>Select Time Slot</Text>
-            {allSlots.length === 0 ? (
-              <Text style={styles.noSlots}>No slots available on this day.</Text>
-            ) : (
-              <View style={styles.slotGrid}>
-                {allSlots.map((slot) => {
-                  const disabled = isSlotPast(slot);
-                  const selected = timeSlot === slot;
-                  return (
-                    <TouchableOpacity
-                      key={slot}
-                      disabled={disabled}
-                      style={[
-                        styles.slotChip,
-                        selected && styles.slotChipActive,
-                        disabled && styles.slotChipDisabled,
-                      ]}
-                      onPress={() => handleSelectSlot(slot)}
-                      activeOpacity={0.7}
-                    >
-                      <Text
+            <TouchableOpacity
+              style={[styles.slotDropdown, slotOpen && styles.slotDropdownOpen]}
+              onPress={() => setSlotOpen((o) => !o)}
+              activeOpacity={0.85}
+            >
+              <AppIcon name="time-outline" size={18} color={Colors.textSecondary} />
+              <Text
+                style={[
+                  styles.slotDropdownText,
+                  !timeSlot && styles.slotDropdownPlaceholder,
+                ]}
+                numberOfLines={1}
+              >
+                {timeSlot ? formatSlotRange(timeSlot) : 'Choose a Slot'}
+              </Text>
+              <AppIcon
+                name={slotOpen ? 'chevron-up' : 'chevron-down'}
+                size={18}
+                color={Colors.textSecondary}
+              />
+            </TouchableOpacity>
+
+            {slotOpen && (
+              <ScrollView
+                style={styles.slotList}
+                nestedScrollEnabled
+                showsVerticalScrollIndicator={false}
+              >
+                {allSlots.length === 0 ? (
+                  <Text style={styles.noSlots}>No slots available on this day.</Text>
+                ) : (
+                  allSlots.map((slot) => {
+                    const disabled = isSlotPast(slot);
+                    const selected = timeSlot === slot;
+                    return (
+                      <TouchableOpacity
+                        key={slot}
                         style={[
-                          styles.slotChipText,
-                          selected && styles.slotChipTextActive,
-                          disabled && styles.slotChipTextDisabled,
+                          styles.slotRow,
+                          selected && styles.slotRowSelected,
+                          disabled && styles.slotRowDisabled,
                         ]}
+                        disabled={disabled}
+                        onPress={() => {
+                          handleSelectSlot(slot);
+                          setSlotOpen(false);
+                        }}
+                        activeOpacity={0.7}
                       >
-                        {formatSlotRange(slot)}
-                      </Text>
-                      {disabled && <Text style={styles.slotDisabledTag}>Past</Text>}
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
+                        <AppIcon
+                          name={
+                            disabled
+                              ? 'lock-closed-outline'
+                              : selected
+                              ? 'checkmark-circle'
+                              : 'checkmark-circle-outline'
+                          }
+                          size={18}
+                          color={
+                            disabled
+                              ? Colors.textTertiary
+                              : selected
+                              ? Colors.primary
+                              : Colors.textSecondary
+                          }
+                        />
+                        <Text
+                          style={[
+                            styles.slotRowText,
+                            selected && styles.slotRowTextSelected,
+                            disabled && styles.slotRowTextDisabled,
+                          ]}
+                          numberOfLines={1}
+                        >
+                          {formatSlotRange(slot)}
+                        </Text>
+                        {disabled ? (
+                          <Text style={styles.slotRowTag}>Booked</Text>
+                        ) : selected ? (
+                          <Text style={styles.slotRowTagSelected}>Selected</Text>
+                        ) : null}
+                      </TouchableOpacity>
+                    );
+                  })
+                )}
+              </ScrollView>
             )}
 
             {/* Slot status */}
@@ -292,7 +348,7 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 420,
     maxHeight: '92%',
-    backgroundColor: Colors.background,
+    backgroundColor: Colors.card,
     borderRadius: Radius.xl,
     padding: Spacing.xl,
     ...Shadows.raised,
@@ -325,47 +381,87 @@ const styles = StyleSheet.create({
     color: Colors.text,
     marginBottom: Spacing.sm,
   },
-  slotGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: Spacing.sm,
-    marginBottom: Spacing.md,
-  },
-  slotChip: {
+  slotDropdown: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: 10,
-    borderRadius: Radius.round,
     backgroundColor: Colors.inputBackground,
+    borderRadius: Radius.md,
     borderWidth: 1,
     borderColor: Colors.border,
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.md,
+    marginBottom: Spacing.sm,
   },
-  slotChipActive: {
-    backgroundColor: Colors.primarySoft,
+  slotDropdownOpen: {
     borderColor: Colors.primary,
   },
-  slotChipDisabled: {
-    opacity: 0.5,
+  slotDropdownText: {
+    flex: 1,
+    fontSize: 15,
+    fontWeight: '600',
+    color: Colors.text,
+    marginHorizontal: Spacing.sm,
   },
-  slotChipText: {
+  slotDropdownPlaceholder: {
+    color: Colors.textSecondary,
+    fontWeight: '500',
+  },
+  slotList: {
+    backgroundColor: Colors.surface,
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    overflow: 'hidden',
+    marginBottom: Spacing.md,
+    maxHeight: 280,
+  },
+  slotRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.md,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: Colors.border,
+  },
+  slotRowSelected: {
+    backgroundColor: Colors.primarySoft,
+  },
+  slotRowDisabled: {
+    opacity: 0.55,
+  },
+  slotRowText: {
+    flex: 1,
     fontSize: 14,
     fontWeight: '600',
     color: Colors.text,
+    marginLeft: Spacing.sm,
   },
-  slotChipTextActive: {
+  slotRowTextSelected: {
+    color: Colors.primary,
+    fontWeight: '700',
+  },
+  slotRowTextDisabled: {
+    color: Colors.textTertiary,
+  },
+  slotRowTag: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: Colors.textTertiary,
+    backgroundColor: 'rgba(127,127,127,0.16)',
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 2,
+    borderRadius: Radius.round,
+    overflow: 'hidden',
+  },
+  slotRowTagSelected: {
+    fontSize: 11,
     fontWeight: '700',
     color: Colors.primary,
-  },
-  slotChipTextDisabled: {
-    color: Colors.textTertiary,
-    textDecorationLine: 'line-through',
-  },
-  slotDisabledTag: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: Colors.textTertiary,
+    backgroundColor: 'rgba(124,134,255,0.16)',
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 2,
+    borderRadius: Radius.round,
+    overflow: 'hidden',
   },
   dayRow: {
     paddingBottom: Spacing.sm,
@@ -425,6 +521,8 @@ const styles = StyleSheet.create({
     minHeight: 90,
     borderRadius: Radius.md,
     backgroundColor: Colors.inputBackground,
+    borderWidth: 1,
+    borderColor: Colors.border,
     paddingHorizontal: Spacing.lg,
     paddingVertical: Spacing.md,
     fontSize: 14,
