@@ -11,6 +11,26 @@ const userRole = (): 'doctor' | 'patient' =>
   currentUser?.role_id === 3 ? 'doctor' : 'patient';
 
 /**
+ * App-wide "data changed" signal. The socket forwards relevant backend events
+ * here so any list screen can auto-refresh without wiring its own socket
+ * listeners (see the useAutoRefresh hook).
+ */
+type DataListener = () => void;
+const dataListeners = new Set<DataListener>();
+
+export const liveData = {
+  subscribe(fn: DataListener): () => void {
+    dataListeners.add(fn);
+    return () => {
+      dataListeners.delete(fn);
+    };
+  },
+  emit(): void {
+    dataListeners.forEach((fn) => fn());
+  },
+};
+
+/**
  * Socket.IO singleton for the Fountain chat feature.
  * Rule: send = REST, receive = Socket.IO. The socket authenticates with the
  * JWT (auth + query) so the server knows who is listening and routes events.
@@ -34,9 +54,11 @@ export const socketService = {
       auth: token ? { token } : undefined,
       query: token ? { token } : undefined,
       reconnection: true,
-      reconnectionAttempts: 5,
+      reconnectionAttempts: 10,
       reconnectionDelay: 1000,
-      transports: ['websocket'],
+      reconnectionDelayMax: 5000,
+      // websocket first, polling fallback — survives proxy/ngrok upgrade failures
+      transports: ['websocket', 'polling'],
     });
 
     socket.on('connect', () => {
@@ -55,6 +77,19 @@ export const socketService = {
     socket.on('error', (err) => {
       console.error('[socket] ❌ Socket error:', err.message);
     });
+
+    // Forward data-affecting events so list screens can auto-refresh live.
+    const broadcast = () => liveData.emit();
+    (
+      [
+        'chat-request',
+        'chat-decision',
+        'session-timer-update',
+        'session-ended',
+        'user-joined',
+        'user-left',
+      ] as const
+    ).forEach((ev) => socket?.on(ev, broadcast));
 
     return socket;
   },

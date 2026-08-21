@@ -12,6 +12,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppIcon, DoctorAppointmentCard, EmptyState } from '../../components';
 import { CONSULTATION_FILTERS, ConsultationFilterKey } from '../../context/appData';
+import { useAutoRefresh } from '../../hooks/useAutoRefresh';
 import { sessionService } from '../../services';
 import { Conversation } from '../../types';
 import { Colors, Radius, Spacing, responsiveSize } from '../../theme';
@@ -40,6 +41,9 @@ const DoctorConsultationsScreen: React.FC = () => {
       load();
     }, [load])
   );
+
+  // Live real-time refresh whenever backend data changes over the socket.
+  useAutoRefresh(load);
 
   const filtered = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();

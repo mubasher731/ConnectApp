@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   View,
   Text,
@@ -8,9 +8,11 @@ import {
   StyleSheet,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 import { AppIcon, AppointmentCard, Avatar, EmptyState } from '../../components';
 import { useAuth } from '../../context/AuthContext';
 import { chatService } from '../../services/dataService';
+import { useAutoRefresh } from '../../hooks/useAutoRefresh';
 import { Chat } from '../../types';
 import { Colors, Radius, Shadows, Spacing, responsiveSize } from '../../theme';
 
@@ -33,9 +35,15 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     }
   }, []);
 
-  useEffect(() => {
-    loadChats();
-  }, [loadChats]);
+  // Live real-time refresh whenever backend data changes over the socket.
+  useAutoRefresh(loadChats);
+
+  // Also refresh whenever the screen regains focus (e.g. after booking).
+  useFocusEffect(
+    useCallback(() => {
+      loadChats();
+    }, [loadChats])
+  );
 
   const getGreeting = useCallback(() => {
     const hour = new Date().getHours();

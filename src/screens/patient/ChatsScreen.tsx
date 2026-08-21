@@ -8,6 +8,7 @@ import {
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useAutoRefresh } from '../../hooks/useAutoRefresh';
 import { AppointmentCard, EmptyState } from '../../components';
 import { CHAT_FILTERS, ChatFilterKey } from '../../context/appData';
 import { chatService } from '../../services';
@@ -30,22 +31,27 @@ const ChatsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     return chats.filter((c) => c.status === 'missed');
   }, [chats, filter]);
 
+  const loadChats = useCallback(async () => {
+    setLoading(true);
+    try {
+      setChats(await chatService.getChats());
+    } catch {
+      setChats([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   // Re-fetch every time the screen gains focus (mount + returning to it), so
   // the list always shows the complete, fresh conversations.
   useFocusEffect(
     useCallback(() => {
-      let mounted = true;
-      setLoading(true);
-      chatService
-        .getChats()
-        .then((data) => mounted && setChats(data))
-        .catch(() => mounted && setChats([]))
-        .finally(() => mounted && setLoading(false));
-      return () => {
-        mounted = false;
-      };
-    }, [])
+      loadChats();
+    }, [loadChats])
   );
+
+  // Live real-time refresh whenever backend data changes over the socket.
+  useAutoRefresh(loadChats);
 
   const navigateToChat = useCallback(
     (chat: Chat) =>

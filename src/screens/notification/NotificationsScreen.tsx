@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   FlatList,
   StyleSheet,
@@ -6,7 +6,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { EmptyState, ListItemSeparator, NotificationCard } from '../../components';
-import { socketService } from '../../api/socket';
+import { useAutoRefresh } from '../../hooks/useAutoRefresh';
 import { sessionService } from '../../services';
 import { AppNotification, BackendNotification, NotificationKind } from '../../types';
 import { Colors, Spacing } from '../../theme';
@@ -48,17 +48,8 @@ const NotificationsScreen: React.FC = () => {
     }, [load])
   );
 
-  // Live: reload when a new chat request / decision arrives over the socket.
-  useEffect(() => {
-    const socket = socketService.getSocket();
-    const refresh = () => load();
-    socket?.on('chat-request', refresh);
-    socket?.on('chat-decision', refresh);
-    return () => {
-      socket?.off('chat-request', refresh);
-      socket?.off('chat-decision', refresh);
-    };
-  }, [load]);
+  // Live real-time refresh whenever backend data changes over the socket.
+  useAutoRefresh(load);
 
   const renderItem = ({ item }: { item: AppNotification }) => (
     <NotificationCard notification={item} />
