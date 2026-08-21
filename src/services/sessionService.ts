@@ -143,9 +143,12 @@ export const sessionService = {
     return (data?.data ?? []) as DoctorAvailability[];
   },
 
-  /** Messages for a conversation (oldest → newest). */
-  async getMessages(id: string | number): Promise<MessageRaw[]> {
-    const { data } = await api.get(`/api/conversations/${id}/messages`);
+  /** Messages for a conversation (oldest → newest). No options = all messages. */
+  async getMessages(id: string | number, options: { limit?: number; skip?: number } = {}): Promise<MessageRaw[]> {
+    const params: Record<string, number> = {};
+    if (options.limit != null) params.limit = options.limit;
+    if (options.skip != null) params.skip = options.skip;
+    const { data } = await api.get(`/api/conversations/${id}/messages`, { params });
     return (data?.data ?? []) as MessageRaw[];
   },
 

@@ -91,11 +91,11 @@ export const chatService = {
     return [...byPeer.values()].map((c) => mapConversationToChat(c, me.id));
   },
 
-  /** Messages for a conversation (oldest → newest). */
-  async getMessages(conversationId: string | number): Promise<Message[]> {
+  /** Messages for a conversation (oldest → newest). No options = all messages. */
+  async getMessages(conversationId: string | number, options: { limit?: number; skip?: number } = {}): Promise<Message[]> {
     const me = await authService.getMe();
     const isPatient = me.role_id === 4;
-    const raws = await sessionService.getMessages(conversationId);
+    const raws = await sessionService.getMessages(conversationId, options);
     return raws.map((m) => mapMessage(m, me.id, isPatient, conversationId));
   },
 

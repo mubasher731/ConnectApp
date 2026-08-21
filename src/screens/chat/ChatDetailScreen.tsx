@@ -14,6 +14,7 @@ import {
   Linking,
   Alert,
   PermissionsAndroid,
+  ActivityIndicator,
 } from 'react-native';
 import dayjs from 'dayjs';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -136,6 +137,9 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
   const [voicePosition, setVoicePosition] = useState(0);
   const [voiceDuration, setVoiceDuration] = useState(0);
   const [attachOpen, setAttachOpen] = useState(false);
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const PAGE_SIZE = 50;
   const recordingRef = useRef<{ start: number; timer: ReturnType<typeof setInterval> | null }>({
     start: 0,
     timer: null,
@@ -147,6 +151,27 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
   const typingTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastTypingSent = useRef(0);
   const peerUserIdRef = useRef<number | null>(null);
+
+  // Load the next older page when the user scrolls to the top of the list.
+  const loadOlder = useCallback(async () => {
+    if (!chatId || !hasMore || loadingMore) return;
+    setLoadingMore(true);
+    try {
+      const older = await chatService.getMessages(chatId, {
+        limit: PAGE_SIZE,
+        skip: messages.length,
+      });
+      setMessages((prev) => {
+        const seen = new Set(prev.map((m) => String(m.id)));
+        return [...older.filter((m) => !seen.has(String(m.id))), ...prev];
+      });
+      setHasMore(older.length >= PAGE_SIZE);
+    } catch (e) {
+      console.log('loadOlder failed:', e);
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [chatId, hasMore, loadingMore, messages.length, PAGE_SIZE]);
 
   const isDoctorRole = user?.role_id === 3;
 
@@ -193,8 +218,11 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
         // ignore — messages may still load
       }
       try {
-        const msgs = await chatService.getMessages(chatId);
-        if (mounted) setMessages(msgs);
+        const msgs = await chatService.getMessages(chatId, { limit: PAGE_SIZE, skip: 0 });
+        if (mounted) {
+          setMessages(msgs);
+          setHasMore(msgs.length >= PAGE_SIZE);
+        }
       } catch {
         if (mounted) setMessages([]);
       }
@@ -946,6 +974,14 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
           onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: true })}
+          onStartReached={loadOlder}
+          onStartReachedThreshold={0.3}
+          maintainVisibleContentPosition={{ minIndexForVisible: 1 }}
+          ListHeaderComponent={
+            loadingMore ? (
+              <ActivityIndicator style={{ paddingVertical: 12 }} />
+            ) : null
+          }
           ListFooterComponent={renderTyping}
           ListEmptyComponent={
             <EmptyState
