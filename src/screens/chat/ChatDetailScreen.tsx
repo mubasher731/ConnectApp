@@ -12,10 +12,15 @@ import {
   ScrollView,
   Image,
   Linking,
+  Alert,
+  PermissionsAndroid,
 } from 'react-native';
 import dayjs from 'dayjs';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useHeaderHeight } from '@react-navigation/elements';
+import { launchCamera, launchImageLibrary } from 'react-native-image-picker';
+import { pick, types, errorCodes, isErrorWithCode } from '@react-native-documents/picker';
+import AudioRecorderPlayer from 'react-native-nitro-sound';
 import { AppIcon, Avatar, EmptyState, SessionExtensionAlert } from '../../components';
 import { socketService } from '../../api/socket';
 import { getApiBaseUrl } from '../../api/config';
@@ -111,6 +116,15 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
   const [now, setNow] = useState(() => Date.now());
   const [showExtension, setShowExtension] = useState(false);
   const [extensionSecondsLeft, setExtensionSecondsLeft] = useState(60);
+  const [sendingMedia, setSendingMedia] = useState(false);
+  const [recording, setRecording] = useState(false);
+  const [recordingSecs, setRecordingSecs] = useState(0);
+  const [recordingPath, setRecordingPath] = useState<string | null>(null);
+  const [attachOpen, setAttachOpen] = useState(false);
+  const recordingRef = useRef<{ start: number; timer: ReturnType<typeof setInterval> | null }>({
+    start: 0,
+    timer: null,
+  });
   const extensionFiredForEnd = useRef<number | null>(null);
   const listRef = useRef<FlatList>(null);
   const typingTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -408,6 +422,139 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
     setInputText((prev) => prev + emoji);
   };
 
+  // ---- Media (photo / file / voice) ----
+  const sendMedia = useCallback(
+    async (file: any, type: 'photo' | 'file' | 'voice', content?: string) => {
+      if (!chatId || locked || sendingMedia) return;
+      setSendingMedia(true);
+      const localId = `local-${Date.now()}`;
+      const optimistic: Message = {
+        id: localId,
+        sessionId: chatId,
+        senderId: user?.id ?? 0,
+        text: content ?? '',
+        type,
+        createdAt: new Date().toISOString(),
+        sentByMe: true,
+        mediaUrl: file?.uri ?? null,
+      };
+      setMessages((prev) => [...prev, optimistic]);
+      try {
+        const saved = await chatService.sendMessage({
+          sessionId: chatId,
+          content,
+          type,
+          files: [file],
+        });
+        setMessages((prev) =>
+          prev.map((m) => (m.id === localId ? { ...saved, id: saved.id } : m))
+        );
+      } catch (err) {
+        setMessages((prev) => prev.filter((m) => m.id !== localId));
+        Alert.alert(
+          'Send Failed',
+          err instanceof Error && err.message ? err.message : 'Could not send the file.'
+        );
+      } finally {
+        setSendingMedia(false);
+      }
+    },
+    [chatId, locked, sendingMedia, user?.id]
+  );
+
+  const toUploadFile = (asset: any, fallbackName: string, mime: string) => ({
+    uri: asset.uri,
+    name: asset.fileName || asset.name || fallbackName,
+    type: asset.type || mime,
+  });
+
+  const pickFromLibrary = async () => {
+    setAttachOpen(false);
+    const result = await launchImageLibrary({ mediaType: 'photo', selectionLimit: 1 });
+    const asset = result.assets?.[0];
+    if (asset?.uri) await sendMedia(toUploadFile(asset, `photo-${Date.now()}.jpg`, 'image/jpeg'), 'photo');
+  };
+
+  const takePhoto = async () => {
+    setAttachOpen(false);
+    if (Platform.OS === 'android') {
+      const granted = await PermissionsAndroid.request(
+        PermissionsAndroid.PERMISSIONS.CAMERA
+      );
+      if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
+        Alert.alert('Camera permission needed', 'Allow camera access to take a photo.');
+        return;
+      }
+    }
+    const result = await launchCamera({ mediaType: 'photo', saveToPhotos: false });
+    const asset = result.assets?.[0];
+    if (asset?.uri) await sendMedia(toUploadFile(asset, `photo-${Date.now()}.jpg`, 'image/jpeg'), 'photo');
+  };
+
+  const pickDocument = async () => {
+    setAttachOpen(false);
+    try {
+      const [doc] = await pick({ type: [types.allFiles], mode: 'import' });
+      if (doc?.uri) {
+        await sendMedia(
+          {
+            uri: doc.uri,
+            name: doc.name || `file-${Date.now()}`,
+            type: doc.type || 'application/octet-stream',
+          },
+          'file'
+        );
+      }
+    } catch (err) {
+      if (isErrorWithCode(err) && err.code === errorCodes.OPERATION_CANCELED) return;
+      Alert.alert('Pick Failed', 'Could not open the document picker.');
+    }
+  };
+
+  const startVoice = async () => {
+    if (!chatId || locked) return;
+    if (Platform.OS === 'android') {
+      const granted = await PermissionsAndroid.request(
+        PermissionsAndroid.PERMISSIONS.RECORD_AUDIO
+      );
+      if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
+        Alert.alert('Microphone permission needed', 'Allow microphone access to record voice.');
+        return;
+      }
+    }
+    try {
+      setRecording(true);
+      recordingRef.current.start = Date.now();
+      recordingRef.current.timer = setInterval(() => {
+        setRecordingSecs(Math.floor((Date.now() - recordingRef.current.start) / 1000));
+      }, 500);
+      await AudioRecorderPlayer.startRecorder();
+    } catch {
+      setRecording(false);
+      Alert.alert('Recording Failed', 'Could not start voice recording.');
+    }
+  };
+
+  const stopVoice = async () => {
+    if (!recording) return;
+    setRecording(false);
+    const { timer } = recordingRef.current;
+    if (timer) clearInterval(timer);
+    recordingRef.current.timer = null;
+    setRecordingSecs(0);
+    try {
+      const path = await AudioRecorderPlayer.stopRecorder();
+      if (path) {
+        setRecordingPath(path);
+        const name = `voice-${Date.now()}.m4a`;
+        await sendMedia({ uri: path, name, type: 'audio/m4a' }, 'voice');
+        setRecordingPath(null);
+      }
+    } catch {
+      Alert.alert('Recording Failed', 'Could not save the voice note.');
+    }
+  };
+
   const renderItem = ({ item, index }: { item: Message; index: number }) => {
     const prev = messages[index - 1];
     const showDate = !prev || !dayjs(item.createdAt).isSame(dayjs(prev.createdAt), 'day');
@@ -624,49 +771,109 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
           )}
 
           <View style={styles.inputRow}>
-            <View style={[styles.textInputWrapper, locked && styles.inputWrapperDisabled]}>
-              <TextInput
-                style={styles.textInput}
-                placeholder={inputPlaceholder}
-                placeholderTextColor={Colors.textTertiary}
-                value={inputText}
-                onChangeText={handleChangeText}
-                multiline
-                maxLength={500}
-                onSubmitEditing={() => sendMessage()}
-                returnKeyType="send"
-                editable={!locked}
-              />
-              <View style={styles.inputActions}>
-                <TouchableOpacity
-                  style={[styles.inputAction, showEmoji && styles.inputActionActive]}
-                  onPress={() => setShowEmoji((s) => !s)}
-                  activeOpacity={0.6}
-                  disabled={locked}
-                >
-                  <AppIcon
-                    name={showEmoji ? 'close' : 'happy-outline'}
-                    size={20}
-                    color={locked ? Colors.textTertiary : showEmoji ? Colors.primary : Colors.textSecondary}
-                  />
-                </TouchableOpacity>
-              </View>
-            </View>
-
+            {/* Attach / media picker */}
             <TouchableOpacity
-              style={[
-                styles.roundButton,
-                styles.sendButton,
-                locked && styles.buttonDisabled,
-                inputText.trim().length === 0 && styles.buttonDisabled,
-              ]}
-              onPress={() => sendMessage()}
+              style={[styles.roundButton, styles.attachButton, locked && styles.buttonDisabled]}
+              onPress={() => setAttachOpen((o) => !o)}
               activeOpacity={0.85}
-              disabled={locked || inputText.trim().length === 0}
+              disabled={locked || recording}
             >
-              <AppIcon name="arrow-up" size={20} color={Colors.primary} />
+              <AppIcon name="add" size={22} color={Colors.textSecondary} />
             </TouchableOpacity>
+
+            {recording ? (
+              <View style={[styles.textInputWrapper, styles.recordingWrapper]}>
+                <TouchableOpacity
+                  style={styles.recordingStop}
+                  onPress={stopVoice}
+                  activeOpacity={0.7}
+                >
+                  <AppIcon name="stop-circle" size={20} color={Colors.error} />
+                </TouchableOpacity>
+                <Text style={styles.recordingText}>
+                  {String(Math.floor(recordingSecs / 60)).padStart(2, '0')}:
+                  {String(recordingSecs % 60).padStart(2, '0')} recording…
+                </Text>
+              </View>
+            ) : (
+              <View style={[styles.textInputWrapper, locked && styles.inputWrapperDisabled]}>
+                <TextInput
+                  style={styles.textInput}
+                  placeholder={inputPlaceholder}
+                  placeholderTextColor={Colors.textTertiary}
+                  value={inputText}
+                  onChangeText={handleChangeText}
+                  multiline
+                  maxLength={500}
+                  onSubmitEditing={() => sendMessage()}
+                  returnKeyType="send"
+                  editable={!locked}
+                />
+                <View style={styles.inputActions}>
+                  <TouchableOpacity
+                    style={[styles.inputAction, showEmoji && styles.inputActionActive]}
+                    onPress={() => setShowEmoji((s) => !s)}
+                    activeOpacity={0.6}
+                    disabled={locked}
+                  >
+                    <AppIcon
+                      name={showEmoji ? 'close' : 'happy-outline'}
+                      size={20}
+                      color={locked ? Colors.textTertiary : showEmoji ? Colors.primary : Colors.textSecondary}
+                    />
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
+
+            {/* Mic (start voice note) or send text */}
+            {inputText.trim().length === 0 && !recording ? (
+              <TouchableOpacity
+                style={[styles.roundButton, styles.sendButton, locked && styles.buttonDisabled]}
+                onPress={startVoice}
+                activeOpacity={0.85}
+                disabled={locked}
+              >
+                <AppIcon name="mic" size={20} color={Colors.primary} />
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity
+                style={[
+                  styles.roundButton,
+                  styles.sendButton,
+                  locked && styles.buttonDisabled,
+                  inputText.trim().length === 0 && styles.buttonDisabled,
+                ]}
+                onPress={() => (recording ? stopVoice() : sendMessage())}
+                activeOpacity={0.85}
+                disabled={locked || (inputText.trim().length === 0 && !recording)}
+              >
+                <AppIcon name="arrow-up" size={20} color={Colors.primary} />
+              </TouchableOpacity>
+            )}
           </View>
+
+          {/* Attach options */}
+          {attachOpen && (
+            <View style={styles.attachSheet}>
+              <TouchableOpacity style={styles.attachItem} onPress={takePhoto} activeOpacity={0.7}>
+                <AppIcon name="camera-outline" size={20} color={Colors.primary} />
+                <Text style={styles.attachItemText}>Take Photo</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.attachItem} onPress={pickFromLibrary} activeOpacity={0.7}>
+                <AppIcon name="images-outline" size={20} color={Colors.primary} />
+                <Text style={styles.attachItemText}>Photo Library</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.attachItem} onPress={pickDocument} activeOpacity={0.7}>
+                <AppIcon name="document-attach-outline" size={20} color={Colors.primary} />
+                <Text style={styles.attachItemText}>File</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.attachItem} onPress={() => setAttachOpen(false)} activeOpacity={0.7}>
+                <AppIcon name="close" size={20} color={Colors.textSecondary} />
+                <Text style={styles.attachItemText}>Cancel</Text>
+              </TouchableOpacity>
+            </View>
+          )}
         </View>
       </KeyboardAvoidingView>
 
@@ -983,6 +1190,49 @@ const styles = StyleSheet.create({
   inputActionActive: {
     backgroundColor: Colors.primarySoft,
     borderRadius: Radius.round,
+  },
+  attachButton: {
+    backgroundColor: Colors.inputBackground,
+    marginRight: Spacing.sm,
+  },
+  recordingWrapper: {
+    justifyContent: 'center',
+  },
+  recordingStop: {
+    position: 'absolute',
+    left: 10,
+    top: '50%',
+    marginTop: -10,
+  },
+  recordingText: {
+    flex: 1,
+    fontSize: 15,
+    color: Colors.error,
+    textAlign: 'center',
+    fontWeight: '600',
+  },
+  attachSheet: {
+    marginTop: Spacing.sm,
+    borderRadius: Radius.lg,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    backgroundColor: Colors.card,
+    overflow: 'hidden',
+    ...Shadows.raised,
+  },
+  attachItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.md,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: Colors.border,
+  },
+  attachItemText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: Colors.text,
+    marginLeft: Spacing.md,
   },
 });
 

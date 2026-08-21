@@ -103,13 +103,21 @@ export const chatService = {
   async sendMessage({
     sessionId,
     content,
+    type,
+    files,
   }: {
     sessionId: string | number;
-    content: string;
+    content?: string;
+    type?: string;
+    files?: any[];
   }): Promise<Message> {
     const me = await authService.getMe();
     const isPatient = me.role_id === 4;
-    const saved = await sessionService.sendMessage(sessionId, { content });
+    const saved = await sessionService.sendMessage(sessionId, {
+      content,
+      type,
+      files,
+    });
     return mapMessage(saved, me.id, isPatient, sessionId);
   },
 

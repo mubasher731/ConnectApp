@@ -14,7 +14,12 @@ import AppIcon from '../Icon/AppIcon';
 import Avatar from '../Icon/Avatar';
 import { sessionService } from '../../services';
 import { BookingDoctor, Conversation } from '../../types';
-import { dateKey, daySlotsFor, isPastSlot } from '../../utils/slots';
+import {
+  dateKey,
+  daySlotsFor,
+  isPastSlot,
+  SESSION_DURATION_MINUTES,
+} from '../../utils/slots';
 import { Colors, Radius, Shadows, Spacing } from '../../theme';
 
 interface BookAppointmentModalProps {
@@ -25,8 +30,8 @@ interface BookAppointmentModalProps {
   onBooked?: (conversation: Conversation) => void;
 }
 
-/** "09:00" → "09:00 AM - 09:30 AM". */
-const formatSlotDisplay = (slot: string): string => {
+/** "09:00" → "09:00 AM – 09:15 AM" (slot start and end). */
+const formatSlotRange = (slot: string): string => {
   const [h, m] = slot.split(':').map(Number);
   const fmt = (min: number) => {
     const hr = Math.floor(min / 60) % 24;
@@ -36,7 +41,7 @@ const formatSlotDisplay = (slot: string): string => {
     return `${String(h12).padStart(2, '0')}:${String(mn).padStart(2, '0')} ${ampm}`;
   };
   const startMin = (h || 0) * 60 + (m || 0);
-  return `${fmt(startMin)} - ${fmt(startMin + 30)}`;
+  return `${fmt(startMin)} – ${fmt(startMin + SESSION_DURATION_MINUTES)}`;
 };
 
 /** Centered booking modal: doctor info, slot dropdown, message, send/cancel. */
@@ -48,7 +53,6 @@ const BookAppointmentModal: React.FC<BookAppointmentModalProps> = ({
 }) => {
   const [timeSlot, setTimeSlot] = useState<string | null>(null);
   const [message, setMessage] = useState('');
-  const [slotDropdownOpen, setSlotDropdownOpen] = useState(false);
   const [sending, setSending] = useState(false);
   const [selectedDate, setSelectedDate] = useState(() => new Date());
 
@@ -68,7 +72,6 @@ const BookAppointmentModal: React.FC<BookAppointmentModalProps> = ({
   const reset = () => {
     setTimeSlot(null);
     setMessage('');
-    setSlotDropdownOpen(false);
   };
 
   // Fresh state every time the modal opens.
@@ -76,7 +79,6 @@ const BookAppointmentModal: React.FC<BookAppointmentModalProps> = ({
     if (visible) {
       setTimeSlot(null);
       setMessage('');
-      setSlotDropdownOpen(false);
       setSelectedDate(new Date());
     }
   }, [visible]);
@@ -90,7 +92,6 @@ const BookAppointmentModal: React.FC<BookAppointmentModalProps> = ({
   const handleSelectSlot = (slot: string) => {
     if (!doctor) return;
     setTimeSlot(slot);
-    setSlotDropdownOpen(false);
   };
 
   const handleSend = async () => {
@@ -187,7 +188,6 @@ const BookAppointmentModal: React.FC<BookAppointmentModalProps> = ({
                     onPress={() => {
                       setSelectedDate(opt.date);
                       setTimeSlot(null);
-                      setSlotDropdownOpen(false);
                     }}
                     activeOpacity={0.7}
                   >
@@ -199,70 +199,40 @@ const BookAppointmentModal: React.FC<BookAppointmentModalProps> = ({
               })}
             </ScrollView>
 
-            {/* Time slot dropdown */}
+            {/* Time slot grid */}
             <Text style={styles.label}>Select Time Slot</Text>
-            <TouchableOpacity
-              style={styles.dropdownField}
-              onPress={() => setSlotDropdownOpen((o) => !o)}
-              activeOpacity={0.7}
-            >
-              <Text
-                style={timeSlot ? styles.dropdownValue : styles.dropdownPlaceholder}
-                numberOfLines={1}
-              >
-                {timeSlot ? formatSlotDisplay(timeSlot) : 'Choose the session slot...'}
-              </Text>
-              <AppIcon
-                name={slotDropdownOpen ? 'chevron-up' : 'chevron-down'}
-                size={18}
-                color={Colors.textSecondary}
-              />
-            </TouchableOpacity>
-
-            {slotDropdownOpen && (
-              <View style={styles.slotList}>
-                <ScrollView
-                  nestedScrollEnabled
-                  showsVerticalScrollIndicator={false}
-                  style={styles.slotListScroll}
-                >
-                  {allSlots.length === 0 ? (
-                    <Text style={styles.noSlots}>No slots available on this day.</Text>
-                  ) : (
-                    allSlots.map((slot) => {
-                      const disabled = isSlotPast(slot);
-                      const selected = timeSlot === slot;
-                      return (
-                        <TouchableOpacity
-                          key={slot}
-                          disabled={disabled}
-                          style={[
-                            styles.slotItem,
-                            selected && styles.slotItemActive,
-                            disabled && styles.slotItemDisabled,
-                          ]}
-                          onPress={() => handleSelectSlot(slot)}
-                          activeOpacity={0.6}
-                        >
-                          <Text
-                            style={[
-                              styles.slotItemText,
-                              selected && styles.slotItemTextActive,
-                              disabled && styles.slotItemDisabledText,
-                            ]}
-                          >
-                            {formatSlotDisplay(slot)}
-                          </Text>
-                          {disabled ? (
-                            <Text style={styles.slotDisabledTag}>Past</Text>
-                          ) : selected ? (
-                            <AppIcon name="checkmark" size={16} color={Colors.primary} />
-                          ) : null}
-                        </TouchableOpacity>
-                      );
-                    })
-                  )}
-                </ScrollView>
+            {allSlots.length === 0 ? (
+              <Text style={styles.noSlots}>No slots available on this day.</Text>
+            ) : (
+              <View style={styles.slotGrid}>
+                {allSlots.map((slot) => {
+                  const disabled = isSlotPast(slot);
+                  const selected = timeSlot === slot;
+                  return (
+                    <TouchableOpacity
+                      key={slot}
+                      disabled={disabled}
+                      style={[
+                        styles.slotChip,
+                        selected && styles.slotChipActive,
+                        disabled && styles.slotChipDisabled,
+                      ]}
+                      onPress={() => handleSelectSlot(slot)}
+                      activeOpacity={0.7}
+                    >
+                      <Text
+                        style={[
+                          styles.slotChipText,
+                          selected && styles.slotChipTextActive,
+                          disabled && styles.slotChipTextDisabled,
+                        ]}
+                      >
+                        {formatSlotRange(slot)}
+                      </Text>
+                      {disabled && <Text style={styles.slotDisabledTag}>Past</Text>}
+                    </TouchableOpacity>
+                  );
+                })}
               </View>
             )}
 
@@ -366,71 +336,45 @@ const styles = StyleSheet.create({
     color: Colors.text,
     marginBottom: Spacing.sm,
   },
-  dropdownField: {
+  slotGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: Spacing.sm,
+    marginBottom: Spacing.md,
+  },
+  slotChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    gap: 4,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 10,
+    borderRadius: Radius.round,
     backgroundColor: Colors.inputBackground,
-    borderRadius: Radius.md,
     borderWidth: 1,
     borderColor: Colors.border,
-    paddingHorizontal: Spacing.lg,
-    height: 50,
-    marginBottom: Spacing.sm,
   },
-  dropdownValue: {
-    flex: 1,
-    fontSize: 15,
-    color: Colors.text,
-    marginRight: Spacing.sm,
-  },
-  dropdownPlaceholder: {
-    flex: 1,
-    fontSize: 15,
-    color: Colors.textTertiary,
-    marginRight: Spacing.sm,
-  },
-  slotList: {
-    borderWidth: 1,
-    borderColor: Colors.border,
-    borderRadius: Radius.md,
-    backgroundColor: Colors.card,
-    overflow: 'hidden',
-    marginBottom: Spacing.lg,
-    ...Shadows.raised,
-  },
-  slotListScroll: {
-    maxHeight: 180,
-  },
-  slotItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.md,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: Colors.border,
-  },
-  slotItemActive: {
+  slotChipActive: {
     backgroundColor: Colors.primarySoft,
+    borderColor: Colors.primary,
   },
-  slotItemText: {
-    flex: 1,
+  slotChipDisabled: {
+    opacity: 0.5,
+  },
+  slotChipText: {
     fontSize: 14,
+    fontWeight: '600',
     color: Colors.text,
   },
-  slotItemTextActive: {
+  slotChipTextActive: {
     fontWeight: '700',
     color: Colors.primary,
   },
-  slotItemDisabled: {
-    opacity: 0.5,
-  },
-  slotItemDisabledText: {
+  slotChipTextDisabled: {
     color: Colors.textTertiary,
     textDecorationLine: 'line-through',
   },
   slotDisabledTag: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '700',
     color: Colors.textTertiary,
   },

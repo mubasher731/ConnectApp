@@ -1,5 +1,11 @@
 /** Booking slot helpers — built from the doctor's weekly availability. */
 
+/** Session length in minutes — MUST match backend SESSION_DURATION_MINUTES (15). */
+export const SESSION_DURATION_MINUTES = 15;
+
+/** Minutes between bookable slot starts (09:00, 09:30, 10:00 ...). */
+export const SLOT_STEP_MINUTES = 30;
+
 export interface AvailabilityWindow {
   day_of_week: number;
   start_time: string;
@@ -7,7 +13,11 @@ export interface AvailabilityWindow {
 }
 
 /** Generate step-minute "HH:MM" slots within a window. */
-export const buildDaySlots = (start: string, end: string, step = 30): string[] => {
+export const buildDaySlots = (
+  start: string,
+  end: string,
+  step = SLOT_STEP_MINUTES
+): string[] => {
   const toMin = (t: string) => {
     const [h, m] = t.split(':').map(Number);
     return (h || 0) * 60 + (m || 0);
