@@ -19,7 +19,7 @@ const DoctorAppointmentCard: React.FC<DoctorAppointmentCardProps> = ({
   const meta = CONVERSATION_STATE_META[conversation.state];
   const start = dayjs(conversation.scheduled_start);
   const end = dayjs(conversation.scheduled_end);
-  const name = conversation.patient_name ?? `Patient #${conversation.patient_id}`;
+  const name = conversation.patient_name?.trim() || 'Patient';
 
   return (
     <View style={styles.card}>
@@ -30,7 +30,6 @@ const DoctorAppointmentCard: React.FC<DoctorAppointmentCardProps> = ({
             <Text style={styles.patientName} numberOfLines={1}>
               {name}
             </Text>
-            <Text style={styles.patientId}>ID: {conversation.patient_id}</Text>
           </View>
         </View>
         <DoctorPill label={meta.label} color={meta.color} bg={meta.bg} />
@@ -90,11 +89,6 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '700',
     color: Colors.text,
-  },
-  patientId: {
-    fontSize: 12,
-    color: Colors.textTertiary,
-    marginTop: 2,
   },
   metaRow: {
     flexDirection: 'row',
