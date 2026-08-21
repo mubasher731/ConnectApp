@@ -22,7 +22,7 @@ const AppointmentRequestCard: React.FC<AppointmentRequestCardProps> = ({
   onReject,
 }) => {
   const meta = CONVERSATION_STATE_META[request.state] ?? CONVERSATION_STATE_META.pending;
-  const name = request.patient_name ?? `Patient #${request.patient_id}`;
+  const name = request.patient_name?.trim() || 'Patient';
   const appt = request.appointment;
   const sub = appt
     ? `${appt.date} · ${appt.time_slot}`

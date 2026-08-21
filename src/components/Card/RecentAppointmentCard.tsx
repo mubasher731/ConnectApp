@@ -19,7 +19,7 @@ const RecentAppointmentCard: React.FC<RecentAppointmentCardProps> = ({
 }) => {
   const meta = CONVERSATION_STATE_META[conversation.state];
   const start = dayjs(conversation.scheduled_start);
-  const name = conversation.patient_name ?? `Patient #${conversation.patient_id}`;
+  const name = conversation.patient_name?.trim() || 'Patient';
   const timeLabel = start.isValid() ? start.format('MMM D, h:mm A') : '';
 
   return (

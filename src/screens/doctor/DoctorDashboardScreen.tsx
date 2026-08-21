@@ -52,7 +52,7 @@ const DoctorDashboardScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
     const q = searchQuery.trim().toLowerCase();
     return recent.filter((c) => {
       if (!q) return true;
-      const name = (c.patient_name ?? `Patient #${c.patient_id}`).toLowerCase();
+      const name = (c.patient_name ?? '').toLowerCase();
       return name.includes(q) || String(c.patient_id).includes(q);
     });
   }, [recent, searchQuery]);
