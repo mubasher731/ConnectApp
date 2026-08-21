@@ -13,7 +13,7 @@ import {
 import AppIcon from '../Icon/AppIcon';
 import Avatar from '../Icon/Avatar';
 import { sessionService } from '../../services';
-import { BookingDoctor, Conversation } from '../../types';
+import { BookingDoctor } from '../../types';
 import {
   dateKey,
   daySlotsFor,
@@ -26,8 +26,6 @@ interface BookAppointmentModalProps {
   visible: boolean;
   doctor: BookingDoctor | null;
   onClose: () => void;
-  /** Called with the created conversation so the screen can open the chat. */
-  onBooked?: (conversation: Conversation) => void;
 }
 
 /** "09:00" → "09:00 AM – 09:15 AM" (slot start and end). */
@@ -49,7 +47,6 @@ const BookAppointmentModal: React.FC<BookAppointmentModalProps> = ({
   visible,
   doctor,
   onClose,
-  onBooked,
 }) => {
   const [timeSlot, setTimeSlot] = useState<string | null>(null);
   const [message, setMessage] = useState('');
@@ -111,7 +108,7 @@ const BookAppointmentModal: React.FC<BookAppointmentModalProps> = ({
     setSending(true);
     try {
       const date = dateKey(selectedDate); // YYYY-MM-DD of the selected day
-      const conversation = await sessionService.createConversation({
+      await sessionService.createConversation({
         doctor_id: doctor.id,
         date,
         time_slot: timeSlot,
@@ -121,16 +118,7 @@ const BookAppointmentModal: React.FC<BookAppointmentModalProps> = ({
       Alert.alert(
         'Request Sent',
         'Your appointment request has been sent. The doctor will review it shortly.',
-        [
-          { text: 'Close', style: 'cancel', onPress: handleClose },
-          {
-            text: 'Open Chat',
-            onPress: () => {
-              handleClose();
-              onBooked?.(conversation);
-            },
-          },
-        ]
+        [{ text: 'Close', style: 'cancel', onPress: handleClose }]
       );
     } catch (err) {
       // Surface the real backend error (e.g. slot outside availability,

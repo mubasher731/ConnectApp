@@ -11,6 +11,7 @@ import {
   Animated,
   ScrollView,
   Image,
+  Modal,
   Linking,
   Alert,
   PermissionsAndroid,
@@ -137,6 +138,7 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
   const [voicePosition, setVoicePosition] = useState(0);
   const [voiceDuration, setVoiceDuration] = useState(0);
   const [attachOpen, setAttachOpen] = useState(false);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const PAGE_SIZE = 50;
@@ -272,11 +274,22 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
       }
     };
     const onSessionTimer = (payload: any) => {
-      const { conversationId, state } = unwrap(payload);
+      const { conversationId, state, remainingTime } = unwrap(payload);
       if (conversationId !== undefined && String(conversationId) !== String(chatId)) return;
       if (state === 'active' || state === 'in_progress') {
         setChatDisabled(false);
         setSessionNotice(null);
+        // Move the end time forward to match the server's remaining time, so a
+        // doctor's extension reaches the patient instantly instead of the
+        // patient's end time staying stuck at the original schedule.
+        if (typeof remainingTime === 'number' && remainingTime > 0) {
+          const serverEnd = new Date(Date.now() + remainingTime).toISOString();
+          setConversation((prev) =>
+            prev && dayjs(serverEnd).valueOf() > dayjs(prev.scheduled_end).valueOf()
+              ? { ...prev, scheduled_end: serverEnd }
+              : prev
+          );
+        }
       }
     };
     const onSessionEnded = (payload: any) => {
@@ -437,8 +450,9 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
   const handleExtend = async () => {
     setShowExtension(false);
     if (!conversation) return;
+    let res: any;
     try {
-      await sessionService.extendSession(conversation.id);
+      res = await sessionService.extendSession(conversation.id);
     } catch (err) {
       // Only reflect the extension if the backend actually applied it —
       // otherwise the UI would desync from the server.
@@ -450,7 +464,10 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
       );
       return;
     }
-    const newEnd = dayjs().add(5, 'minute').toISOString();
+    // Prefer the server's real updated end time (original end + 5 min) over
+    // guessing "now + 5 min", which drifted from the backend.
+    const serverEnd: string | undefined = res?.data?.scheduled_end;
+    const newEnd = serverEnd ?? dayjs().add(5, 'minute').toISOString();
     setConversation((prev) => (prev ? { ...prev, scheduled_end: newEnd } : prev));
     const sys: Message = {
       id: `sys-${Date.now()}`,
@@ -816,11 +833,16 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
               ]}
             >
               {item.mediaUrl && item.type === 'photo' ? (
-                <Image
-                  source={{ uri: mediaFullUrl(item.mediaUrl) ?? undefined }}
-                  style={styles.mediaImage}
-                  resizeMode="cover"
-                />
+                <TouchableOpacity
+                  onPress={() => setPreviewImage(mediaFullUrl(item.mediaUrl))}
+                  activeOpacity={0.85}
+                >
+                  <Image
+                    source={{ uri: mediaFullUrl(item.mediaUrl) ?? undefined }}
+                    style={styles.mediaImage}
+                    resizeMode="cover"
+                  />
+                </TouchableOpacity>
               ) : item.mediaUrl && item.type === 'voice' ? (
                 <View style={styles.voiceBubble}>
                   <TouchableOpacity
@@ -979,7 +1001,7 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
           maintainVisibleContentPosition={{ minIndexForVisible: 1 }}
           ListHeaderComponent={
             loadingMore ? (
-              <ActivityIndicator style={{ paddingVertical: 12 }} />
+              <ActivityIndicator style={styles.loadMoreIndicator} />
             ) : null
           }
           ListFooterComponent={renderTyping}
@@ -1125,6 +1147,42 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
         onCancel={handleExtensionCancel}
         onExtend={handleExtend}
       />
+
+      {/* Full-screen image viewer (tap photo to open; back arrow / ✕ / tap to close) */}
+      <Modal
+        visible={previewImage !== null}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setPreviewImage(null)}
+      >
+        <TouchableOpacity
+          style={styles.imageViewerBackdrop}
+          activeOpacity={1}
+          onPress={() => setPreviewImage(null)}
+        >
+          <TouchableOpacity
+            style={styles.imageViewerBackButton}
+            onPress={() => setPreviewImage(null)}
+            activeOpacity={0.7}
+          >
+            <AppIcon name="chevron-back" size={26} color={Colors.white} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.imageViewerClose}
+            onPress={() => setPreviewImage(null)}
+            activeOpacity={0.7}
+          >
+            <AppIcon name="close" size={24} color={Colors.white} />
+          </TouchableOpacity>
+          {previewImage ? (
+            <Image
+              source={{ uri: previewImage }}
+              style={styles.imageViewerImage}
+              resizeMode="contain"
+            />
+          ) : null}
+        </TouchableOpacity>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -1136,6 +1194,9 @@ const styles = StyleSheet.create({
   },
   flex: {
     flex: 1,
+  },
+  loadMoreIndicator: {
+    paddingVertical: 12,
   },
   headerTitleRow: {
     flexDirection: 'row',
@@ -1532,6 +1593,40 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: Colors.text,
     marginLeft: Spacing.md,
+  },
+  imageViewerBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.94)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  imageViewerImage: {
+    width: '100%',
+    height: '100%',
+  },
+  imageViewerBackButton: {
+    position: 'absolute',
+    top: 56,
+    left: Spacing.md,
+    zIndex: 10,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  imageViewerClose: {
+    position: 'absolute',
+    top: 56,
+    right: Spacing.md,
+    zIndex: 10,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });
 

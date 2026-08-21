@@ -1,6 +1,18 @@
 import { authService } from './authService';
 import { sessionService, MessageRaw } from './sessionService';
-import { AppNotification, CallLog, Chat, Conversation, Message, User } from '../types';
+import { AppNotification, CallLog, Chat, Conversation, Message, SessionStatus, User } from '../types';
+
+/** Derive the chat status badge from state + schedule so "Active" spans the whole session. */
+const mapChatStatus = (c: Conversation): SessionStatus => {
+  if (c.state === 'pending') return 'pending';
+  if (c.state === 'ended') return 'completed';
+  const nowMs = Date.now();
+  const startMs = c.scheduled_start ? new Date(c.scheduled_start).getTime() : null;
+  const endMs = c.scheduled_end ? new Date(c.scheduled_end).getTime() : null;
+  if (startMs !== null && nowMs < startMs) return 'scheduled'; // Upcoming
+  if (endMs !== null && nowMs >= endMs) return 'completed'; // Consulted
+  return 'active'; // In progress → Active
+};
 
 /** Map a backend conversation to the Chat list model ("other" participant = chat). */
 const mapConversationToChat = (c: Conversation, meId: number): Chat => {
@@ -32,14 +44,7 @@ const mapConversationToChat = (c: Conversation, meId: number): Chat => {
     lastMessageAt: c.scheduled_start ?? '',
     unreadCount: 0,
     isTyping: false,
-    status:
-      c.state === 'pending'
-        ? 'pending'
-        : c.state === 'ended'
-        ? 'completed'
-        : c.state === 'in_progress'
-        ? 'scheduled'
-        : 'active',
+    status: mapChatStatus(c),
     durationMinutes,
     startTime: c.actual_start ?? c.scheduled_start,
     endTime: c.actual_end ?? null,

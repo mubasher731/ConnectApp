@@ -3,10 +3,10 @@ import { View, Text, FlatList, StyleSheet, ActivityIndicator } from 'react-nativ
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { BookAppointmentModal, DoctorCard, EmptyState } from '../../components';
 import { sessionService } from '../../services';
-import { BookingDoctor, Conversation } from '../../types';
+import { BookingDoctor } from '../../types';
 import { Colors, Spacing } from '../../theme';
 
-const DoctorsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
+const DoctorsScreen: React.FC<{ navigation: any }> = () => {
   const [doctors, setDoctors] = useState<BookingDoctor[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -44,15 +44,6 @@ const DoctorsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const openBooking = (doctor: BookingDoctor) => {
     setBookingDoctor(doctor);
     setModalVisible(true);
-  };
-
-  const handleBooked = (conversation: Conversation) => {
-    setModalVisible(false);
-    setBookingDoctor(null);
-    navigation.navigate('ChatDetail', {
-      chatId: conversation.id,
-      participantName: bookingDoctor?.name ?? 'Doctor',
-    });
   };
 
   return (
@@ -94,7 +85,6 @@ const DoctorsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           setModalVisible(false);
           setBookingDoctor(null);
         }}
-        onBooked={handleBooked}
       />
     </SafeAreaView>
   );
