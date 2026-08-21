@@ -10,10 +10,9 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppIcon, AppointmentCard, Avatar, EmptyState } from '../../components';
 import { useAuth } from '../../context/AuthContext';
-import { QUICK_ACTIONS } from '../../context/appData';
 import { chatService } from '../../services/dataService';
 import { Chat } from '../../types';
-import { Colors, Radius, Spacing, responsiveSize } from '../../theme';
+import { Colors, Radius, Shadows, Spacing, responsiveSize } from '../../theme';
 
 const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const { user } = useAuth();
@@ -70,30 +69,35 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
         </View>
       </View>
 
-      {/* Quick Actions */}
-      <View style={styles.quickActions}>
-        {QUICK_ACTIONS.map((action) => (
-          <TouchableOpacity
-            key={action.key}
-            style={styles.actionButton}
-            onPress={() => {
-              if (action.target) {
-                navigation.navigate(action.target);
-              }
-            }}
-            activeOpacity={0.7}
-          >
-            <View style={[styles.actionIcon, { backgroundColor: action.tint }]}>
-              <AppIcon name={action.icon} size={22} color={action.color} />
-            </View>
-            <Text style={styles.actionLabel}>{action.label}</Text>
-          </TouchableOpacity>
-        ))}
-      </View>
+      {/* Book a Consultation banner */}
+      <TouchableOpacity
+        style={styles.bookingBanner}
+        onPress={() => navigation.navigate('Doctors')}
+        activeOpacity={0.85}
+      >
+        <View style={styles.bookingBannerIcon}>
+          <AppIcon name="medkit-outline" size={26} color={Colors.white} />
+        </View>
+        <View style={styles.bookingBannerText}>
+          <Text style={styles.bookingBannerTitle}>Book a Consultation</Text>
+          <Text style={styles.bookingBannerSub}>
+            Find the right doctor and book an appointment in minutes
+          </Text>
+        </View>
+        <View style={styles.bookingBannerArrow}>
+          <AppIcon name="chevron-forward" size={20} color={Colors.white} />
+        </View>
+      </TouchableOpacity>
 
       {/* Recent Conversations */}
       <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>Recent Conversations</Text>
+        <View style={styles.sectionTitleBlock}>
+          <AppIcon name="chatbubbles-outline" size={18} color={Colors.primary} />
+          <View>
+            <Text style={styles.sectionTitle}>Recent Conversations</Text>
+            <Text style={styles.sectionSubtitle}>Your latest consultations</Text>
+          </View>
+        </View>
         <View style={styles.sectionActions}>
           <TouchableOpacity
             style={styles.reloadButton}
@@ -192,30 +196,61 @@ const styles = StyleSheet.create({
     letterSpacing: -0.3,
     marginTop: 2,
   },
-  quickActions: {
+  bookingBanner: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
-    alignItems: 'flex-start',
-    paddingHorizontal: Spacing.xs,
-    paddingTop: Spacing.md,
-    paddingBottom: Spacing.sm,
-  },
-  actionButton: {
     alignItems: 'center',
+    marginHorizontal: Spacing.xl,
+    marginTop: Spacing.md,
+    marginBottom: Spacing.sm,
+    padding: Spacing.lg,
+    borderRadius: Radius.xl,
+    backgroundColor: Colors.primary,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
+    ...Shadows.primary,
+  },
+  bookingBannerIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: Radius.round,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: Spacing.md,
+  },
+  bookingBannerText: {
     flex: 1,
   },
-  actionIcon: {
-    width: 54,
-    height: 54,
-    borderRadius: Radius.lg,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: Spacing.sm,
+  bookingBannerTitle: {
+    fontSize: responsiveSize(17),
+    fontWeight: '800',
+    color: Colors.white,
+    letterSpacing: -0.2,
   },
-  actionLabel: {
+  bookingBannerSub: {
     fontSize: responsiveSize(12),
-    fontWeight: '600',
-    color: Colors.textSecondary,
+    color: 'rgba(255,255,255,0.85)',
+    marginTop: 3,
+    lineHeight: 17,
+  },
+  bookingBannerArrow: {
+    width: 32,
+    height: 32,
+    borderRadius: Radius.round,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: Spacing.sm,
+  },
+  sectionTitleBlock: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+  },
+  sectionSubtitle: {
+    fontSize: 12,
+    color: Colors.textTertiary,
+    marginTop: 2,
   },
   sectionHeader: {
     flexDirection: 'row',
