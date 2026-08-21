@@ -1,5 +1,63 @@
 import { api } from '../api/client';
+import { authService } from './authService';
 import { AppointmentRequest, BackendNotification, Conversation, DoctorAvailability } from '../types';
+
+/**
+ * The `/api/conversations` list omits participant names, which made the UI
+ * fall back to generic "Doctor"/"Patient" labels. We resolve the real names
+ * from the endpoints that DO expose them and cache the result briefly:
+ *  - patients → GET /api/doctor/availability (`id` = doctor users.id, `full_name`)
+ *  - doctors  → GET /api/doctor/requests (`patient_id` + `patient_name`, when present)
+ */
+let peerNameCache: { at: number; roleId: number; map: Map<string, string> } | null = null;
+
+async function getPeerNameData(): Promise<{ roleId: number; map: Map<string, string> }> {
+  const now = Date.now();
+  if (peerNameCache && now - peerNameCache.at < 60_000) {
+    return peerNameCache;
+  }
+  const map = new Map<string, string>();
+  let roleId = 4;
+  try {
+    const me = await authService.getMe();
+    roleId = me.role_id;
+    if (roleId === 4) {
+      const docs = await sessionService.getAvailableDoctors();
+      docs.forEach((d) => {
+        const id = String(d.id);
+        const name = d.full_name?.trim();
+        if (id && name) map.set(id, name);
+      });
+    } else if (roleId === 3) {
+      const reqs = await sessionService.getDoctorRequests();
+      reqs.forEach((r) => {
+        const id = String(r.patient_id);
+        const name = (r as AppointmentRequest & { patient_name?: string }).patient_name?.trim();
+        if (id && name) map.set(id, name);
+      });
+    }
+  } catch {
+    // Best effort — names stay generic if a source is unavailable.
+  }
+  peerNameCache = { at: now, roleId, map };
+  return peerNameCache;
+}
+
+/** Fill in the real peer name (doctor_name / patient_name) on each conversation. */
+async function enrichConversationNames(list: Conversation[]): Promise<Conversation[]> {
+  if (!Array.isArray(list) || list.length === 0) return list;
+  try {
+    const { roleId, map } = await getPeerNameData();
+    return list.map((c) => {
+      const id = String(roleId === 4 ? c.doctor_id : c.patient_id);
+      const name = map.get(id);
+      if (!name) return c;
+      return roleId === 4 ? { ...c, doctor_name: name } : { ...c, patient_name: name };
+    });
+  } catch {
+    return list;
+  }
+}
 
 export interface MessageRaw {
   id: string | number;
@@ -18,7 +76,9 @@ export const sessionService = {
   /** List conversations for the authenticated user (patient or doctor). */
   async getConversations(): Promise<Conversation[]> {
     const { data } = await api.get('/api/conversations');
-    return (data?.data ?? []) as Conversation[];
+    const list = (data?.data ?? []) as Conversation[];
+    // The list omits names — resolve the real peer name for display.
+    return enrichConversationNames(list);
   },
 
   /** Find a single conversation by id (backend has no single-get endpoint). */

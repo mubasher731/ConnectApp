@@ -125,6 +125,7 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
   const [chatDisabled, setChatDisabled] = useState(false);
   const [online, setOnline] = useState(false);
   const [conversation, setConversation] = useState<Conversation | null>(null);
+  const [resolvedName, setResolvedName] = useState<string | null>(null);
   const [now, setNow] = useState(() => Date.now());
   const [showExtension, setShowExtension] = useState(false);
   const [extensionSecondsLeft, setExtensionSecondsLeft] = useState(60);
@@ -149,6 +150,19 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
 
   const isDoctorRole = user?.role_id === 3;
 
+  // Prefer the route-passed name, but if it's missing/generic (e.g. opened
+  // from a notification), resolve the real peer name from the conversation.
+  const effectiveName = resolvedName ?? participantName ?? '';
+  useEffect(() => {
+    if (!conversation) return;
+    const cur = (participantName ?? '').trim().toLowerCase();
+    const generic = !cur || ['doctor', 'patient', 'chat'].includes(cur);
+    if (!generic) return;
+    const peerName =
+      user?.role_id === 4 ? conversation.doctor_name : conversation.patient_name;
+    if (peerName) setResolvedName(peerName);
+  }, [conversation, participantName, user?.role_id]);
+
   // Custom WhatsApp-style header (avatar + name + online status).
   useEffect(() => {
     navigation.setOptions({
@@ -156,12 +170,12 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
       // eslint-disable-next-line react/no-unstable-nested-components
       headerTitle: () => (
         <ChatHeaderTitle
-          name={participantName || 'Chat'}
+          name={effectiveName || 'Chat'}
           online={online || otherTyping}
         />
       ),
     });
-  }, [navigation, participantName, online, otherTyping]);
+  }, [navigation, effectiveName, online, otherTyping]);
 
   // Load conversation + messages, join the room, subscribe to real-time events.
   useEffect(() => {
@@ -763,7 +777,7 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
         >
           {!item.sentByMe && (
             <View style={styles.avatarSlot}>
-              {isGroupStart ? <Avatar name={participantName || '?'} size={30} /> : null}
+              {isGroupStart ? <Avatar name={effectiveName || '?'} size={30} /> : null}
             </View>
           )}
           <View style={styles.messageContent}>
@@ -867,7 +881,7 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
     return (
       <View style={styles.typingRow}>
         <View style={styles.avatarSlot}>
-          <Avatar name={participantName || '?'} size={30} />
+          <Avatar name={effectiveName || '?'} size={30} />
         </View>
         <TypingIndicator />
       </View>
