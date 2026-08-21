@@ -20,7 +20,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useHeaderHeight } from '@react-navigation/elements';
 import { launchCamera, launchImageLibrary } from 'react-native-image-picker';
 import { pick, types, errorCodes, isErrorWithCode } from '@react-native-documents/picker';
-import AudioRecorderPlayer from 'react-native-nitro-sound';
+import Sound from 'react-native-nitro-sound';
 import { AppIcon, Avatar, EmptyState, SessionExtensionAlert } from '../../components';
 import { socketService } from '../../api/socket';
 import { getApiBaseUrl } from '../../api/config';
@@ -119,7 +119,7 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
   const [sendingMedia, setSendingMedia] = useState(false);
   const [recording, setRecording] = useState(false);
   const [recordingSecs, setRecordingSecs] = useState(0);
-  const [recordingPath, setRecordingPath] = useState<string | null>(null);
+  const [playingVoiceId, setPlayingVoiceId] = useState<string | null>(null);
   const [attachOpen, setAttachOpen] = useState(false);
   const recordingRef = useRef<{ start: number; timer: ReturnType<typeof setInterval> | null }>({
     start: 0,
@@ -136,6 +136,8 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
   // Custom WhatsApp-style header (avatar + name + online status).
   useEffect(() => {
     navigation.setOptions({
+      // react-navigation's headerTitle render prop is a false positive here.
+      // eslint-disable-next-line react/no-unstable-nested-components
       headerTitle: () => (
         <ChatHeaderTitle
           name={participantName || 'Chat'}
@@ -280,6 +282,16 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
   useEffect(() => {
     const interval = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(interval);
+  }, []);
+
+  // Clear the playing indicator when a voice note finishes, and stop any
+  // playback when leaving the screen.
+  useEffect(() => {
+    Sound.addPlaybackEndListener(() => setPlayingVoiceId(null));
+    return () => {
+      Sound.removePlaybackEndListener();
+      Sound.stopPlayer().catch(() => {});
+    };
   }, []);
 
   // ---- Countdown + input locking (derived from conversation timings) ----
@@ -513,24 +525,37 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
 
   const startVoice = async () => {
     if (!chatId || locked) return;
+
+    // Android requires a runtime mic permission. If it's denied we bail out
+    // cleanly — never enter recording mode without permission.
     if (Platform.OS === 'android') {
       const granted = await PermissionsAndroid.request(
         PermissionsAndroid.PERMISSIONS.RECORD_AUDIO
       );
       if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
-        Alert.alert('Microphone permission needed', 'Allow microphone access to record voice.');
+        Alert.alert('Microphone permission needed', 'Allow microphone access to record voice messages.');
         return;
       }
     }
+
+    // Switch the composer into recording mode (stop button + timer) BEFORE
+    // touching the native recorder, so the UI always reflects the state.
+    setRecording(true);
+    setRecordingSecs(0);
+    recordingRef.current.start = Date.now();
+    recordingRef.current.timer = setInterval(() => {
+      setRecordingSecs(Math.floor((Date.now() - recordingRef.current.start) / 1000));
+    }, 500);
+
     try {
-      setRecording(true);
-      recordingRef.current.start = Date.now();
-      recordingRef.current.timer = setInterval(() => {
-        setRecordingSecs(Math.floor((Date.now() - recordingRef.current.start) / 1000));
-      }, 500);
-      await AudioRecorderPlayer.startRecorder();
+      await Sound.startRecorder();
     } catch {
+      // Native recorder failed to start — revert the recording UI.
       setRecording(false);
+      const { timer } = recordingRef.current;
+      if (timer) clearInterval(timer);
+      recordingRef.current.timer = null;
+      setRecordingSecs(0);
       Alert.alert('Recording Failed', 'Could not start voice recording.');
     }
   };
@@ -543,15 +568,46 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
     recordingRef.current.timer = null;
     setRecordingSecs(0);
     try {
-      const path = await AudioRecorderPlayer.stopRecorder();
+      const path = await Sound.stopRecorder();
       if (path) {
-        setRecordingPath(path);
         const name = `voice-${Date.now()}.m4a`;
         await sendMedia({ uri: path, name, type: 'audio/m4a' }, 'voice');
-        setRecordingPath(null);
       }
     } catch {
       Alert.alert('Recording Failed', 'Could not save the voice note.');
+    }
+  };
+
+  // Voice notes play inline via the native Sound player; file attachments
+  // open in the system browser. Tapping the active note stops playback.
+  const onMediaChipPress = async (item: Message) => {
+    const uri = mediaFullUrl(item.mediaUrl);
+    if (!uri) return;
+
+    if (item.type !== 'voice') {
+      Linking.openURL(uri).catch(() => {});
+      return;
+    }
+
+    // Toggle: tapping the currently-playing note stops it.
+    if (playingVoiceId === String(item.id)) {
+      setPlayingVoiceId(null);
+      try {
+        await Sound.stopPlayer();
+      } catch {
+        // ignore
+      }
+      return;
+    }
+
+    try {
+      // Stop any note that's playing before starting a new one.
+      if (playingVoiceId) await Sound.stopPlayer();
+      await Sound.startPlayer(uri);
+      setPlayingVoiceId(String(item.id));
+    } catch {
+      setPlayingVoiceId(null);
+      console.warn('[chat] Voice playback failed:', uri);
     }
   };
 
@@ -622,9 +678,7 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
               ) : item.mediaUrl ? (
                 <TouchableOpacity
                   style={styles.mediaChip}
-                  onPress={() =>
-                    Linking.openURL(mediaFullUrl(item.mediaUrl) ?? '').catch(() => {})
-                  }
+                  onPress={() => onMediaChipPress(item)}
                   activeOpacity={0.7}
                 >
                   <AppIcon
@@ -633,7 +687,11 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
                     color={Colors.text}
                   />
                   <Text style={styles.mediaChipText}>
-                    {item.type === 'voice' ? 'Voice message' : 'File attachment'}
+                    {item.type === 'voice'
+                      ? playingVoiceId === String(item.id)
+                        ? 'Playing…'
+                        : 'Voice message'
+                      : 'File attachment'}
                   </Text>
                 </TouchableOpacity>
               ) : null}
