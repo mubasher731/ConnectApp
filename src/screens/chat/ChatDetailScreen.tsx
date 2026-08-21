@@ -59,6 +59,18 @@ const formatCountdown = (totalSeconds: number) => {
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 };
 
+/** Label for the divider that opens a new session block. */
+const sessionDividerLabel = (item: Message): string => {
+  const d = dayjs(item.createdAt);
+  if (d.isValid()) {
+    const time = d.format('h:mm A');
+    if (d.isSame(dayjs(), 'day')) return `Today's Session • ${time}`;
+    if (d.isSame(dayjs().subtract(1, 'day'), 'day')) return `Yesterday's Session • ${time}`;
+    return `${d.format('DD MMM YYYY')} Session • ${time}`;
+  }
+  return item.text || 'New session';
+};
+
 /** WhatsApp-style typing indicator (3 pulsing dots). */
 const TypingIndicator: React.FC = () => {
   const dots = useRef([
@@ -120,11 +132,15 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
   const [recording, setRecording] = useState(false);
   const [recordingSecs, setRecordingSecs] = useState(0);
   const [playingVoiceId, setPlayingVoiceId] = useState<string | null>(null);
+  const [voicePosition, setVoicePosition] = useState(0);
+  const [voiceDuration, setVoiceDuration] = useState(0);
   const [attachOpen, setAttachOpen] = useState(false);
   const recordingRef = useRef<{ start: number; timer: ReturnType<typeof setInterval> | null }>({
     start: 0,
     timer: null,
   });
+  const playingVoiceIdRef = useRef<string | null>(null);
+  const voiceDurationsRef = useRef<Record<string, number>>({});
   const extensionFiredForEnd = useRef<number | null>(null);
   const listRef = useRef<FlatList>(null);
   const typingTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -284,11 +300,25 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
     return () => clearInterval(interval);
   }, []);
 
-  // Clear the playing indicator when a voice note finishes, and stop any
-  // playback when leaving the screen.
+  // Voice playback: keep position/duration in sync, cache durations per note,
+  // clear the playing state when a note finishes, and stop playback on unmount.
   useEffect(() => {
-    Sound.addPlaybackEndListener(() => setPlayingVoiceId(null));
+    Sound.addPlayBackListener((meta) => {
+      // The native library reports duration/position in MILLISECONDS.
+      const posSecs = meta.currentPosition / 1000;
+      const durSecs = meta.duration / 1000;
+      setVoicePosition(posSecs);
+      setVoiceDuration(durSecs);
+      const id = playingVoiceIdRef.current;
+      if (id) voiceDurationsRef.current[id] = durSecs;
+    });
+    Sound.addPlaybackEndListener(() => {
+      setPlayingVoiceId(null);
+      playingVoiceIdRef.current = null;
+      setVoicePosition(0);
+    });
     return () => {
+      Sound.removePlayBackListener();
       Sound.removePlaybackEndListener();
       Sound.stopPlayer().catch(() => {});
     };
@@ -367,8 +397,16 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
     if (!conversation) return;
     try {
       await sessionService.extendSession(conversation.id);
-    } catch {
-      // Still reflect the extension locally for the demo even if the call fails.
+    } catch (err) {
+      // Only reflect the extension if the backend actually applied it —
+      // otherwise the UI would desync from the server.
+      Alert.alert(
+        'Extension Failed',
+        err instanceof Error && err.message
+          ? err.message
+          : 'Could not extend the session. Please try again.'
+      );
+      return;
     }
     const newEnd = dayjs().add(5, 'minute').toISOString();
     setConversation((prev) => (prev ? { ...prev, scheduled_end: newEnd } : prev));
@@ -436,7 +474,12 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
 
   // ---- Media (photo / file / voice) ----
   const sendMedia = useCallback(
-    async (file: any, type: 'photo' | 'file' | 'voice', content?: string) => {
+    async (
+      file: any,
+      type: 'photo' | 'file' | 'voice',
+      content?: string,
+      durationSecs?: number
+    ) => {
       if (!chatId || locked || sendingMedia) return;
       setSendingMedia(true);
       const localId = `local-${Date.now()}`;
@@ -449,6 +492,7 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
         createdAt: new Date().toISOString(),
         sentByMe: true,
         mediaUrl: file?.uri ?? null,
+        durationSecs,
       };
       setMessages((prev) => [...prev, optimistic]);
       try {
@@ -458,8 +502,13 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
           type,
           files: [file],
         });
+        // Keep the recorded duration — the backend response has no duration field.
         setMessages((prev) =>
-          prev.map((m) => (m.id === localId ? { ...saved, id: saved.id } : m))
+          prev.map((m) =>
+            m.id === localId
+              ? { ...saved, id: saved.id, durationSecs: durationSecs ?? m.durationSecs }
+              : m
+          )
         );
       } catch (err) {
         setMessages((prev) => prev.filter((m) => m.id !== localId));
@@ -560,7 +609,23 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
     }
   };
 
-  const stopVoice = async () => {
+  // Discard the in-progress voice note without sending it.
+  const cancelVoice = async () => {
+    if (!recording) return;
+    setRecording(false);
+    const { timer } = recordingRef.current;
+    if (timer) clearInterval(timer);
+    recordingRef.current.timer = null;
+    setRecordingSecs(0);
+    try {
+      await Sound.stopRecorder();
+    } catch {
+      // discard — nothing to do
+    }
+  };
+
+  // Stop the recorder and send the voice note (WhatsApp-style "send").
+  const sendVoice = async () => {
     if (!recording) return;
     setRecording(false);
     const { timer } = recordingRef.current;
@@ -570,8 +635,18 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
     try {
       const path = await Sound.stopRecorder();
       if (path) {
+        // Exact recorded length so the bubble shows e.g. 0:30.
+        const recordedSecs = Math.max(
+          1,
+          Math.round((Date.now() - recordingRef.current.start) / 1000)
+        );
         const name = `voice-${Date.now()}.m4a`;
-        await sendMedia({ uri: path, name, type: 'audio/m4a' }, 'voice');
+        await sendMedia(
+          { uri: path, name, type: 'audio/m4a' },
+          'voice',
+          undefined,
+          recordedSecs
+        );
       }
     } catch {
       Alert.alert('Recording Failed', 'Could not save the voice note.');
@@ -579,7 +654,7 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
   };
 
   // Voice notes play inline via the native Sound player; file attachments
-  // open in the system browser. Tapping the active note stops playback.
+  // open in the system browser. Tapping the active note pauses it.
   const onMediaChipPress = async (item: Message) => {
     const uri = mediaFullUrl(item.mediaUrl);
     if (!uri) return;
@@ -589,11 +664,15 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
       return;
     }
 
-    // Toggle: tapping the currently-playing note stops it.
-    if (playingVoiceId === String(item.id)) {
+    const id = String(item.id);
+
+    // Toggle: tapping the currently-playing note pauses it.
+    if (playingVoiceId === id) {
       setPlayingVoiceId(null);
+      playingVoiceIdRef.current = null;
+      setVoicePosition(0);
       try {
-        await Sound.stopPlayer();
+        await Sound.pausePlayer();
       } catch {
         // ignore
       }
@@ -602,13 +681,38 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
 
     try {
       // Stop any note that's playing before starting a new one.
-      if (playingVoiceId) await Sound.stopPlayer();
+      if (playingVoiceIdRef.current) await Sound.stopPlayer();
+      setVoicePosition(0);
       await Sound.startPlayer(uri);
-      setPlayingVoiceId(String(item.id));
+      playingVoiceIdRef.current = id;
+      setPlayingVoiceId(id);
     } catch {
       setPlayingVoiceId(null);
+      playingVoiceIdRef.current = null;
       console.warn('[chat] Voice playback failed:', uri);
     }
+  };
+
+  const formatVoiceTime = (secs: number): string => {
+    const s = Math.max(0, Math.floor(secs));
+    return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+  };
+
+  // WhatsApp-style duration label. While playing it counts DOWN from the total
+  // (0:30 → 0:29 → … → 0:00); otherwise it shows the exact recorded duration.
+  const voiceDurationLabel = (item: Message): string => {
+    const playing = playingVoiceId === String(item.id);
+    if (playing) {
+      const total = item.durationSecs ?? voiceDuration;
+      return formatVoiceTime(Math.max(0, total - voicePosition));
+    }
+    const dur = item.durationSecs ?? voiceDurationsRef.current[String(item.id)];
+    return dur ? formatVoiceTime(dur) : 'Voice';
+  };
+
+  const voiceProgressPct = (item: Message): number => {
+    if (playingVoiceId !== String(item.id) || voiceDuration <= 0) return 0;
+    return Math.min(100, (voicePosition / voiceDuration) * 100);
   };
 
   const renderItem = ({ item, index }: { item: Message; index: number }) => {
@@ -624,7 +728,7 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
         <View style={styles.sessionDivider}>
           <View style={styles.sessionDividerLine} />
           <Text style={styles.sessionDividerText}>
-            {item.text || 'New session'}
+            {sessionDividerLabel(item)}
           </Text>
           <View style={styles.sessionDividerLine} />
         </View>
@@ -675,24 +779,55 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
                   style={styles.mediaImage}
                   resizeMode="cover"
                 />
+              ) : item.mediaUrl && item.type === 'voice' ? (
+                <View style={styles.voiceBubble}>
+                  <TouchableOpacity
+                    style={[
+                      styles.voicePlayPause,
+                      item.sentByMe ? styles.voicePlaySent : styles.voicePlayReceived,
+                    ]}
+                    onPress={() => onMediaChipPress(item)}
+                    activeOpacity={0.7}
+                  >
+                    <AppIcon
+                      name={playingVoiceId === String(item.id) ? 'pause' : 'play'}
+                      size={18}
+                      color={item.sentByMe ? Colors.white : Colors.primary}
+                    />
+                  </TouchableOpacity>
+                  <View style={styles.voiceWave}>
+                    <View
+                      style={[
+                        styles.voiceProgressTrack,
+                        item.sentByMe ? styles.voiceTrackSent : styles.voiceTrackReceived,
+                      ]}
+                    >
+                      <View
+                        style={[
+                          styles.voiceProgressFill,
+                          item.sentByMe ? styles.voiceFillSent : styles.voiceFillReceived,
+                          { width: `${voiceProgressPct(item)}%` },
+                        ]}
+                      />
+                    </View>
+                  </View>
+                  <Text
+                    style={[
+                      styles.voiceDuration,
+                      item.sentByMe ? styles.voiceDurationSent : styles.voiceDurationReceived,
+                    ]}
+                  >
+                    {voiceDurationLabel(item)}
+                  </Text>
+                </View>
               ) : item.mediaUrl ? (
                 <TouchableOpacity
                   style={styles.mediaChip}
                   onPress={() => onMediaChipPress(item)}
                   activeOpacity={0.7}
                 >
-                  <AppIcon
-                    name={item.type === 'voice' ? 'mic-outline' : 'document-attach-outline'}
-                    size={18}
-                    color={Colors.text}
-                  />
-                  <Text style={styles.mediaChipText}>
-                    {item.type === 'voice'
-                      ? playingVoiceId === String(item.id)
-                        ? 'Playing…'
-                        : 'Voice message'
-                      : 'File attachment'}
-                  </Text>
+                  <AppIcon name="document-attach-outline" size={18} color={Colors.text} />
+                  <Text style={styles.mediaChipText}>File attachment</Text>
                 </TouchableOpacity>
               ) : null}
               {item.text ? (
@@ -843,14 +978,14 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
               <View style={[styles.textInputWrapper, styles.recordingWrapper]}>
                 <TouchableOpacity
                   style={styles.recordingStop}
-                  onPress={stopVoice}
+                  onPress={cancelVoice}
                   activeOpacity={0.7}
                 >
-                  <AppIcon name="stop-circle" size={20} color={Colors.error} />
+                  <AppIcon name="close" size={20} color={Colors.textSecondary} />
                 </TouchableOpacity>
                 <Text style={styles.recordingText}>
                   {String(Math.floor(recordingSecs / 60)).padStart(2, '0')}:
-                  {String(recordingSecs % 60).padStart(2, '0')} recording…
+                  {String(recordingSecs % 60).padStart(2, '0')}
                 </Text>
               </View>
             ) : (
@@ -884,7 +1019,7 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
               </View>
             )}
 
-            {/* Mic (start voice note) or send text */}
+            {/* Mic (start voice note) or send (text / voice) */}
             {inputText.trim().length === 0 && !recording ? (
               <TouchableOpacity
                 style={[styles.roundButton, styles.sendButton, locked && styles.buttonDisabled]}
@@ -900,11 +1035,10 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
                   styles.roundButton,
                   styles.sendButton,
                   locked && styles.buttonDisabled,
-                  inputText.trim().length === 0 && styles.buttonDisabled,
                 ]}
-                onPress={() => (recording ? stopVoice() : sendMessage())}
+                onPress={() => (recording ? sendVoice() : sendMessage())}
                 activeOpacity={0.85}
-                disabled={locked || (inputText.trim().length === 0 && !recording)}
+                disabled={locked}
               >
                 <AppIcon name="arrow-up" size={20} color={Colors.primary} />
               </TouchableOpacity>
@@ -1116,6 +1250,63 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: Colors.text,
     marginLeft: Spacing.sm,
+  },
+  voiceBubble: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    minWidth: 190,
+    paddingVertical: Spacing.xs,
+  },
+  voicePlayPause: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: Spacing.sm,
+  },
+  voicePlaySent: {
+    backgroundColor: 'rgba(255,255,255,0.25)',
+  },
+  voicePlayReceived: {
+    backgroundColor: 'rgba(91,103,241,0.12)',
+  },
+  voiceWave: {
+    flex: 1,
+  },
+  voiceProgressTrack: {
+    height: 4,
+    borderRadius: 2,
+    overflow: 'hidden',
+  },
+  voiceTrackSent: {
+    backgroundColor: 'rgba(255,255,255,0.35)',
+  },
+  voiceTrackReceived: {
+    backgroundColor: 'rgba(127,127,127,0.22)',
+  },
+  voiceProgressFill: {
+    height: '100%',
+    borderRadius: 2,
+  },
+  voiceFillSent: {
+    backgroundColor: Colors.white,
+  },
+  voiceFillReceived: {
+    backgroundColor: Colors.primary,
+  },
+  voiceDuration: {
+    fontSize: 12,
+    fontWeight: '600',
+    marginLeft: Spacing.sm,
+    minWidth: 36,
+    textAlign: 'right',
+  },
+  voiceDurationSent: {
+    color: 'rgba(255,255,255,0.9)',
+  },
+  voiceDurationReceived: {
+    color: Colors.textSecondary,
   },
   sentText: {
     color: Colors.white,

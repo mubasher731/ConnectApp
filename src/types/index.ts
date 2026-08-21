@@ -72,6 +72,8 @@ export interface Message {
   sentByMe: boolean;
   /** Media URL for photo/file/voice messages (relative to the backend host). */
   mediaUrl?: string | null;
+  /** Duration in seconds for voice messages (exact recorded length). */
+  durationSecs?: number;
 }
 
 export type CallDirection = 'incoming' | 'outgoing' | 'missed';
