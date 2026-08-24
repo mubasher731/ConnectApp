@@ -295,7 +295,7 @@ const styles = StyleSheet.create({
   chatList: {
     paddingHorizontal: Spacing.xl,
     paddingTop: Spacing.sm,
-    paddingBottom: 110,
+    paddingBottom: 150,
     backgroundColor: Colors.surface,
   },
 });

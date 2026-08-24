@@ -12,6 +12,8 @@ export { default as Avatar } from './Icon/Avatar';
 export { default as BookAppointmentModal } from './Patient/BookAppointmentModal';
 export { default as BrandLogo } from './Icon/BrandLogo';
 export { default as CallCard } from './Card/CallCard';
+export { default as CustomAlert } from './CustomAlert/CustomAlert';
+export { AlertProvider, useAlert } from './CustomAlert/AlertProvider';
 export { default as DoctorAppointmentCard } from './Card/DoctorAppointmentCard';
 export { default as DoctorCard } from './Patient/DoctorCard';
 export { default as DoctorPill } from './Doctor/DoctorPill';

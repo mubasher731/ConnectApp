@@ -13,7 +13,6 @@ import {
   Image,
   Modal,
   Linking,
-  Alert,
   PermissionsAndroid,
   ActivityIndicator,
 } from 'react-native';
@@ -23,7 +22,7 @@ import { useHeaderHeight } from '@react-navigation/elements';
 import { launchCamera, launchImageLibrary } from 'react-native-image-picker';
 import { pick, types, errorCodes, isErrorWithCode } from '@react-native-documents/picker';
 import Sound from 'react-native-nitro-sound';
-import { AppIcon, Avatar, EmptyState, SessionExtensionAlert } from '../../components';
+import { AppIcon, Avatar, EmptyState, SessionExtensionAlert, useAlert } from '../../components';
 import { socketService } from '../../api/socket';
 import { getApiBaseUrl } from '../../api/config';
 import { useAuth } from '../../context/AuthContext';
@@ -118,6 +117,7 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
   const headerHeight = useHeaderHeight();
   const { chatId, participantName } = route.params ?? {};
   const { user } = useAuth();
+  const { showAlert } = useAlert();
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState('');
@@ -456,12 +456,14 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
     } catch (err) {
       // Only reflect the extension if the backend actually applied it —
       // otherwise the UI would desync from the server.
-      Alert.alert(
-        'Extension Failed',
-        err instanceof Error && err.message
-          ? err.message
-          : 'Could not extend the session. Please try again.'
-      );
+      showAlert({
+        title: 'Extension Failed',
+        message:
+          err instanceof Error && err.message
+            ? err.message
+            : 'Could not extend the session. Please try again.',
+        actions: [{ text: 'OK' }],
+      });
       return;
     }
     // Prefer the server's real updated end time (original end + 5 min) over
@@ -571,10 +573,14 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
         );
       } catch (err) {
         setMessages((prev) => prev.filter((m) => m.id !== localId));
-        Alert.alert(
-          'Send Failed',
-          err instanceof Error && err.message ? err.message : 'Could not send the file.'
-        );
+        showAlert({
+          title: 'Send Failed',
+          message:
+            err instanceof Error && err.message
+              ? err.message
+              : 'Could not send the file.',
+          actions: [{ text: 'OK' }],
+        });
       } finally {
         setSendingMedia(false);
       }
@@ -602,7 +608,11 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
         PermissionsAndroid.PERMISSIONS.CAMERA
       );
       if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
-        Alert.alert('Camera permission needed', 'Allow camera access to take a photo.');
+        showAlert({
+          title: 'Camera permission needed',
+          message: 'Allow camera access to take a photo.',
+          actions: [{ text: 'OK' }],
+        });
         return;
       }
     }
@@ -627,7 +637,11 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
       }
     } catch (err) {
       if (isErrorWithCode(err) && err.code === errorCodes.OPERATION_CANCELED) return;
-      Alert.alert('Pick Failed', 'Could not open the document picker.');
+      showAlert({
+        title: 'Pick Failed',
+        message: 'Could not open the document picker.',
+        actions: [{ text: 'OK' }],
+      });
     }
   };
 
@@ -641,7 +655,11 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
         PermissionsAndroid.PERMISSIONS.RECORD_AUDIO
       );
       if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
-        Alert.alert('Microphone permission needed', 'Allow microphone access to record voice messages.');
+        showAlert({
+          title: 'Microphone permission needed',
+          message: 'Allow microphone access to record voice messages.',
+          actions: [{ text: 'OK' }],
+        });
         return;
       }
     }
@@ -664,7 +682,11 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
       if (timer) clearInterval(timer);
       recordingRef.current.timer = null;
       setRecordingSecs(0);
-      Alert.alert('Recording Failed', 'Could not start voice recording.');
+      showAlert({
+        title: 'Recording Failed',
+        message: 'Could not start voice recording.',
+        actions: [{ text: 'OK' }],
+      });
     }
   };
 
@@ -708,7 +730,11 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
         );
       }
     } catch {
-      Alert.alert('Recording Failed', 'Could not save the voice note.');
+      showAlert({
+        title: 'Recording Failed',
+        message: 'Could not save the voice note.',
+        actions: [{ text: 'OK' }],
+      });
     }
   };
 

@@ -6,12 +6,12 @@ import {
   TouchableOpacity,
   Modal,
   StyleSheet,
-  Alert,
   ActivityIndicator,
   ScrollView,
 } from 'react-native';
 import AppIcon from '../Icon/AppIcon';
 import Avatar from '../Icon/Avatar';
+import { useAlert } from '../CustomAlert/AlertProvider';
 import { sessionService } from '../../services';
 import { BookingDoctor } from '../../types';
 import {
@@ -48,6 +48,7 @@ const BookAppointmentModal: React.FC<BookAppointmentModalProps> = ({
   doctor,
   onClose,
 }) => {
+  const { showAlert } = useAlert();
   const [timeSlot, setTimeSlot] = useState<string | null>(null);
   const [message, setMessage] = useState('');
   const [sending, setSending] = useState(false);
@@ -97,14 +98,22 @@ const BookAppointmentModal: React.FC<BookAppointmentModalProps> = ({
   const handleSend = async () => {
     if (!doctor) return;
     if (!timeSlot) {
-      Alert.alert('Select a time slot', 'Please choose an available time slot.');
+      showAlert({
+        title: 'Select a time slot',
+        message: 'Please choose an available time slot.',
+        actions: [{ text: 'OK' }],
+      });
       return;
     }
 
     // Backend requires the reason to be 3–5 words.
     const words = message.trim().split(/\s+/).filter(Boolean);
     if (words.length < 3 || words.length > 5) {
-      Alert.alert('Reason required', 'Please write a reason between 3 and 5 words.');
+      showAlert({
+        title: 'Reason required',
+        message: 'Please write a reason between 3 and 5 words.',
+        actions: [{ text: 'OK' }],
+      });
       return;
     }
 
@@ -118,20 +127,23 @@ const BookAppointmentModal: React.FC<BookAppointmentModalProps> = ({
         reason: message.trim(),
       });
 
-      Alert.alert(
-        'Request Sent',
-        'Your appointment request has been sent. The doctor will review it shortly.',
-        [{ text: 'Close', style: 'cancel', onPress: handleClose }]
-      );
+      showAlert({
+        title: 'Request Sent',
+        message:
+          'Your appointment request has been sent. The doctor will review it shortly.',
+        actions: [{ text: 'Close', style: 'cancel', onPress: handleClose }],
+      });
     } catch (err) {
       // Surface the real backend error (e.g. slot outside availability,
       // duplicate pending request) instead of a misleading generic message.
-      Alert.alert(
-        'Booking Failed',
-        err instanceof Error && err.message
-          ? err.message
-          : 'Unable to book this slot. Please try again.'
-      );
+      showAlert({
+        title: 'Booking Failed',
+        message:
+          err instanceof Error && err.message
+            ? err.message
+            : 'Unable to book this slot. Please try again.',
+        actions: [{ text: 'OK', style: 'destructive' }],
+      });
     } finally {
       setSending(false);
     }
@@ -269,7 +281,7 @@ const BookAppointmentModal: React.FC<BookAppointmentModalProps> = ({
                           {formatSlotRange(slot)}
                         </Text>
                         {disabled ? (
-                          <Text style={styles.slotRowTag}>Booked</Text>
+                          <Text style={styles.slotRowTag}>N/A</Text>
                         ) : selected ? (
                           <Text style={styles.slotRowTagSelected}>Selected</Text>
                         ) : null}
@@ -445,9 +457,9 @@ const styles = StyleSheet.create({
   },
   slotRowTag: {
     fontSize: 11,
-    fontWeight: '700',
-    color: Colors.textTertiary,
-    backgroundColor: 'rgba(127,127,127,0.16)',
+    fontWeight: '800',
+    color: Colors.error,
+    backgroundColor: Colors.errorSoft,
     paddingHorizontal: Spacing.sm,
     paddingVertical: 2,
     borderRadius: Radius.round,

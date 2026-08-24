@@ -4,9 +4,8 @@ import {
   Text,
   TouchableOpacity,
   StyleSheet,
-  Alert,
 } from 'react-native';
-import { AuthScreenLayout, FormInput, PrimaryButton } from '../../components';
+import { AuthScreenLayout, FormInput, PrimaryButton, useAlert } from '../../components';
 import { useAuth } from '../../context/AuthContext';
 import { DOCTOR_DEMO_CREDENTIALS } from '../../context/appData';
 import { validators, FieldErrors } from '../../utils/validation';
@@ -18,6 +17,7 @@ interface LoginScreenProps {
 
 const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
   const { signIn, signInAsDoctor } = useAuth();
+  const { showAlert } = useAlert();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -47,10 +47,12 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
       }
       // Success — navigator switches to the authenticated flow automatically.
     } catch (err) {
-      Alert.alert(
-        'Sign In Failed',
-        err instanceof Error ? err.message : 'Something went wrong. Please try again.'
-      );
+      showAlert({
+        title: 'Sign In Failed',
+        message:
+          err instanceof Error ? err.message : 'Something went wrong. Please try again.',
+        actions: [{ text: 'OK' }],
+      });
     } finally {
       setLoading(false);
     }

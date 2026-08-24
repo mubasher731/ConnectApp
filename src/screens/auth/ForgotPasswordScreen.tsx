@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { StyleSheet, Alert } from 'react-native';
-import { AuthScreenLayout, FormInput, PrimaryButton } from '../../components';
+import { StyleSheet } from 'react-native';
+import { AuthScreenLayout, FormInput, PrimaryButton, useAlert } from '../../components';
 import { authService } from '../../services/authService';
 import { validators } from '../../utils/validation';
 import { Spacing } from '../../theme';
@@ -10,6 +10,8 @@ interface ForgotPasswordScreenProps {
 }
 
 const ForgotPasswordScreen: React.FC<ForgotPasswordScreenProps> = ({ navigation }) => {
+  const { showAlert } = useAlert();
+
   const [email, setEmail] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -25,10 +27,11 @@ const ForgotPasswordScreen: React.FC<ForgotPasswordScreenProps> = ({ navigation 
       await authService.forgotPassword(email);
       setSent(true);
     } catch (err) {
-      Alert.alert(
-        'Something went wrong',
-        err instanceof Error ? err.message : 'Please try again.'
-      );
+      showAlert({
+        title: 'Something went wrong',
+        message: err instanceof Error ? err.message : 'Please try again.',
+        actions: [{ text: 'OK' }],
+      });
     } finally {
       setLoading(false);
     }

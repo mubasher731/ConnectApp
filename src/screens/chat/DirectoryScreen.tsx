@@ -2,10 +2,9 @@ import React, { useEffect, useState } from 'react';
 import {
   FlatList,
   StyleSheet,
-  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { EmptyState, ListItemSeparator, UserDirectoryCard } from '../../components';
+import { EmptyState, ListItemSeparator, UserDirectoryCard, useAlert } from '../../components';
 import { socketService } from '../../api/socket';
 import { useAuth } from '../../context/AuthContext';
 import { chatService, userService } from '../../services';
@@ -22,6 +21,7 @@ const DirectoryScreen: React.FC<DirectoryScreenProps> = ({ route, navigation }) 
   const roleId: 3 | 4 = route.params?.roleId ?? 3;
   const title = route.params?.title ?? (roleId === 4 ? 'Patients' : 'Doctors');
   const { user } = useAuth();
+  const { showAlert } = useAlert();
 
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
@@ -55,10 +55,12 @@ const DirectoryScreen: React.FC<DirectoryScreenProps> = ({ route, navigation }) 
         participantName: chat.participantName,
       });
     } catch (err) {
-      Alert.alert(
-        'Unable to Start',
-        err instanceof Error ? err.message : 'Could not start the consultation.'
-      );
+      showAlert({
+        title: 'Unable to Start',
+        message:
+          err instanceof Error ? err.message : 'Could not start the consultation.',
+        actions: [{ text: 'OK' }],
+      });
     } finally {
       setStartingId(null);
     }

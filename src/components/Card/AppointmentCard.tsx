@@ -144,8 +144,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   metaText: {
-    fontSize: responsiveSize(13),
-    color: Colors.textSecondary,
+    fontSize: responsiveSize(15),
+    fontWeight: '700',
+    color: Colors.text,
     marginLeft: Spacing.sm,
   },
   footerRow: {

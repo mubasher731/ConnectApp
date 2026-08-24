@@ -5,14 +5,13 @@ import {
   TouchableOpacity,
   StyleSheet,
   ScrollView,
-  Alert,
   TextInput,
   Modal,
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { AppIcon, Avatar, PrimaryButton } from '../../components';
+import { AppIcon, Avatar, PrimaryButton, useAlert } from '../../components';
 import { useAuth } from '../../context/AuthContext';
 import { validators } from '../../utils/validation';
 import { Colors, Radius, Shadows, Spacing, responsiveSize } from '../../theme';
@@ -20,6 +19,7 @@ import { useTabBarClearance } from '../../utils/useResponsive';
 
 const ProfileScreen: React.FC = () => {
   const { user, signOut, updateUser } = useAuth();
+  const { showAlert } = useAlert();
 
   const [showEditModal, setShowEditModal] = useState(false);
   const [fullName, setFullName] = useState(user?.name ?? '');
@@ -45,20 +45,28 @@ const ProfileScreen: React.FC = () => {
       await updateUser({ name: fullName.trim(), email: email.trim().toLowerCase() });
       setShowEditModal(false);
     } catch (err) {
-      Alert.alert(
-        'Update Failed',
-        err instanceof Error ? err.message : 'Unable to save your profile. Please try again.'
-      );
+      showAlert({
+        title: 'Update Failed',
+        message:
+          err instanceof Error
+            ? err.message
+            : 'Unable to save your profile. Please try again.',
+        actions: [{ text: 'OK', style: 'destructive' }],
+      });
     } finally {
       setSaving(false);
     }
   };
 
   const handleLogout = () => {
-    Alert.alert('Sign Out', 'Are you sure you want to sign out of ConnectApp?', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Sign Out', style: 'destructive', onPress: () => signOut() },
-    ]);
+    showAlert({
+      title: 'Sign Out',
+      message: 'Are you sure you want to sign out of ConnectApp?',
+      actions: [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Sign Out', style: 'destructive', onPress: () => signOut() },
+      ],
+    });
   };
 
   return (
@@ -78,7 +86,7 @@ const ProfileScreen: React.FC = () => {
           <View style={styles.avatarContainer}>
             <Avatar name={displayName} size={88} />
             <TouchableOpacity style={styles.editAvatarButton} activeOpacity={0.8}>
-              <AppIcon name="camera" size={15} color={Colors.primary} />
+              <AppIcon name="camera" size={16} color={Colors.white} />
             </TouchableOpacity>
           </View>
           <Text style={styles.profileName}>{displayName}</Text>
@@ -242,11 +250,12 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: Radius.round,
-    backgroundColor: Colors.primarySoft,
+    backgroundColor: Colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,
     borderColor: Colors.white,
+    ...Shadows.primary,
   },
   profileName: {
     fontSize: responsiveSize(24),
@@ -367,6 +376,8 @@ const styles = StyleSheet.create({
   modalInput: {
     backgroundColor: Colors.inputBackground,
     borderRadius: Radius.md,
+    borderWidth: 1.5,
+    borderColor: Colors.border,
     paddingVertical: 14,
     paddingHorizontal: Spacing.lg,
     fontSize: 15,

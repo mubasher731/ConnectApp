@@ -6,7 +6,6 @@ import {
   ScrollView,
   TouchableOpacity,
   StyleSheet,
-  Alert,
   ActivityIndicator,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
@@ -17,6 +16,7 @@ import {
   Avatar,
   RecentAppointmentCard,
   StatCard,
+  useAlert,
 } from '../../components';
 import { useAuth } from '../../context/AuthContext';
 import { DASHBOARD_STATS } from '../../context/appData';
@@ -27,6 +27,7 @@ import { Colors, Radius, Spacing, responsiveSize } from '../../theme';
 
 const DoctorDashboardScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const { user } = useAuth();
+  const { showAlert } = useAlert();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
@@ -81,18 +82,21 @@ const DoctorDashboardScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
   const handleRequestAction = async (id: string, status: 'approved' | 'rejected') => {
     try {
       await sessionService.updateConversationStatus(id, { status });
-      Alert.alert(
-        status === 'approved' ? 'Request Approved' : 'Request Rejected',
-        status === 'approved'
-          ? 'The session has been scheduled and the patient notified.'
-          : 'The request has been rejected.'
-      );
+      showAlert({
+        title: status === 'approved' ? 'Request Approved' : 'Request Rejected',
+        message:
+          status === 'approved'
+            ? 'The session has been scheduled and the patient notified.'
+            : 'The request has been rejected.',
+        actions: [{ text: 'OK' }],
+      });
       await refresh();
     } catch (err) {
-      Alert.alert(
-        'Action Failed',
-        err instanceof Error ? err.message : 'Could not update the request.'
-      );
+      showAlert({
+        title: 'Action Failed',
+        message: err instanceof Error ? err.message : 'Could not update the request.',
+        actions: [{ text: 'OK' }],
+      });
     }
   };
 

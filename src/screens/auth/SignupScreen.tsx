@@ -4,9 +4,8 @@ import {
   Text,
   TouchableOpacity,
   StyleSheet,
-  Alert,
 } from 'react-native';
-import { AuthScreenLayout, FormInput, PrimaryButton } from '../../components';
+import { AuthScreenLayout, FormInput, PrimaryButton, useAlert } from '../../components';
 import { useAuth } from '../../context/AuthContext';
 import { validators, FieldErrors } from '../../utils/validation';
 import { Colors, Spacing } from '../../theme';
@@ -17,6 +16,7 @@ interface SignupScreenProps {
 
 const SignupScreen: React.FC<SignupScreenProps> = ({ navigation }) => {
   const { signUp } = useAuth();
+  const { showAlert } = useAlert();
 
   const [firstName, setFirstName] = useState('');
   const [email, setEmail] = useState('');
@@ -48,10 +48,12 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ navigation }) => {
       });
       // Success — navigator switches to the authenticated flow automatically.
     } catch (err) {
-      Alert.alert(
-        'Sign Up Failed',
-        err instanceof Error ? err.message : 'Something went wrong. Please try again.'
-      );
+      showAlert({
+        title: 'Sign Up Failed',
+        message:
+          err instanceof Error ? err.message : 'Something went wrong. Please try again.',
+        actions: [{ text: 'OK' }],
+      });
     } finally {
       setLoading(false);
     }
