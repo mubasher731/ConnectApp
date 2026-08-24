@@ -23,7 +23,6 @@ import CallsScreen from '../screens/patient/CallsScreen';
 import ProfileScreen from '../screens/patient/ProfileScreen';
 import DoctorsScreen from '../screens/patient/DoctorsScreen';
 import DoctorDashboardScreen from '../screens/doctor/DoctorDashboardScreen';
-import DoctorConsultationsScreen from '../screens/doctor/DoctorConsultationsScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -49,8 +48,8 @@ const TAB_ICONS: Record<string, [string, string]> = {
 
 const DOCTOR_TAB_ICONS: Record<string, [string, string]> = {
   Dashboard: ['grid-outline', 'grid'],
-  Consultations: ['clipboard-outline', 'clipboard'],
   Chats: ['chatbubble-ellipses-outline', 'chatbubble-ellipses'],
+  Calls: ['call-outline', 'call'],
   Profile: ['person-outline', 'person'],
 };
 
@@ -69,7 +68,7 @@ function MainTabs() {
   );
 }
 
-/** Doctor main interface: Dashboard + Consultations + Chats + Profile. */
+/** Doctor main interface: Dashboard + Chats + Calls + Profile. */
 function DoctorTabs() {
   const tabOptions = useTabOptions(DOCTOR_TAB_ICONS);
 
@@ -78,8 +77,8 @@ function DoctorTabs() {
       screenOptions={tabOptions}
     >
       <Tab.Screen name="Dashboard" component={DoctorDashboardScreen} />
-      <Tab.Screen name="Consultations" component={DoctorConsultationsScreen} />
       <Tab.Screen name="Chats" component={ChatsScreen} />
+      <Tab.Screen name="Calls" component={CallsScreen} />
       <Tab.Screen name="Profile" component={ProfileScreen} />
     </Tab.Navigator>
   );

@@ -3,11 +3,11 @@ import {
   View,
   Text,
   TextInput,
-  ScrollView,
   TouchableOpacity,
   StyleSheet,
   ActivityIndicator,
 } from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { useFocusEffect } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
@@ -51,11 +51,18 @@ const DoctorDashboardScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
 
   const filteredRecent = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
-    return recent.filter((c) => {
-      if (!q) return true;
-      const name = (c.patient_name ?? '').toLowerCase();
-      return name.includes(q) || String(c.patient_id).includes(q);
-    });
+    return recent
+      .filter((c) => {
+        if (!q) return true;
+        const name = (c.patient_name ?? '').toLowerCase();
+        return name.includes(q) || String(c.patient_id).includes(q);
+      })
+      // Active sessions stay at the top of the list.
+      .sort((a, b) => {
+        if (a.state === 'active' && b.state !== 'active') return -1;
+        if (b.state === 'active' && a.state !== 'active') return 1;
+        return 0;
+      });
   }, [recent, searchQuery]);
 
   const refresh = useCallback(async () => {
@@ -102,11 +109,14 @@ const DoctorDashboardScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
-      <ScrollView
+      <KeyboardAwareScrollView
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
+        enableOnAndroid
+        enableAutomaticScroll
+        extraScrollHeight={20}
       >
         {/* Header */}
         <View style={styles.header}>
@@ -180,7 +190,7 @@ const DoctorDashboardScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
             {/* Recent Appointments */}
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>Recent Appointments</Text>
-              <TouchableOpacity onPress={() => navigation.navigate('Consultations')}>
+              <TouchableOpacity onPress={() => navigation.navigate('Chats')}>
                 <Text style={styles.seeAll}>See All</Text>
               </TouchableOpacity>
             </View>
@@ -194,13 +204,18 @@ const DoctorDashboardScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
                 <RecentAppointmentCard
                   key={c.id}
                   conversation={c}
-                  onViewDetails={() => navigation.navigate('Consultations')}
+                  onViewDetails={() =>
+                    navigation.navigate('ChatDetail', {
+                      chatId: c.id,
+                      participantName: c.patient_name || 'Patient',
+                    })
+                  }
                 />
               ))
             )}
           </>
         )}
-      </ScrollView>
+      </KeyboardAwareScrollView>
     </SafeAreaView>
   );
 };

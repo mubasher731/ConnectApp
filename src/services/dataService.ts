@@ -93,7 +93,14 @@ export const chatService = {
         byPeer.set(peer, c);
       }
     }
-    return [...byPeer.values()].map((c) => mapConversationToChat(c, me.id));
+    // Active conversations always appear at the top of the list.
+    return [...byPeer.values()]
+      .map((c) => mapConversationToChat(c, me.id))
+      .sort((a, b) => {
+        if (a.status === 'active' && b.status !== 'active') return -1;
+        if (b.status === 'active' && a.status !== 'active') return 1;
+        return 0;
+      });
   },
 
   /** Messages for a conversation (oldest → newest). No options = all messages. */

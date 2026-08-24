@@ -355,9 +355,10 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
     return () => clearInterval(interval);
   }, []);
 
-  // Track the keyboard height so the composer stays above it. Bottom padding
-  // is only applied on iOS — Android already resizes via windowSoftInputMode="adjustResize",
-  // so adding it there would double-count and leave a large empty gap.
+  // Track the keyboard height so the composer stays above it. Bottom padding is
+  // applied on every platform because Android uses windowSoftInputMode="adjustNothing"
+  // (set in AndroidManifest.xml), so the window never auto-resizes — behavior is
+  // consistent across all Android devices and there is no double-counting.
   useEffect(() => {
     const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
     const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
@@ -896,7 +897,6 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
     const prev = messages[index - 1];
     const showDate = !prev || !dayjs(item.createdAt).isSame(dayjs(prev.createdAt), 'day');
     const isGroupStart = !prev || prev.sentByMe !== item.sentByMe || showDate;
-    const grouped = !isGroupStart;
 
     // Session boundary — horizontal divider separating the previous session's
     // read-only history (messages above) from the new session (below).
@@ -935,7 +935,6 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
           style={[
             styles.messageRow,
             item.sentByMe ? styles.messageRowSent : styles.messageRowReceived,
-            grouped && styles.messageRowGrouped,
           ]}
         >
           {!item.sentByMe && (
@@ -1058,12 +1057,7 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
 
   return (
     <SafeAreaView style={styles.container} edges={['bottom', 'left', 'right']}>
-      <View
-        style={[
-          styles.flex,
-          Platform.OS === 'ios' ? { paddingBottom: keyboardHeight } : undefined,
-        ]}
-      >
+      <View style={[styles.flex, { paddingBottom: keyboardHeight }]}>
         {/* Session countdown + lifecycle notices — pinned below the chat header */}
         {countdownLabel || sessionNotice ? (
           <View>
@@ -1436,13 +1430,12 @@ const styles = StyleSheet.create({
   inputWrapperDisabled: {
     opacity: 0.6,
   },
+  // Uniform spacing between every message row — identical gap regardless of
+  // message length or sender, so the chat looks clean and even.
   messageRow: {
     flexDirection: 'row',
     marginBottom: Spacing.sm,
     alignItems: 'flex-end',
-  },
-  messageRowGrouped: {
-    marginBottom: 2,
   },
   messageRowSent: {
     justifyContent: 'flex-end',
@@ -1674,7 +1667,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: Colors.text,
     maxHeight: 100,
-    paddingVertical: 0,
+    paddingVertical: 10,
   },
   inputActions: {
     flexDirection: 'row',

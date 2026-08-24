@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   ScrollView,
 } from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import AppIcon from '../Icon/AppIcon';
 import Avatar from '../Icon/Avatar';
 import { useAlert } from '../CustomAlert/AlertProvider';
@@ -169,11 +170,14 @@ const BookAppointmentModal: React.FC<BookAppointmentModalProps> = ({
             </View>
           </View>
 
-          <ScrollView
+          <KeyboardAwareScrollView
             style={styles.body}
             showsVerticalScrollIndicator={false}
             nestedScrollEnabled
             keyboardShouldPersistTaps="handled"
+            enableOnAndroid
+            enableAutomaticScroll
+            extraScrollHeight={20}
           >
             {/* Date selector */}
             <Text style={styles.label}>Select Date</Text>
@@ -341,7 +345,7 @@ const BookAppointmentModal: React.FC<BookAppointmentModalProps> = ({
                 )}
               </TouchableOpacity>
             </View>
-          </ScrollView>
+          </KeyboardAwareScrollView>
         </View>
       </View>
     </Modal>

@@ -28,6 +28,8 @@ export const Colors = {
   warningSoft: 'rgba(251, 191, 36, 0.14)',
   info: '#60A5FA',
   infoSoft: 'rgba(96, 165, 250, 0.14)',
+  orange: '#FB923C',
+  orangeSoft: 'rgba(251, 146, 60, 0.14)',
 
   // Chat
   chatBubbleSent: '#5B67F1',

@@ -3,10 +3,8 @@ import {
   View,
   Text,
   StyleSheet,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
 } from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { Colors, Spacing } from '../theme';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AuthHeader from './Header/AuthHeader';
@@ -34,27 +32,26 @@ const AuthScreenLayout: React.FC<AuthScreenLayoutProps> = ({
     <SafeAreaView style={styles.safeArea}>
       <AuthHeader title={title} onBack={onBack} />
 
-      <KeyboardAvoidingView
+      <KeyboardAwareScrollView
         style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        contentContainerStyle={styles.scroll}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+        showsVerticalScrollIndicator={false}
+        enableOnAndroid
+        enableAutomaticScroll
+        extraScrollHeight={20}
       >
-        <ScrollView
-          contentContainerStyle={styles.scroll}
-          keyboardShouldPersistTaps="handled"
-          keyboardDismissMode="on-drag"
-          showsVerticalScrollIndicator={false}
-        >
-          <View style={styles.content}>
-            {/* Centered app branding */}
-            <BrandLogo />
+        <View style={styles.content}>
+          {/* Centered app branding */}
+          <BrandLogo />
 
-            <Text style={styles.subtitle}>{subtitle}</Text>
+          <Text style={styles.subtitle}>{subtitle}</Text>
 
-            <View style={styles.form}>{children}</View>
-          </View>
-          {footer ? <View style={styles.footer}>{footer}</View> : null}
-        </ScrollView>
-      </KeyboardAvoidingView>
+          <View style={styles.form}>{children}</View>
+        </View>
+        {footer ? <View style={styles.footer}>{footer}</View> : null}
+      </KeyboardAwareScrollView>
     </SafeAreaView>
   );
 };

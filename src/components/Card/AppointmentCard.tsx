@@ -41,13 +41,6 @@ const formatDate = (ts?: string | null) => {
 
 /** One shared appointment card used by Home "Recent Conversations" + Chat tab. */
 const AppointmentCard: React.FC<AppointmentCardProps> = ({ chat, onPress }) => {
-  const nameColor =
-    chat.status === 'completed'
-      ? Colors.success
-      : chat.status === 'missed'
-      ? Colors.error
-      : Colors.primary;
-
   return (
     <TouchableOpacity
       style={styles.card}
@@ -67,7 +60,7 @@ const AppointmentCard: React.FC<AppointmentCardProps> = ({ chat, onPress }) => {
       <View style={styles.topRow}>
         <Avatar name={chat.participantName} size={48} />
         <View style={styles.infoBlock}>
-          <Text style={[styles.name, { color: nameColor }]} numberOfLines={1}>
+          <Text style={styles.name} numberOfLines={1}>
             {chat.participantName}
           </Text>
           <Text style={styles.timeText}>{formatTimeRange(chat)}</Text>
@@ -119,6 +112,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     lineHeight: 24,
     marginBottom: Spacing.xs,
+    color: Colors.text,
   },
   durationRow: {
     flexDirection: 'row',

@@ -7,11 +7,13 @@ const STATUS_META: Record<
   SessionStatus,
   { label: string; bg: string; color: string }
 > = {
-  scheduled: { label: 'Upcoming', bg: Colors.infoSoft, color: Colors.info },
-  active: { label: 'Active', bg: Colors.primarySoft, color: Colors.primary },
-  completed: { label: 'Consulted', bg: Colors.successSoft, color: Colors.success },
+  // Upcoming → Yellow, Active → Green, Consulted → Blue,
+  // No Show → Red, Pending → Orange.
+  scheduled: { label: 'Upcoming', bg: Colors.warningSoft, color: Colors.warning },
+  active: { label: 'Active', bg: Colors.successSoft, color: Colors.success },
+  completed: { label: 'Consulted', bg: Colors.infoSoft, color: Colors.info },
   missed: { label: 'No Show', bg: Colors.errorSoft, color: Colors.error },
-  pending: { label: 'Pending', bg: Colors.warningSoft, color: Colors.warning },
+  pending: { label: 'Pending', bg: Colors.orangeSoft, color: Colors.orange },
 };
 
 /** Public accessor so cards can reuse the status label/colors. */

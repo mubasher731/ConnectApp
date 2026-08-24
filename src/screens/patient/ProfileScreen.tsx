@@ -7,9 +7,8 @@ import {
   ScrollView,
   TextInput,
   Modal,
-  KeyboardAvoidingView,
-  Platform,
 } from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppIcon, Avatar, PrimaryButton, useAlert } from '../../components';
 import { useAuth } from '../../context/AuthContext';
@@ -144,16 +143,16 @@ const ProfileScreen: React.FC = () => {
         animationType="fade"
         onRequestClose={() => setShowEditModal(false)}
       >
-        <KeyboardAvoidingView
+        <KeyboardAwareScrollView
           style={styles.modalOverlay}
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          contentContainerStyle={styles.modalScroll}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+          enableOnAndroid
+          enableAutomaticScroll
+          extraScrollHeight={20}
         >
-          <ScrollView
-            contentContainerStyle={styles.modalScroll}
-            keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator={false}
-          >
-            <View style={styles.modalContent}>
+          <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Edit Profile</Text>
 
             <Text style={styles.modalLabel}>Full name</Text>
@@ -204,8 +203,7 @@ const ProfileScreen: React.FC = () => {
               </TouchableOpacity>
             </View>
             </View>
-          </ScrollView>
-        </KeyboardAvoidingView>
+          </KeyboardAwareScrollView>
       </Modal>
     </SafeAreaView>
   );

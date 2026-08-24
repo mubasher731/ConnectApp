@@ -112,10 +112,12 @@ export const CONVERSATION_STATE_META: Record<
   ConversationState,
   { label: string; color: string; bg: string }
 > = {
-  pending: { label: 'Pending', color: Colors.warning, bg: Colors.warningSoft },
-  in_progress: { label: 'In Progress', color: Colors.info, bg: Colors.infoSoft },
-  active: { label: 'Active', color: Colors.primary, bg: Colors.primarySoft },
-  ended: { label: 'Ended', color: Colors.textSecondary, bg: Colors.inputBackground },
+  // Colors stay consistent with the patient StatusBadge:
+  // Pending → Orange, In Progress/Upcoming → Yellow, Active → Green, Ended → Blue.
+  pending: { label: 'Pending', color: Colors.orange, bg: Colors.orangeSoft },
+  in_progress: { label: 'In Progress', color: Colors.warning, bg: Colors.warningSoft },
+  active: { label: 'Active', color: Colors.success, bg: Colors.successSoft },
+  ended: { label: 'Ended', color: Colors.info, bg: Colors.infoSoft },
 };
 
 export type DashboardStatKey =
@@ -162,20 +164,6 @@ export const DASHBOARD_STATS: StatConfig[] = [
     color: Colors.info,
     bg: Colors.infoSoft,
   },
-];
-
-/* --------------------- doctor consultations screen ------------------------- */
-
-export type ConsultationFilterKey = 'all' | 'active' | 'ended';
-
-/** Consultations screen — status filter chips. */
-export const CONSULTATION_FILTERS: {
-  key: ConsultationFilterKey;
-  label: string;
-}[] = [
-  { key: 'all', label: 'All Requests' },
-  { key: 'active', label: 'Active' },
-  { key: 'ended', label: 'Ended' },
 ];
 
 /* ------------------------------- auth -------------------------------------- */
