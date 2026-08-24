@@ -6,19 +6,18 @@ import {
   FlatList,
   TouchableOpacity,
   StyleSheet,
-  KeyboardAvoidingView,
   Platform,
   Animated,
   ScrollView,
   Image,
   Modal,
   Linking,
+  Keyboard,
   PermissionsAndroid,
   ActivityIndicator,
 } from 'react-native';
 import dayjs from 'dayjs';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useHeaderHeight } from '@react-navigation/elements';
 import { launchCamera, launchImageLibrary } from 'react-native-image-picker';
 import { pick, types, errorCodes, isErrorWithCode } from '@react-native-documents/picker';
 import Sound from 'react-native-nitro-sound';
@@ -114,7 +113,6 @@ const ChatHeaderTitle: React.FC<{ name: string; online: boolean }> = ({ name, on
 );
 
 const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }) => {
-  const headerHeight = useHeaderHeight();
   const { chatId, participantName } = route.params ?? {};
   const { user } = useAuth();
   const { showAlert } = useAlert();
@@ -131,6 +129,8 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
   const [now, setNow] = useState(() => Date.now());
   const [showExtension, setShowExtension] = useState(false);
   const [extensionSecondsLeft, setExtensionSecondsLeft] = useState(60);
+  const [endingSession, setEndingSession] = useState(false);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
   const [sendingMedia, setSendingMedia] = useState(false);
   const [recording, setRecording] = useState(false);
   const [recordingSecs, setRecordingSecs] = useState(0);
@@ -355,6 +355,22 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
     return () => clearInterval(interval);
   }, []);
 
+  // Track the keyboard height so the composer stays above it. Bottom padding
+  // is only applied on iOS — Android already resizes via windowSoftInputMode="adjustResize",
+  // so adding it there would double-count and leave a large empty gap.
+  useEffect(() => {
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    const showSub = Keyboard.addListener(showEvent, (e) =>
+      setKeyboardHeight(e.endCoordinates.height)
+    );
+    const hideSub = Keyboard.addListener(hideEvent, () => setKeyboardHeight(0));
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
+
   // Voice playback: keep position/duration in sync, cache durations per note,
   // clear the playing state when a note finishes, and stop playback on unmount.
   useEffect(() => {
@@ -432,18 +448,28 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
   // ---- Session extension alert (doctor, 1 minute before end) ----
   useEffect(() => {
     if (!isDoctorRole || endAtMs === null) return;
+    // The alert belongs only to the active session window. Once the session is
+    // completed (backend state) or its scheduled end has passed, dismiss any
+    // visible alert and never fire it again.
+    if (state === 'ended' || now >= endAtMs) {
+      if (extensionFiredForEnd.current !== null) {
+        extensionFiredForEnd.current = null;
+        setShowExtension(false);
+      }
+      return;
+    }
     const remaining = endAtMs - now;
     if (remaining > 60_000) {
       extensionFiredForEnd.current = null;
       return;
     }
-    if (remaining <= 0) return; // already ended — no alert
+    // Within the final minute of the active window: fire once per end time.
     if (extensionFiredForEnd.current !== endAtMs) {
       extensionFiredForEnd.current = endAtMs;
       setExtensionSecondsLeft(Math.max(1, Math.ceil(remaining / 1000)));
       setShowExtension(true);
     }
-  }, [now, endAtMs, isDoctorRole]);
+  }, [now, endAtMs, isDoctorRole, state]);
 
   const handleExtensionCancel = () => setShowExtension(false);
 
@@ -483,6 +509,72 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
     };
     setMessages((prev) => [...prev, sys]);
   };
+
+  // ---- Doctor: end the active session early ----
+  const canEndSession =
+    isDoctorRole && !!conversation && conversation.state === 'active' && !hasEnded;
+
+  const handleEndSession = useCallback(async () => {
+    if (!conversation || endingSession) return;
+    setEndingSession(true);
+    try {
+      await sessionService.endSession(conversation.id);
+      // Reflect the ended state immediately; the socket event will confirm it.
+      setConversation((prev) => (prev ? { ...prev, state: 'ended' } : prev));
+      setShowExtension(false);
+      extensionFiredForEnd.current = null;
+      showAlert({
+        title: 'Session Ended',
+        message: 'This session has been ended.',
+        actions: [{ text: 'OK' }],
+      });
+    } catch (err) {
+      showAlert({
+        title: 'Could Not End Session',
+        message:
+          err instanceof Error ? err.message : 'Unable to end the session. Please try again.',
+        actions: [{ text: 'OK' }],
+      });
+    } finally {
+      setEndingSession(false);
+    }
+  }, [conversation, endingSession, showAlert]);
+
+  const confirmEndSession = useCallback(() => {
+    showAlert({
+      title: 'End Session',
+      message: 'End this session now? This cannot be undone.',
+      actions: [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'End Session', style: 'destructive', onPress: () => handleEndSession() },
+      ],
+    });
+  }, [showAlert, handleEndSession]);
+
+  // Header "End Session" action — doctor only, while the session is active.
+  useEffect(() => {
+    navigation.setOptions({
+      // eslint-disable-next-line react/no-unstable-nested-components
+      headerRight: () =>
+        canEndSession ? (
+          <TouchableOpacity
+            style={styles.headerEndButton}
+            onPress={confirmEndSession}
+            disabled={endingSession}
+            activeOpacity={0.7}
+          >
+            {endingSession ? (
+              <ActivityIndicator size="small" color={Colors.error} />
+            ) : (
+              <>
+                <AppIcon name="stop-circle-outline" size={16} color={Colors.error} />
+                <Text style={styles.headerEndText}>End Session</Text>
+              </>
+            )}
+          </TouchableOpacity>
+        ) : null,
+    });
+  }, [navigation, canEndSession, endingSession, confirmEndSession]);
 
   const sendMessage = useCallback(async () => {
     const trimmed = inputText.trim();
@@ -966,10 +1058,11 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
 
   return (
     <SafeAreaView style={styles.container} edges={['bottom', 'left', 'right']}>
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? headerHeight : 0}
+      <View
+        style={[
+          styles.flex,
+          Platform.OS === 'ios' ? { paddingBottom: keyboardHeight } : undefined,
+        ]}
       >
         {/* Session countdown + lifecycle notices — pinned below the chat header */}
         {countdownLabel || sessionNotice ? (
@@ -1166,7 +1259,7 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
             </View>
           )}
         </View>
-      </KeyboardAvoidingView>
+      </View>
 
       <SessionExtensionAlert
         visible={showExtension}
@@ -1245,6 +1338,21 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: Colors.success,
     fontWeight: '500',
+  },
+  headerEndButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.errorSoft,
+    borderRadius: Radius.round,
+    paddingHorizontal: Spacing.sm + 2,
+    paddingVertical: 6,
+    marginRight: Spacing.xs,
+  },
+  headerEndText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: Colors.error,
+    marginLeft: 4,
   },
   messagesList: {
     paddingHorizontal: Spacing.md,

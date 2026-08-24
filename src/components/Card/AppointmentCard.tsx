@@ -49,7 +49,11 @@ const AppointmentCard: React.FC<AppointmentCardProps> = ({ chat, onPress }) => {
       : Colors.primary;
 
   return (
-    <View style={styles.card}>
+    <TouchableOpacity
+      style={styles.card}
+      onPress={onPress}
+      activeOpacity={0.7}
+    >
       {/* Top row: status badge (left) + duration (top right, opposite side) */}
       <View style={styles.badgeRow}>
         <StatusBadge status={chat.status} />
@@ -70,7 +74,7 @@ const AppointmentCard: React.FC<AppointmentCardProps> = ({ chat, onPress }) => {
         </View>
       </View>
 
-      {/* Footer: date + DETAILS */}
+      {/* Footer: date */}
       <View style={styles.footerRow}>
         <View style={styles.metaRow}>
           <AppIcon name="calendar-outline" size={14} color={Colors.textTertiary} />
@@ -78,15 +82,8 @@ const AppointmentCard: React.FC<AppointmentCardProps> = ({ chat, onPress }) => {
             {formatDate(chat.startTime ?? chat.lastMessageAt)}
           </Text>
         </View>
-        <TouchableOpacity
-          style={styles.detailsButton}
-          onPress={onPress}
-          activeOpacity={0.85}
-        >
-          <Text style={styles.detailsText}>DETAILS</Text>
-        </TouchableOpacity>
       </View>
-    </View>
+    </TouchableOpacity>
   );
 };
 
@@ -157,19 +154,6 @@ const styles = StyleSheet.create({
     paddingTop: Spacing.md,
     borderTopWidth: 1,
     borderTopColor: Colors.border,
-  },
-  detailsButton: {
-    backgroundColor: Colors.error,
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.sm,
-    borderRadius: Radius.sm,
-    ...Shadows.raised,
-  },
-  detailsText: {
-    color: Colors.white,
-    fontSize: 12,
-    fontWeight: '800',
-    letterSpacing: 0.5,
   },
 });
 

@@ -23,7 +23,11 @@ const RecentAppointmentCard: React.FC<RecentAppointmentCardProps> = ({
   const timeLabel = start.isValid() ? start.format('MMM D, h:mm A') : '';
 
   return (
-    <View style={styles.card}>
+    <TouchableOpacity
+      style={styles.card}
+      onPress={onViewDetails}
+      activeOpacity={0.7}
+    >
       <View style={styles.top}>
         <View style={styles.patientInfo}>
           <Avatar name={name} size={40} />
@@ -36,11 +40,7 @@ const RecentAppointmentCard: React.FC<RecentAppointmentCardProps> = ({
         </View>
         <DoctorPill label={meta.label} color={meta.color} bg={meta.bg} />
       </View>
-
-      <TouchableOpacity style={styles.viewBtn} onPress={onViewDetails} activeOpacity={0.85}>
-        <Text style={styles.viewText}>View Details</Text>
-      </TouchableOpacity>
-    </View>
+    </TouchableOpacity>
   );
 };
 
@@ -79,19 +79,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: Colors.textTertiary,
     marginTop: 2,
-  },
-  viewBtn: {
-    marginTop: Spacing.md,
-    paddingVertical: Spacing.sm + 2,
-    borderRadius: Radius.md,
-    borderWidth: 1,
-    borderColor: Colors.primary,
-    alignItems: 'center',
-  },
-  viewText: {
-    color: Colors.primary,
-    fontSize: 14,
-    fontWeight: '700',
   },
 });
 

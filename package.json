@@ -25,6 +25,7 @@
     "react-native-gifted-chat": "^3.4.0",
     "react-native-image-picker": "^8.2.1",
     "react-native-incall-manager": "^4.2.2",
+    "react-native-keyboard-aware-scroll-view": "^0.9.5",
     "react-native-netinfo": "^1.1.0",
     "react-native-nitro-modules": "^0.37.0",
     "react-native-nitro-sound": "^0.2.19",
