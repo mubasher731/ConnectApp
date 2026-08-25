@@ -45,6 +45,23 @@ export const isPastSlot = (slot: string, date: Date, now = new Date()): boolean 
   return (h || 0) * 60 + (m || 0) <= now.getHours() * 60 + now.getMinutes();
 };
 
+/** Convert 24‑hour "HH:MM" to 12‑hour "h:mm AM/PM" for display. */
+export const formatSlotDisplay = (slot24: string): string => {
+  const [h, m] = slot24.split(':').map(Number);
+  const hr = h % 12 || 12; // 0 becomes 12 (midnight/noon)
+  const ampm = h < 12 ? 'AM' : 'PM';
+  return `${hr}:${m.toString().padStart(2, '0')} ${ampm}`;
+};
+
+/** Convert 12‑hour display string to 24‑hour "HH:MM" for the API. */
+export const parseSlot24 = (slotDisplay: string): string => {
+  const [time, ampm] = slotDisplay.split(' ');
+  let [h, m] = time.split(':').map(Number);
+  if (ampm === 'PM' && h !== 12) h += 12;
+  if (ampm === 'AM' && h === 12) h = 0;
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+};
+
 /** "YYYY-MM-DD" local date string for the API. */
 export const dateKey = (d: Date): string => {
   const y = d.getFullYear();

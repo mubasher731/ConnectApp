@@ -113,7 +113,7 @@ export const socketService = {
 
   joinSession(conversationId: number | string): void {
     joinedRooms.add(String(conversationId));
-    socket?.emit('join-conversation', { conversationId });
+    socket?.emit('join-consultation', { consultationId: Number(conversationId) });
   },
 
   leaveSession(conversationId: number | string): void {
