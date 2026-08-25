@@ -84,6 +84,7 @@ export const socketService = {
       [
         'chat-request',
         'chat-decision',
+        'schedule-shifted',
         'session-timer-update',
         'session-ended',
         'user-joined',
