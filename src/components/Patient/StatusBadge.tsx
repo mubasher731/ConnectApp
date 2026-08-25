@@ -8,12 +8,13 @@ const STATUS_META: Record<
   { label: string; bg: string; color: string }
 > = {
   // Upcoming → Yellow, Active → Green, Consulted → Blue,
-  // No Show → Red, Pending → Orange.
+  // No Show → Red, Pending → Orange, Rejected → Gray.
   scheduled: { label: 'Upcoming', bg: Colors.warningSoft, color: Colors.warning },
   active: { label: 'Active', bg: Colors.successSoft, color: Colors.success },
   completed: { label: 'Consulted', bg: Colors.infoSoft, color: Colors.info },
   missed: { label: 'No Show', bg: Colors.errorSoft, color: Colors.error },
   pending: { label: 'Pending', bg: Colors.orangeSoft, color: Colors.orange },
+  rejected: { label: 'Rejected', bg: 'rgba(154,163,196,0.14)', color: Colors.textSecondary },
 };
 
 /** Public accessor so cards can reuse the status label/colors. */

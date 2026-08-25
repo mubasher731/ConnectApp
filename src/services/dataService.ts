@@ -5,6 +5,7 @@ import { AppNotification, CallLog, Chat, Conversation, Message, SessionStatus, U
 /** Derive the chat status badge from state + schedule so "Active" spans the whole session. */
 const mapChatStatus = (c: Conversation): SessionStatus => {
   if (c.state === 'pending') return 'pending';
+  if (c.state === 'rejected') return 'rejected';
   if (c.state === 'ended') return 'completed';
   const nowMs = Date.now();
   const startMs = c.scheduled_start ? new Date(c.scheduled_start).getTime() : null;

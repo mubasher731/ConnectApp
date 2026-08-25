@@ -28,7 +28,8 @@ const ChatsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
       );
     }
     if (filter === 'consulted') return chats.filter((c) => c.status === 'completed');
-    return chats.filter((c) => c.status === 'missed');
+    if (filter === 'no_show') return chats.filter((c) => c.status === 'missed');
+    return chats.filter((c) => c.status === 'rejected');
   }, [chats, filter]);
 
   const loadChats = useCallback(async () => {

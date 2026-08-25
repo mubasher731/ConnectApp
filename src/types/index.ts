@@ -18,7 +18,8 @@ export type SessionStatus =
   | 'active'
   | 'completed'
   | 'missed'
-  | 'pending';
+  | 'pending'
+  | 'rejected';
 
 export interface Session {
   id: number;
@@ -112,7 +113,7 @@ export interface AppNotification {
 /* ------------------------------ backend models ------------------------------ */
 
 /** Conversation state values from the Fountain backend SessionTimer. */
-export type ConversationState = 'pending' | 'in_progress' | 'active' | 'ended';
+export type ConversationState = 'pending' | 'in_progress' | 'active' | 'ended' | 'rejected';
 
 export interface ConversationAppointment {
   id: number;

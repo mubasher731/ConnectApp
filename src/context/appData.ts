@@ -114,11 +114,12 @@ export const CONVERSATION_STATE_META: Record<
 > = {
   // Colors stay consistent with the patient StatusBadge:
   // Pending → Orange, In Progress/Upcoming → Yellow, Active → Green, Ended → Blue.
-  pending: { label: 'Pending', color: Colors.orange, bg: Colors.orangeSoft },
-  in_progress: { label: 'In Progress', color: Colors.warning, bg: Colors.warningSoft },
-  active: { label: 'Active', color: Colors.success, bg: Colors.successSoft },
-  ended: { label: 'Ended', color: Colors.info, bg: Colors.infoSoft },
-};
+    pending: { label: 'Pending', color: Colors.orange, bg: Colors.orangeSoft },
+    in_progress: { label: 'In Progress', color: Colors.warning, bg: Colors.warningSoft },
+    active: { label: 'Active', color: Colors.success, bg: Colors.successSoft },
+    ended: { label: 'Ended', color: Colors.info, bg: Colors.infoSoft },
+    rejected: { label: 'Rejected', color: Colors.textSecondary, bg: 'rgba(154,163,196,0.14)' },
+  };
 
 export type DashboardStatKey =
   | 'totalAssigned'
