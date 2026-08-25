@@ -43,6 +43,8 @@ const formatSlotRange = (slot: string): string => {
   return `${fmt(startMin)} – ${fmt(startMin + SESSION_DURATION_MINUTES)}`;
 };
 
+const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
 /** Centered booking modal: doctor info, slot dropdown, message, send/cancel. */
 const BookAppointmentModal: React.FC<BookAppointmentModalProps> = ({
   visible,
@@ -55,24 +57,50 @@ const BookAppointmentModal: React.FC<BookAppointmentModalProps> = ({
   const [sending, setSending] = useState(false);
   const [selectedDate, setSelectedDate] = useState(() => new Date());
   const [slotOpen, setSlotOpen] = useState(false);
+  const [dateOpen, setDateOpen] = useState(false);
+  const [calendarMonth, setCalendarMonth] = useState(() => {
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth(), 1);
+  });
 
-  // Next 7 days for the date selector.
-  const dayOptions = useMemo(() => {
-    const opts: { date: Date; label: string }[] = [];
-    for (let i = 0; i < 7; i++) {
-      const d = new Date();
-      d.setDate(d.getDate() + i);
-      const label =
-        i === 0 ? 'Today' : d.toLocaleDateString(undefined, { weekday: 'short' });
-      opts.push({ date: d, label: `${label} ${d.getDate()}` });
-    }
-    return opts;
-  }, []);
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+
+  // Full month grid for the calendar (leading nulls fill the first weekday).
+  const calendarDays = useMemo(() => {
+    const year = calendarMonth.getFullYear();
+    const month = calendarMonth.getMonth();
+    const firstWeekday = new Date(year, month, 1).getDay();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const cells: (Date | null)[] = [];
+    for (let i = 0; i < firstWeekday; i++) cells.push(null);
+    for (let d = 1; d <= daysInMonth; d++) cells.push(new Date(year, month, d));
+    return cells;
+  }, [calendarMonth]);
+
+  const selectedDateLabel = selectedDate.toLocaleDateString(undefined, {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
+
+  const calendarMonthLabel = calendarMonth.toLocaleDateString(undefined, {
+    month: 'long',
+    year: 'numeric',
+  });
+
+  const selectCalendarDate = (day: Date) => {
+    setSelectedDate(day);
+    setTimeSlot(null);
+    setDateOpen(false);
+  };
 
   const reset = () => {
     setTimeSlot(null);
     setMessage('');
     setSlotOpen(false);
+    setDateOpen(false);
   };
 
   // Fresh state every time the modal opens.
@@ -82,6 +110,8 @@ const BookAppointmentModal: React.FC<BookAppointmentModalProps> = ({
       setMessage('');
       setSelectedDate(new Date());
       setSlotOpen(false);
+      setDateOpen(false);
+      setCalendarMonth(new Date());
     }
   }, [visible]);
 
@@ -181,30 +211,86 @@ const BookAppointmentModal: React.FC<BookAppointmentModalProps> = ({
           >
             {/* Date selector */}
             <Text style={styles.label}>Select Date</Text>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.dayRow}
+            <TouchableOpacity
+              style={[styles.slotDropdown, dateOpen && styles.slotDropdownOpen]}
+              onPress={() => setDateOpen((o) => !o)}
+              activeOpacity={0.85}
             >
-              {dayOptions.map((opt) => {
-                const active = selectedDate.toDateString() === opt.date.toDateString();
-                return (
+              <Text style={[styles.slotDropdownText, styles.dateDropdownText]} numberOfLines={1}>
+                {selectedDateLabel}
+              </Text>
+              <AppIcon name="calendar-outline" size={18} color={Colors.textSecondary} />
+            </TouchableOpacity>
+
+            {dateOpen && (
+              <View style={styles.calendarCard}>
+                {/* Month navigation */}
+                <View style={styles.calendarHeader}>
                   <TouchableOpacity
-                    key={opt.date.toISOString()}
-                    style={[styles.dayChip, active && styles.dayChipActive]}
-                    onPress={() => {
-                      setSelectedDate(opt.date);
-                      setTimeSlot(null);
-                    }}
+                    style={styles.calendarNav}
+                    onPress={() =>
+                      setCalendarMonth((m) => new Date(m.getFullYear(), m.getMonth() - 1, 1))
+                    }
                     activeOpacity={0.7}
                   >
-                    <Text style={[styles.dayChipText, active && styles.dayChipTextActive]}>
-                      {opt.label}
-                    </Text>
+                    <AppIcon name="chevron-back" size={20} color={Colors.textSecondary} />
                   </TouchableOpacity>
-                );
-              })}
-            </ScrollView>
+                  <Text style={styles.calendarMonthLabel}>{calendarMonthLabel}</Text>
+                  <TouchableOpacity
+                    style={styles.calendarNav}
+                    onPress={() =>
+                      setCalendarMonth((m) => new Date(m.getFullYear(), m.getMonth() + 1, 1))
+                    }
+                    activeOpacity={0.7}
+                  >
+                    <AppIcon name="chevron-forward" size={20} color={Colors.textSecondary} />
+                  </TouchableOpacity>
+                </View>
+
+                {/* Weekday header */}
+                <View style={styles.calendarWeekRow}>
+                  {WEEKDAYS.map((d) => (
+                    <Text key={d} style={styles.calendarWeekday}>
+                      {d}
+                    </Text>
+                  ))}
+                </View>
+
+                {/* Day grid */}
+                <View style={styles.calendarGrid}>
+                  {calendarDays.map((day, i) => {
+                    if (!day) {
+                      return <View key={`empty-${i}`} style={styles.calendarDayCell} />;
+                    }
+                    const isPast = day < todayStart;
+                    const isSelected = selectedDate.toDateString() === day.toDateString();
+                    return (
+                      <TouchableOpacity
+                        key={day.toISOString()}
+                        style={[
+                          styles.calendarDayCell,
+                          isSelected && styles.calendarDaySelected,
+                          isPast && styles.calendarDayDisabled,
+                        ]}
+                        disabled={isPast}
+                        onPress={() => selectCalendarDate(day)}
+                        activeOpacity={0.7}
+                      >
+                        <Text
+                          style={[
+                            styles.calendarDayText,
+                            isSelected && styles.calendarDayTextSelected,
+                            isPast && styles.calendarDayTextDisabled,
+                          ]}
+                        >
+                          {day.getDate()}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              </View>
+            )}
 
             {/* Time slot dropdown */}
             <Text style={styles.label}>Select Time Slot</Text>
@@ -479,29 +565,83 @@ const styles = StyleSheet.create({
     borderRadius: Radius.round,
     overflow: 'hidden',
   },
-  dayRow: {
-    paddingBottom: Spacing.sm,
-    gap: Spacing.sm,
+  dateDropdownText: {
+    marginLeft: 0,
   },
-  dayChip: {
-    paddingHorizontal: Spacing.md,
-    paddingVertical: 8,
-    borderRadius: Radius.round,
-    backgroundColor: Colors.inputBackground,
+  calendarCard: {
+    backgroundColor: Colors.surface,
+    borderRadius: Radius.md,
     borderWidth: 1,
     borderColor: Colors.border,
+    padding: Spacing.md,
+    marginBottom: Spacing.md,
   },
-  dayChipActive: {
-    backgroundColor: Colors.primary,
-    borderColor: Colors.primary,
+  calendarHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: Spacing.sm,
   },
-  dayChipText: {
-    fontSize: 13,
+  calendarNav: {
+    width: 36,
+    height: 36,
+    borderRadius: Radius.round,
+    backgroundColor: Colors.inputBackground,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  calendarMonthLabel: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: Colors.text,
+    textTransform: 'capitalize',
+  },
+  calendarWeekRow: {
+    flexDirection: 'row',
+    marginBottom: Spacing.xs,
+  },
+  calendarWeekday: {
+    // Same fixed column width as the day cells so dates align exactly
+    // under their weekday label.
+    width: '14.2857%',
+    textAlign: 'center',
+    fontSize: 12,
     fontWeight: '600',
-    color: Colors.textSecondary,
+    color: Colors.textTertiary,
   },
-  dayChipTextActive: {
+  calendarGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+  },
+  calendarDayCell: {
+    // Fixed width (1/7th) keeps every day aligned to its weekday column —
+    // including the last (partial) row, which flexGrow would stretch out.
+    width: '14.2857%',
+    height: 42,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  calendarDaySelected: {
+    // Compact circular highlight, perfectly centered inside the cell.
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: Colors.primary,
+  },
+  calendarDayDisabled: {
+    opacity: 0.3,
+  },
+  calendarDayText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: Colors.text,
+  },
+  calendarDayTextSelected: {
     color: Colors.white,
+    fontWeight: '700',
+  },
+  calendarDayTextDisabled: {
+    color: Colors.textTertiary,
   },
   noSlots: {
     fontSize: 14,

@@ -362,9 +362,14 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
   useEffect(() => {
     const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
     const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
-    const showSub = Keyboard.addListener(showEvent, (e) =>
-      setKeyboardHeight(e.endCoordinates.height)
-    );
+    const showSub = Keyboard.addListener(showEvent, (e) => {
+      setKeyboardHeight(e.endCoordinates.height);
+      // After the layout shifts for the keyboard, jump to the latest message so
+      // the composer + newest bubble are fully visible without manual scrolling.
+      requestAnimationFrame(() => {
+        setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 120);
+      });
+    });
     const hideSub = Keyboard.addListener(hideEvent, () => setKeyboardHeight(0));
     return () => {
       showSub.remove();
@@ -1648,7 +1653,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.10)',
     marginLeft: Spacing.sm,
-    marginRight: Spacing.md,
+    // Override roundButton's default right margin so the composer stays balanced.
+    marginRight: 0,
   },
   textInputWrapper: {
     flex: 1,
