@@ -104,7 +104,7 @@ export const sessionService = {
       form.append('type', payload.type ?? 'photo');
       payload.files.forEach((f) => form.append('files', f));
       const { data } = await api.post(`/api/conversations/${id}/messages`, form, {
-        headers: { 'Content-Type': 'multipart/form-data' },
+        timeout: 60000,
       });
       return (data?.data ?? data) as MessageRaw;
     }
