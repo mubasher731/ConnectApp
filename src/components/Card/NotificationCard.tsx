@@ -1,9 +1,13 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import dayjs from 'dayjs';
+import relativeTime from 'dayjs/plugin/relativeTime';
 import AppIcon from '../Icon/AppIcon';
 import { NOTIFICATION_KIND_META } from '../../context/appData';
 import { AppNotification } from '../../types';
 import { Colors, Radius, Shadows, Spacing, responsiveSize } from '../../theme';
+
+dayjs.extend(relativeTime);
 
 interface NotificationCardProps {
   notification: AppNotification;
@@ -35,7 +39,7 @@ const NotificationCard: React.FC<NotificationCardProps> = ({
         <Text style={styles.body} numberOfLines={2}>
           {notification.body}
         </Text>
-        <Text style={styles.time}>{notification.createdAt}</Text>
+        <Text style={styles.time}>{dayjs(notification.createdAt).fromNow()}</Text>
       </View>
     </TouchableOpacity>
   );

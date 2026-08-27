@@ -45,6 +45,14 @@ const CallsScreen: React.FC = () => {
         showsVerticalScrollIndicator={false}
         ItemSeparatorComponent={<ListItemSeparator height={1} />}
         refreshing={loading}
+        onRefresh={() => {
+          setLoading(true);
+          callService
+            .getCallHistory()
+            .then((data) => setCalls(data))
+            .catch(() => setCalls([]))
+            .finally(() => setLoading(false));
+        }}
         ListEmptyComponent={
           <EmptyState
             icon="call-outline"

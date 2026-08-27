@@ -1,15 +1,32 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import AppIcon from '../Icon/AppIcon';
 import Avatar from '../Icon/Avatar';
 import { BookingDoctor } from '../../types';
 import { Colors, Radius, Shadows, Spacing } from '../../theme';
+
+const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+/** Format availability to a compact string like "Mon–Fri · 9:00 AM–5:00 PM". */
+const formatAvailability = (availability: BookingDoctor['availability']): string => {
+  if (!availability || availability.length === 0) return 'Not available';
+  const days = availability.map((a) => DAY_NAMES[a.day_of_week]).join(', ');
+  const first = availability[0];
+  const [sh, sm] = (first.start_time || '09:00').split(':').map(Number);
+  const [eh, em] = (first.end_time || '17:00').split(':').map(Number);
+  const fmt = (h: number, m: number) => {
+    const hr = h % 12 || 12;
+    const ampm = h < 12 ? 'AM' : 'PM';
+    return `${hr}:${String(m).padStart(2, '0')} ${ampm}`;
+  };
+  return `${days} · ${fmt(sh, sm)}–${fmt(eh, em)}`;
+};
 
 interface DoctorCardProps {
   doctor: BookingDoctor;
   onBook: (doctor: BookingDoctor) => void;
 }
 
-/** Doctor card: 60px circle avatar + name + specialty + Book Appointment button. */
 const DoctorCard: React.FC<DoctorCardProps> = ({ doctor, onBook }) => (
   <View style={styles.card}>
     <View style={styles.topRow}>
@@ -21,6 +38,12 @@ const DoctorCard: React.FC<DoctorCardProps> = ({ doctor, onBook }) => (
         <Text style={styles.specialty} numberOfLines={1}>
           {doctor.specialty ?? 'Doctor'}
         </Text>
+        <View style={styles.availabilityRow}>
+          <AppIcon name="time-outline" size={13} color={Colors.textTertiary} />
+          <Text style={styles.availability} numberOfLines={1}>
+            {formatAvailability(doctor.availability)}
+          </Text>
+        </View>
       </View>
     </View>
 
@@ -63,10 +86,16 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
     marginTop: 2,
   },
-  fee: {
+  availabilityRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 6,
+    gap: 4,
+  },
+  availability: {
     fontSize: 12,
     color: Colors.textTertiary,
-    marginTop: 2,
+    flex: 1,
   },
   bookButton: {
     backgroundColor: Colors.primary,

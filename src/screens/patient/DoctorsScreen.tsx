@@ -66,6 +66,8 @@ const DoctorsScreen: React.FC<{ navigation: any }> = () => {
           renderItem={({ item }) => <DoctorCard doctor={item} onBook={openBooking} />}
           contentContainerStyle={styles.listContainer}
           showsVerticalScrollIndicator={false}
+          refreshing={loading}
+          onRefresh={loadDoctors}
           ListEmptyComponent={
             <EmptyState
               icon="people-outline"

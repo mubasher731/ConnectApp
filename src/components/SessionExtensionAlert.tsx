@@ -7,6 +7,8 @@ interface SessionExtensionAlertProps {
   visible: boolean;
   /** Seconds remaining (used in the title). */
   secondsLeft?: number;
+  /** Extension increment in minutes (from backend config). */
+  extendMinutes?: number;
   onCancel: () => void;
   onExtend: () => void;
 }
@@ -15,6 +17,7 @@ interface SessionExtensionAlertProps {
 const SessionExtensionAlert: React.FC<SessionExtensionAlertProps> = ({
   visible,
   secondsLeft = 60,
+  extendMinutes = 5,
   onCancel,
   onExtend,
 }) => (
@@ -27,7 +30,7 @@ const SessionExtensionAlert: React.FC<SessionExtensionAlertProps> = ({
 
         <Text style={styles.title}>Session ending in {secondsLeft} seconds</Text>
         <Text style={styles.message}>
-          Session about to end. Extend by 5 minutes?
+          Session about to end. Extend by {extendMinutes} minutes?
         </Text>
 
         <View style={styles.actions}>
@@ -44,7 +47,7 @@ const SessionExtensionAlert: React.FC<SessionExtensionAlertProps> = ({
             activeOpacity={0.85}
           >
             <AppIcon name="add" size={18} color={Colors.white} />
-            <Text style={styles.extendText}>Extend +5 min</Text>
+            <Text style={styles.extendText}>Extend +{extendMinutes} min</Text>
           </TouchableOpacity>
         </View>
       </View>

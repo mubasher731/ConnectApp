@@ -7,7 +7,11 @@ import {
   ScrollView,
   TextInput,
   Modal,
+  Platform,
+  PermissionsAndroid,
 } from 'react-native';
+import dayjs from 'dayjs';
+import { launchImageLibrary } from 'react-native-image-picker';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppIcon, Avatar, PrimaryButton, useAlert } from '../../components';
@@ -68,6 +72,23 @@ const ProfileScreen: React.FC = () => {
     });
   };
 
+  const pickAvatar = async () => {
+    try {
+      const result = await launchImageLibrary({ mediaType: 'photo', selectionLimit: 1 });
+      const asset = result.assets?.[0];
+      if (asset?.uri) {
+        // TODO: upload to backend and update user avatar
+        showAlert({
+          title: 'Avatar Selected',
+          message: 'Photo picker works. Backend upload not yet implemented.',
+          actions: [{ text: 'OK' }],
+        });
+      }
+    } catch {
+      // ignore
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       {/* Header */}
@@ -84,7 +105,7 @@ const ProfileScreen: React.FC = () => {
         <View style={styles.profileHeader}>
           <View style={styles.avatarContainer}>
             <Avatar name={displayName} size={88} />
-            <TouchableOpacity style={styles.editAvatarButton} activeOpacity={0.8}>
+            <TouchableOpacity style={styles.editAvatarButton} activeOpacity={0.8} onPress={pickAvatar}>
               <AppIcon name="camera" size={16} color={Colors.white} />
             </TouchableOpacity>
           </View>
@@ -121,7 +142,7 @@ const ProfileScreen: React.FC = () => {
           <View style={styles.accountRow}>
             <AppIcon name="calendar-outline" size={18} color={Colors.textSecondary} />
             <Text style={styles.accountText}>
-              Member since {user?.created_at ? user.created_at.slice(0, 10) : '—'}
+              {user?.created_at ? `Member since ${dayjs(user.created_at).format('MMM D, YYYY')}` : 'Member since —'}
             </Text>
           </View>
         </View>

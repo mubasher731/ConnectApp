@@ -8,48 +8,9 @@ import { CallDirection, ConversationState, NotificationKind } from '../types';
 
 /* ------------------------------ patient home ------------------------------ */
 
-export type QuickActionTarget = 'Chats' | 'Calls' | 'Doctors';
-
-export interface QuickAction {
-  key: string;
-  icon: string;
-  label: string;
-  tint: string;
-  color: string;
-  target?: QuickActionTarget;
-}
-
-/** Quick actions shown on the patient Home screen. */
-export const QUICK_ACTIONS: QuickAction[] = [
-  {
-    key: 'chats',
-    icon: 'chatbubble-ellipses',
-    label: 'Messages',
-    tint: Colors.primarySoft,
-    color: Colors.primary,
-    target: 'Chats',
-  },
-  {
-    key: 'calls',
-    icon: 'call',
-    label: 'Calls',
-    tint: Colors.successSoft,
-    color: Colors.success,
-    target: 'Calls',
-  },
-  {
-    key: 'directory',
-    icon: 'people',
-    label: 'Doctors',
-    tint: Colors.infoSoft,
-    color: Colors.info,
-    target: 'Doctors',
-  },
-];
-
 /* ------------------------------ patient chats ------------------------------ */
 
-export type ChatFilterKey = 'all' | 'upcoming' | 'consulted' | 'no_show';
+export type ChatFilterKey = 'all' | 'upcoming' | 'consulted' | 'no_show' | 'rejected';
 
 /** Chats tab — status filter chips. */
 export const CHAT_FILTERS: { key: ChatFilterKey; label: string }[] = [
@@ -57,6 +18,7 @@ export const CHAT_FILTERS: { key: ChatFilterKey; label: string }[] = [
   { key: 'upcoming', label: 'Upcoming' },
   { key: 'consulted', label: 'Consulted' },
   { key: 'no_show', label: 'No Show' },
+  { key: 'rejected', label: 'Rejected' },
 ];
 
 /* ------------------------------- calls screen ------------------------------ */

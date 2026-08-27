@@ -196,9 +196,16 @@ const DoctorDashboardScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
             </View>
 
             {filteredRecent.length === 0 ? (
-              <Text style={styles.emptyText}>
-                {searchQuery ? 'No appointments match your search.' : 'No appointments yet.'}
-              </Text>
+              <View style={styles.emptyContainer}>
+                <AppIcon
+                  name={searchQuery ? 'search-outline' : 'calendar-outline'}
+                  size={40}
+                  color={Colors.textTertiary}
+                />
+                <Text style={styles.emptyText}>
+                  {searchQuery ? 'No appointments match your search.' : 'No appointments yet.'}
+                </Text>
+              </View>
             ) : (
               filteredRecent.map((c) => (
                 <RecentAppointmentCard
@@ -304,11 +311,15 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: Colors.primary,
   },
+  emptyContainer: {
+    alignItems: 'center',
+    paddingVertical: Spacing.xl,
+    gap: Spacing.sm,
+  },
   emptyText: {
     fontSize: 14,
     color: Colors.textTertiary,
     textAlign: 'center',
-    paddingVertical: Spacing.xl,
   },
 });
 

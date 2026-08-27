@@ -25,6 +25,7 @@ import { AppIcon, Avatar, EmptyState, SessionExtensionAlert, useAlert } from '..
 import { socketService } from '../../api/socket';
 import { getApiBaseUrl } from '../../api/config';
 import { useAuth } from '../../context/AuthContext';
+import { useSessionConfig } from '../../context/SessionConfigContext';
 import { CHAT_EMOJIS } from '../../context/appData';
 import { chatService, sessionService } from '../../services';
 import { Conversation, Message } from '../../types';
@@ -116,6 +117,7 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
   const { chatId, participantName } = route.params ?? {};
   const { user } = useAuth();
   const { showAlert } = useAlert();
+  const { extendIncrement } = useSessionConfig();
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState('');
@@ -153,6 +155,7 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
   const typingTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastTypingSent = useRef(0);
   const peerUserIdRef = useRef<number | null>(null);
+  const totalFetchedRef = useRef(0);
 
   // Load the next older page when the user scrolls to the top of the list.
   const loadOlder = useCallback(async () => {
@@ -161,8 +164,9 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
     try {
       const older = await chatService.getMessages(chatId, {
         limit: PAGE_SIZE,
-        skip: messages.length,
+        skip: totalFetchedRef.current,
       });
+      totalFetchedRef.current += older.length;
       setMessages((prev) => {
         const seen = new Set(prev.map((m) => String(m.id)));
         return [...older.filter((m) => !seen.has(String(m.id))), ...prev];
@@ -173,7 +177,7 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
     } finally {
       setLoadingMore(false);
     }
-  }, [chatId, hasMore, loadingMore, messages.length, PAGE_SIZE]);
+  }, [chatId, hasMore, loadingMore, PAGE_SIZE]);
 
   const isDoctorRole = user?.role_id === 3;
 
@@ -222,6 +226,7 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
       try {
         const msgs = await chatService.getMessages(chatId, { limit: PAGE_SIZE, skip: 0 });
         if (mounted) {
+          totalFetchedRef.current = msgs.length;
           setMessages(msgs);
           setHasMore(msgs.length >= PAGE_SIZE);
         }
@@ -1191,7 +1196,6 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
                   onSubmitEditing={() => sendMessage()}
                   returnKeyType="send"
                   editable={!locked}
-                  keyboardAppearance="dark"
                 />
                 <View style={styles.inputActions}>
                   <TouchableOpacity
@@ -1263,6 +1267,7 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
       <SessionExtensionAlert
         visible={showExtension}
         secondsLeft={extensionSecondsLeft}
+        extendMinutes={extendIncrement}
         onCancel={handleExtensionCancel}
         onExtend={handleExtend}
       />

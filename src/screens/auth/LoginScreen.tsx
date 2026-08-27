@@ -7,7 +7,6 @@ import {
 } from 'react-native';
 import { AuthScreenLayout, FormInput, PrimaryButton, useAlert } from '../../components';
 import { useAuth } from '../../context/AuthContext';
-import { DOCTOR_DEMO_CREDENTIALS } from '../../context/appData';
 import { validators, FieldErrors } from '../../utils/validation';
 import { Colors, Spacing } from '../../theme';
 
@@ -16,7 +15,7 @@ interface LoginScreenProps {
 }
 
 const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
-  const { signIn, signInAsDoctor } = useAuth();
+  const { signIn } = useAuth();
   const { showAlert } = useAlert();
 
   const [email, setEmail] = useState('');
@@ -35,16 +34,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
 
     setLoading(true);
     try {
-      // Auto-detect the doctor demo credentials → mock doctor login.
-      // Everything else goes through the normal patient backend login.
-      const isDoctor =
-        email.trim().toLowerCase() === DOCTOR_DEMO_CREDENTIALS.email &&
-        password === DOCTOR_DEMO_CREDENTIALS.password;
-      if (isDoctor) {
-        await signInAsDoctor({ email, password });
-      } else {
-        await signIn({ email, password });
-      }
+      await signIn({ email, password });
       // Success — navigator switches to the authenticated flow automatically.
     } catch (err) {
       showAlert({
@@ -110,10 +100,6 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
         <Text style={styles.forgotText}>Forgot password?</Text>
       </TouchableOpacity>
 
-      <Text style={styles.demoHint}>
-        Doctor demo: {DOCTOR_DEMO_CREDENTIALS.email} / {DOCTOR_DEMO_CREDENTIALS.password}
-      </Text>
-
       <PrimaryButton
         title="Sign In"
         onPress={handleSubmit}
@@ -128,12 +114,6 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
 const styles = StyleSheet.create({
   submitButton: {
     marginTop: Spacing.lg,
-  },
-  demoHint: {
-    fontSize: 13,
-    color: Colors.textSecondary,
-    textAlign: 'center',
-    marginTop: Spacing.md,
   },
   forgotRow: {
     alignSelf: 'flex-end',

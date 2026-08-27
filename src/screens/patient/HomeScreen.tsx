@@ -11,7 +11,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { AppIcon, AppointmentCard, Avatar, EmptyState } from '../../components';
 import { useAuth } from '../../context/AuthContext';
-import { chatService } from '../../services/dataService';
+import { chatService, sessionService } from '../../services/dataService';
 import { useAutoRefresh } from '../../hooks/useAutoRefresh';
 import { Chat } from '../../types';
 import { Colors, Radius, Shadows, Spacing, responsiveSize } from '../../theme';
@@ -20,6 +20,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const { user } = useAuth();
   const [recentChats, setRecentChats] = useState<Chat[]>([]);
   const [loading, setLoading] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   // Re-fetches sessions/chats from the backend. Lets the user refresh
   // without having to close & reopen the app (e.g. when a session is set).
@@ -35,14 +36,25 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     }
   }, []);
 
+  const loadNotifications = useCallback(async () => {
+    try {
+      const { notifications } = await sessionService.getNotifications();
+      setUnreadCount(notifications.filter((n: any) => !n.isRead).length);
+    } catch {
+      // ignore
+    }
+  }, []);
+
   // Live real-time refresh whenever backend data changes over the socket.
   useAutoRefresh(loadChats);
+  useAutoRefresh(loadNotifications);
 
   // Also refresh whenever the screen regains focus (e.g. after booking).
   useFocusEffect(
     useCallback(() => {
       loadChats();
-    }, [loadChats])
+      loadNotifications();
+    }, [loadChats, loadNotifications])
   );
 
   const getGreeting = useCallback(() => {
@@ -69,7 +81,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
             activeOpacity={0.7}
           >
             <AppIcon name="notifications-outline" size={20} color={Colors.text} />
-            <View style={styles.notificationDot} />
+            {unreadCount > 0 && <View style={styles.notificationDot} />}
           </TouchableOpacity>
           <TouchableOpacity onPress={() => navigation.navigate('Profile')}>
             <Avatar name={displayName || '?'} size={34} online />

@@ -1,10 +1,14 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import dayjs from 'dayjs';
+import relativeTime from 'dayjs/plugin/relativeTime';
 import AppIcon from '../Icon/AppIcon';
 import Avatar from '../Icon/Avatar';
 import { CALL_DIRECTION_META } from '../../context/appData';
 import { CallLog } from '../../types';
 import { Colors, Radius, Shadows, Spacing, responsiveSize } from '../../theme';
+
+dayjs.extend(relativeTime);
 
 interface CallCardProps {
   call: CallLog;
@@ -31,7 +35,7 @@ const CallCard: React.FC<CallCardProps> = ({ call, onPress }) => {
             <Text style={styles.duration}>{call.duration}</Text>
           ) : null}
         </View>
-        <Text style={styles.time}>{call.startedAt}</Text>
+        <Text style={styles.time}>{dayjs(call.startedAt).fromNow()}</Text>
       </View>
       <View style={styles.actions}>
         <TouchableOpacity style={styles.callButton} activeOpacity={0.7}>

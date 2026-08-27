@@ -111,15 +111,15 @@ function useTabOptions(icons: Record<string, [string, string]>) {
 
 const AppNavigator: React.FC = () => {
   const { user, initializing } = useAuth();
-  const [showSplash, setShowSplash] = useState(true);
 
-  // Always show splash on cold start so animations play before content.
+  // Show splash until auth init is done AND minimum animation time (1.5s) passed.
+  const [minDelayDone, setMinDelayDone] = useState(false);
   useEffect(() => {
-    const timer = setTimeout(() => setShowSplash(false), 3000);
+    const timer = setTimeout(() => setMinDelayDone(true), 1500);
     return () => clearTimeout(timer);
   }, []);
 
-  if (initializing || showSplash) {
+  if (initializing || !minDelayDone) {
     return <SplashScreen />;
   }
 

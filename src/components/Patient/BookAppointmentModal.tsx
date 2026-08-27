@@ -449,8 +449,10 @@ const BookAppointmentModal: React.FC<BookAppointmentModalProps> = ({
               multiline
               maxLength={500}
               textAlignVertical="top"
-              keyboardAppearance="dark"
             />
+            <Text style={styles.wordHint}>
+              {message.trim() ? `${message.trim().split(/\s+/).filter(Boolean).length} word(s)` : 'Enter 3–5 words'}
+            </Text>
 
             {/* Actions */}
             <View style={styles.actionRow}>
@@ -763,6 +765,12 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.md,
     fontSize: 14,
     color: Colors.text,
+  },
+  wordHint: {
+    fontSize: 12,
+    color: Colors.textTertiary,
+    textAlign: 'right',
+    marginTop: -Spacing.sm,
     marginBottom: Spacing.lg,
   },
   actionRow: {
