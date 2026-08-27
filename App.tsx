@@ -10,6 +10,7 @@ import AppNavigator from './src/navigation/AppNavigator';
 import { AuthProvider } from './src/context/AuthContext';
 import { AlertProvider } from './src/components/CustomAlert/AlertProvider';
 import { SessionConfigProvider } from './src/context/SessionConfigContext';
+import { CallProvider } from './src/context/CallContext';
 import { Colors } from './src/theme/colors';
 
 function App() {
@@ -22,7 +23,9 @@ function App() {
       <AuthProvider>
         <AlertProvider>
           <SessionConfigProvider>
-            <AppNavigator />
+            <CallProvider>
+              <AppNavigator />
+            </CallProvider>
           </SessionConfigProvider>
         </AlertProvider>
       </AuthProvider>

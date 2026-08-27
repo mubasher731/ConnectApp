@@ -1,0 +1,337 @@
+import React, { useEffect } from 'react';
+import { View, StyleSheet, Text, Image, Animated, Easing } from 'react-native';
+import { RTCView } from 'react-native-webrtc';
+import { Clock, Wifi, WifiOff, AlertCircle } from 'lucide-react-native';
+import { useCall } from '../../context/CallContext';
+import { CallControls } from './CallControls';
+import { COLORS, SPACING } from '../../theme';
+
+export const CallScreen: React.FC = () => {
+  const { state, endCall } = useCall();
+  const [connectionQuality, setConnectionQuality] = React.useState<'good' | 'poor' | 'disconnected'>('good');
+  const [opacity] = React.useState(new Animated.Value(0));
+  const [scale] = React.useState(new Animated.Value(0.95));
+
+  // Animate incoming
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(opacity, {
+        toValue: 1,
+        duration: 300,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+      Animated.timing(scale, {
+        toValue: 1,
+        duration: 300,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, []);
+
+  // Format duration as MM:SS
+  const formatDuration = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  // Connection quality indicator based on state
+  useEffect(() => {
+    switch (state.connectionState) {
+      case 'connected':
+        setConnectionQuality('good');
+        break;
+      case 'connecting':
+      case 'new':
+        setConnectionQuality('poor');
+        break;
+      case 'disconnected':
+      case 'failed':
+      case 'closed':
+        setConnectionQuality('disconnected');
+        break;
+    }
+  }, [state.connectionState]);
+
+  const getConnectionIcon = () => {
+    switch (connectionQuality) {
+      case 'good':
+        return <Wifi size={16} color={COLORS.success} />;
+      case 'poor':
+        return <WifiOff size={16} color={COLORS.warning} />;
+      case 'disconnected':
+        return <AlertCircle size={16} color={COLORS.danger} />;
+    }
+  };
+
+  if (state.status === 'idle') {
+    return null;
+  }
+
+  return (
+    <View style={styles.container}>
+      {/* Status Bar Area */}
+      <View style={styles.statusBar} />
+
+      {/* Header */}
+      <View style={styles.header}>
+        <View style={styles.headerLeft}>
+          <Animated.View
+            style={{
+              ...styles.remoteAvatar,
+              opacity,
+              transform: [{ scale }],
+            }}
+          >
+            {state.remoteUser?.avatar ? (
+              <Image
+                source={{ uri: state.remoteUser.avatar }}
+                style={styles.remoteAvatarImage}
+              />
+            ) : (
+              <Text style={styles.remoteAvatarText}>
+                {state.remoteUser?.name?.charAt(0).toUpperCase() || '?'}
+              </Text>
+            )}
+          </Animated.View>
+          <View style={styles.headerInfo}>
+            <Text style={styles.remoteName}>{state.remoteUser?.name || 'Connecting...'}</Text>
+            <View style={styles.statusRow}>
+              <Text style={[
+                styles.statusText,
+                state.status === 'active' && styles.statusActive,
+                state.status === 'outgoing' && styles.statusOutgoing,
+                state.status === 'incoming' && styles.statusIncoming,
+              ]}>
+                {state.status === 'active' && formatDuration(state.duration)}
+                {state.status === 'outgoing' && 'Calling...'}
+                {state.status === 'incoming' && 'Incoming call'}
+                {state.status === 'reconnecting' && 'Reconnecting...'}
+              </Text>
+              <View style={styles.connectionQuality}>
+                {getConnectionIcon()}
+              </View>
+            </View>
+          </View>
+        </View>
+      </View>
+
+      {/* Remote Video - Full Screen */}
+      <View style={styles.remoteVideoContainer}>
+        {state.remoteUser && (
+          <RTCView
+            style={styles.remoteVideo}
+            streamURL={state.callType === 'video' ? 'remote' : ''}
+            objectFit="cover"
+            zOrder={1}
+          />
+        )}
+        {!state.remoteUser && (
+          <View style={[styles.remoteVideo, styles.connectingOverlay]}>
+            <Text style={styles.connectingText}>
+              {state.status === 'outgoing' ? 'Connecting...' : 'Waiting for video...'}
+            </Text>
+          </View>
+        )}
+        {state.callType === 'audio' && (
+          <View style={[styles.remoteVideo, styles.audioOnlyOverlay]}>
+            <View style={styles.audioAvatar}>
+              {state.remoteUser?.avatar ? (
+                <Image
+                  source={{ uri: state.remoteUser.avatar }}
+                  style={styles.audioAvatarImage}
+                />
+              ) : (
+                <Text style={styles.audioAvatarText}>
+                  {state.remoteUser?.name?.charAt(0).toUpperCase() || '?'}
+                </Text>
+              )}
+            </View>
+            <Text style={styles.audioOnlyText}>Audio Call</Text>
+          </View>
+        )}
+      </View>
+
+      {/* Local Video - PiP */}
+      {state.callType === 'video' && state.status === 'active' && (
+        <View style={styles.localVideoContainer}>
+          <RTCView
+            style={styles.localVideo}
+            streamURL="local"
+            objectFit="cover"
+            zOrder={2}
+            mirror={true}
+          />
+        </View>
+      )}
+
+      {/* Call Controls */}
+      <CallControls onEndCall={endCall} />
+
+      {/* Status indicators */}
+      {state.isMuted && (
+        <View style={styles.indicator}>
+          <Text style={styles.indicatorText}>🔇 Muted</Text>
+        </View>
+      )}
+      {state.callType === 'video' && !state.isVideoEnabled && (
+        <View style={styles.indicator}>
+          <Text style={styles.indicatorText}>📷 Camera Off</Text>
+        </View>
+      )}
+    </View>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: COLORS.background,
+  },
+  statusBar: {
+    height: 44, // iOS status bar height
+  },
+  header: {
+    paddingHorizontal: SPACING.lg,
+    paddingTop: SPACING.md,
+    paddingBottom: SPACING.sm,
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  remoteAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: COLORS.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: SPACING.md,
+  },
+  remoteAvatarImage: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+  },
+  remoteAvatarText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: COLORS.white,
+  },
+  headerInfo: {
+    flex: 1,
+  },
+  remoteName: {
+    fontSize: 17,
+    fontWeight: '600',
+    color: COLORS.text,
+  },
+  statusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.xs,
+    marginTop: 2,
+  },
+  statusText: {
+    fontSize: 13,
+    color: COLORS.textSecondary,
+  },
+  statusActive: {
+    color: COLORS.success,
+    fontWeight: '500',
+  },
+  statusOutgoing: {
+    color: COLORS.warning,
+  },
+  statusIncoming: {
+    color: COLORS.primary,
+  },
+  connectionQuality: {
+    marginLeft: SPACING.xs,
+  },
+  remoteVideoContainer: {
+    flex: 1,
+    width: '100%',
+  },
+  remoteVideo: {
+    flex: 1,
+    width: '100%',
+  },
+  connectingOverlay: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: COLORS.background,
+  },
+  connectingText: {
+    fontSize: 16,
+    color: COLORS.textSecondary,
+  },
+  audioOnlyOverlay: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: COLORS.background,
+  },
+  audioAvatar: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: COLORS.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: SPACING.lg,
+  },
+  audioAvatarImage: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+  },
+  audioAvatarText: {
+    fontSize: 48,
+    fontWeight: '600',
+    color: COLORS.white,
+  },
+  audioOnlyText: {
+    fontSize: 18,
+    fontWeight: '500',
+    color: COLORS.textSecondary,
+  },
+  localVideoContainer: {
+    position: 'absolute',
+    top: 100,
+    right: SPACING.lg,
+    width: 100,
+    height: 150,
+    borderRadius: 16,
+    overflow: 'hidden',
+    borderWidth: 2,
+    borderColor: COLORS.white,
+    shadowColor: COLORS.black,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  localVideo: {
+    flex: 1,
+    width: '100%',
+  },
+  indicator: {
+    position: 'absolute',
+    bottom: 160,
+    left: SPACING.lg,
+    right: SPACING.lg,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.xs,
+    borderRadius: 20,
+    alignItems: 'center',
+  },
+  indicatorText: {
+    fontSize: 12,
+    color: COLORS.white,
+    fontWeight: '500',
+  },
+});

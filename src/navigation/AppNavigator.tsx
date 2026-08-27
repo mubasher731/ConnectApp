@@ -23,6 +23,7 @@ import CallsScreen from '../screens/patient/CallsScreen';
 import ProfileScreen from '../screens/patient/ProfileScreen';
 import DoctorsScreen from '../screens/patient/DoctorsScreen';
 import DoctorDashboardScreen from '../screens/doctor/DoctorDashboardScreen';
+import { CallScreen } from '../components/Call';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -168,6 +169,11 @@ const AppNavigator: React.FC = () => {
               name="Directory"
               component={DirectoryScreen}
               options={{ title: 'Directory' }}
+            />
+            <Stack.Screen
+              name="Call"
+              component={CallScreen}
+              options={{ headerShown: false }}
             />
           </>
         ) : (

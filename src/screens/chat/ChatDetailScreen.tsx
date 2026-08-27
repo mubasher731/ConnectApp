@@ -25,6 +25,7 @@ import { AppIcon, Avatar, EmptyState, SessionExtensionAlert, useAlert } from '..
 import { socketService } from '../../api/socket';
 import { getApiBaseUrl } from '../../api/config';
 import { useAuth } from '../../context/AuthContext';
+import { useCall } from '../../context/CallContext';
 import { useSessionConfig } from '../../context/SessionConfigContext';
 import { CHAT_EMOJIS } from '../../context/appData';
 import { chatService, sessionService } from '../../services';
@@ -118,6 +119,7 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
   const { user } = useAuth();
   const { showAlert } = useAlert();
   const { extendIncrement } = useSessionConfig();
+  const { state: callState, initiateCall } = useCall();
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState('');
@@ -562,30 +564,74 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
     });
   }, [showAlert, handleEndSession]);
 
-  // Header "End Session" action — doctor only, while the session is active.
+  const initiateCall = useCallback(
+    (callType: 'audio' | 'video') => {
+      if (!peerUserIdRef.current || !conversation || !effectiveName) return;
+      initiateCall(peerUserIdRef.current, effectiveName, callType, conversation.id);
+    },
+    [conversation, effectiveName]
+  );
+
+  // Header actions — call buttons + doctor end session
   useEffect(() => {
+    const sessionActive = conversation?.state === 'active';
+    const showCallButtons = sessionActive && peerUserIdRef.current && effectiveName;
+
     navigation.setOptions({
       // eslint-disable-next-line react/no-unstable-nested-components
-      headerRight: () =>
-        canEndSession ? (
-          <TouchableOpacity
-            style={styles.headerEndButton}
-            onPress={confirmEndSession}
-            disabled={endingSession}
-            activeOpacity={0.7}
-          >
-            {endingSession ? (
-              <ActivityIndicator size="small" color={Colors.error} />
-            ) : (
-              <>
-                <AppIcon name="stop-circle-outline" size={16} color={Colors.error} />
-                <Text style={styles.headerEndText}>End Session</Text>
-              </>
-            )}
-          </TouchableOpacity>
-        ) : null,
+      headerRight: () => {
+        const actions: React.ReactNode[] = [];
+
+        // Call buttons (both roles, only during active session)
+        if (showCallButtons) {
+          actions.push(
+            <View key="calls" style={styles.headerCallButtons}>
+              <TouchableOpacity
+                style={styles.headerCallButton}
+                onPress={() => initiateCall('audio')}
+                activeOpacity={0.7}
+                disabled={callState.status !== 'idle'}
+              >
+                <AppIcon name="phone-outline" size={20} color={Colors.primary} />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.headerCallButton}
+                onPress={() => initiateCall('video')}
+                activeOpacity={0.7}
+                disabled={callState.status !== 'idle'}
+              >
+                <AppIcon name="video-outline" size={20} color={Colors.primary} />
+              </TouchableOpacity>
+            </View>
+          );
+        }
+
+        // Doctor end session button
+        if (canEndSession) {
+          actions.push(
+            <TouchableOpacity
+              key="end"
+              style={styles.headerEndButton}
+              onPress={confirmEndSession}
+              disabled={endingSession}
+              activeOpacity={0.7}
+            >
+              {endingSession ? (
+                <ActivityIndicator size="small" color={Colors.error} />
+              ) : (
+                <>
+                  <AppIcon name="stop-circle-outline" size={16} color={Colors.error} />
+                  <Text style={styles.headerEndText}>End Session</Text>
+                </>
+              )}
+            </TouchableOpacity>
+          );
+        }
+
+        return <View style={styles.headerActions}>{actions}</View>;
+      },
     });
-  }, [navigation, canEndSession, endingSession, confirmEndSession]);
+  }, [navigation, conversation, effectiveName, canEndSession, endingSession, confirmEndSession, state.status]);
 
   const sendMessage = useCallback(async () => {
     const trimmed = inputText.trim();
@@ -1357,6 +1403,24 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: Colors.error,
     marginLeft: 4,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  headerCallButtons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.xs,
+    marginRight: Spacing.sm,
+  },
+  headerCallButton: {
+    width: 36,
+    height: 36,
+    borderRadius: Radius.round,
+    backgroundColor: Colors.primarySoft,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   messagesList: {
     paddingHorizontal: Spacing.md,
