@@ -12,7 +12,17 @@ import { AppNotification, BackendNotification, NotificationKind } from '../../ty
 import { Colors, Spacing } from '../../theme';
 
 const kindFromType = (type: string): NotificationKind => {
-  if (type === 'chat_request' || type === 'chat-decision') return 'appointment';
+  if (
+    type === 'chat_request' ||
+    type === 'chat-decision' ||
+    type === 'Appointment Acceptance' ||
+    type === 'rejected' ||
+    type === 'rescheduled' ||
+    type === 'schedule_update' ||
+    type === 'session_started' ||
+    type === 'session_ended'
+  ) return 'appointment';
+  if (type === 'red_flag') return 'system';
   return 'system';
 };
 

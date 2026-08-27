@@ -83,6 +83,15 @@ export const sessionService = {
     return (data?.data ?? []) as DoctorAvailability[];
   },
 
+  /** Slot availability for a doctor on a specific date. */
+  async getDoctorSlots(
+    doctorId: number,
+    date: string,
+  ): Promise<{ time_slot: string; isBooked: boolean; isPast: boolean }[]> {
+    const { data } = await api.get(`/api/conversations/doctor/${doctorId}/slots/${date}`);
+    return (data?.data ?? []) as { time_slot: string; isBooked: boolean; isPast: boolean }[];
+  },
+
   /** Messages for a conversation (oldest → newest). No options = all messages. */
   async getMessages(id: string | number, options: { limit?: number; skip?: number } = {}): Promise<MessageRaw[]> {
     const params: Record<string, number> = {};

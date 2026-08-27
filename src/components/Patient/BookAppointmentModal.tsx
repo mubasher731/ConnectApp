@@ -17,8 +17,6 @@ import { sessionService } from '../../services';
 import { BookingDoctor } from '../../types';
 import {
   dateKey,
-  daySlotsFor,
-  isPastSlot,
   formatSlotDisplay,
   parseSlot24,
   SESSION_DURATION_MINUTES,
@@ -48,6 +46,12 @@ const formatSlotRange = (slot: string): string => {
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 /** Centered booking modal: doctor info, slot dropdown, message, send/cancel. */
+interface SlotAvailability {
+  time_slot: string;
+  isBooked: boolean;
+  isPast: boolean;
+}
+
 const BookAppointmentModal: React.FC<BookAppointmentModalProps> = ({
   visible,
   doctor,
@@ -64,6 +68,8 @@ const BookAppointmentModal: React.FC<BookAppointmentModalProps> = ({
     const now = new Date();
     return new Date(now.getFullYear(), now.getMonth(), 1);
   });
+  const [slots, setSlots] = useState<SlotAvailability[]>([]);
+  const [slotsLoading, setSlotsLoading] = useState(false);
 
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);
@@ -116,6 +122,26 @@ const BookAppointmentModal: React.FC<BookAppointmentModalProps> = ({
       setCalendarMonth(new Date());
     }
   }, [visible]);
+
+  // Fetch slot availability when doctor or date changes.
+  useEffect(() => {
+    if (!doctor || !visible) return;
+    const dateStr = dateKey(selectedDate);
+    let cancelled = false;
+    setSlotsLoading(true);
+    sessionService
+      .getDoctorSlots(doctor.id, dateStr)
+      .then((data) => {
+        if (!cancelled) setSlots(data);
+      })
+      .catch(() => {
+        if (!cancelled) setSlots([]);
+      })
+      .finally(() => {
+        if (!cancelled) setSlotsLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, [doctor?.id, dateKey(selectedDate), visible]);
 
   const handleClose = () => {
     reset();
@@ -182,9 +208,6 @@ const BookAppointmentModal: React.FC<BookAppointmentModalProps> = ({
       setSending(false);
     }
   };
-
-  const allSlots = doctor ? daySlotsFor(doctor.availability, selectedDate) : [];
-  const isSlotPast = (slot: string) => isPastSlot(slot, selectedDate);
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={handleClose}>
@@ -325,15 +348,20 @@ const BookAppointmentModal: React.FC<BookAppointmentModalProps> = ({
                 nestedScrollEnabled
                 showsVerticalScrollIndicator={false}
               >
-                {allSlots.length === 0 ? (
+                {slotsLoading ? (
+                  <View style={styles.slotLoadingRow}>
+                    <ActivityIndicator size="small" color={Colors.primary} />
+                    <Text style={styles.slotLoadingText}>Loading slots…</Text>
+                  </View>
+                ) : slots.length === 0 ? (
                   <Text style={styles.noSlots}>No slots available on this day.</Text>
                 ) : (
-                  allSlots.map((slot) => {
-                    const disabled = isSlotPast(slot);
-                    const selected = timeSlot === slot;
+                  slots.map((s) => {
+                    const disabled = s.isPast || s.isBooked;
+                    const selected = timeSlot === s.time_slot;
                     return (
                       <TouchableOpacity
-                        key={slot}
+                        key={s.time_slot}
                         style={[
                           styles.slotRow,
                           selected && styles.slotRowSelected,
@@ -341,7 +369,7 @@ const BookAppointmentModal: React.FC<BookAppointmentModalProps> = ({
                         ]}
                         disabled={disabled}
                         onPress={() => {
-                          handleSelectSlot(slot);
+                          handleSelectSlot(s.time_slot);
                           setSlotOpen(false);
                         }}
                         activeOpacity={0.7}
@@ -371,13 +399,17 @@ const BookAppointmentModal: React.FC<BookAppointmentModalProps> = ({
                           ]}
                           numberOfLines={1}
                         >
-                          {formatSlotDisplay(slot)}
+                          {formatSlotDisplay(s.time_slot)}
                         </Text>
-                        {disabled ? (
-                          <Text style={styles.slotRowTag}>N/A</Text>
+                        {s.isPast ? (
+                          <Text style={styles.slotRowTag}>Past</Text>
+                        ) : s.isBooked ? (
+                          <Text style={styles.slotRowTagBooked}>Booked</Text>
                         ) : selected ? (
                           <Text style={styles.slotRowTagSelected}>Selected</Text>
-                        ) : null}
+                        ) : (
+                          <Text style={styles.slotRowTagFree}>Free</Text>
+                        )}
                       </TouchableOpacity>
                     );
                   })
@@ -388,8 +420,17 @@ const BookAppointmentModal: React.FC<BookAppointmentModalProps> = ({
             {/* Slot status */}
             {timeSlot && (
               <View style={styles.statusRow}>
-                <AppIcon name="checkmark-circle" size={18} color={Colors.success} />
-                <Text style={styles.statusAvailable}>Available</Text>
+                {slots.find((s) => s.time_slot === timeSlot)?.isBooked ? (
+                  <>
+                    <AppIcon name="close-circle" size={18} color={Colors.error} />
+                    <Text style={styles.statusBooked}>Booked</Text>
+                  </>
+                ) : (
+                  <>
+                    <AppIcon name="checkmark-circle" size={18} color={Colors.success} />
+                    <Text style={styles.statusAvailable}>Available</Text>
+                  </>
+                )}
               </View>
             )}
 
@@ -551,8 +592,28 @@ const styles = StyleSheet.create({
   slotRowTag: {
     fontSize: 11,
     fontWeight: '800',
+    color: Colors.textTertiary,
+    backgroundColor: Colors.inputBackground,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 2,
+    borderRadius: Radius.round,
+    overflow: 'hidden',
+  },
+  slotRowTagBooked: {
+    fontSize: 11,
+    fontWeight: '800',
     color: Colors.error,
     backgroundColor: Colors.errorSoft,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 2,
+    borderRadius: Radius.round,
+    overflow: 'hidden',
+  },
+  slotRowTagFree: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: Colors.success,
+    backgroundColor: 'rgba(16,185,129,0.12)',
     paddingHorizontal: Spacing.sm,
     paddingVertical: 2,
     borderRadius: Radius.round,
@@ -651,6 +712,18 @@ const styles = StyleSheet.create({
     color: Colors.textTertiary,
     textAlign: 'center',
     paddingVertical: Spacing.lg,
+  },
+  slotLoadingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: Spacing.lg,
+    gap: Spacing.sm,
+  },
+  slotLoadingText: {
+    fontSize: 13,
+    color: Colors.textSecondary,
+    fontWeight: '500',
   },
   statusRow: {
     flexDirection: 'row',
