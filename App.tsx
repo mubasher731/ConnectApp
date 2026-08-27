@@ -9,6 +9,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import AppNavigator from './src/navigation/AppNavigator';
 import { AuthProvider } from './src/context/AuthContext';
 import { AlertProvider } from './src/components/CustomAlert/AlertProvider';
+import { SessionConfigProvider } from './src/context/SessionConfigContext';
 import { Colors } from './src/theme/colors';
 
 function App() {
@@ -20,7 +21,9 @@ function App() {
       />
       <AuthProvider>
         <AlertProvider>
-          <AppNavigator />
+          <SessionConfigProvider>
+            <AppNavigator />
+          </SessionConfigProvider>
         </AlertProvider>
       </AuthProvider>
     </SafeAreaProvider>

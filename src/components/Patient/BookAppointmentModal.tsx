@@ -18,9 +18,8 @@ import { BookingDoctor } from '../../types';
 import {
   dateKey,
   formatSlotDisplay,
-  parseSlot24,
-  SESSION_DURATION_MINUTES,
 } from '../../utils/slots';
+import { useSessionConfig } from '../../context/SessionConfigContext';
 import { Colors, Radius, Shadows, Spacing } from '../../theme';
 
 interface BookAppointmentModalProps {
@@ -28,20 +27,6 @@ interface BookAppointmentModalProps {
   doctor: BookingDoctor | null;
   onClose: () => void;
 }
-
-/** "09:00" → "09:00 AM – 09:15 AM" (slot start and end). */
-const formatSlotRange = (slot: string): string => {
-  const [h, m] = slot.split(':').map(Number);
-  const fmt = (min: number) => {
-    const hr = Math.floor(min / 60) % 24;
-    const mn = min % 60;
-    const ampm = hr >= 12 ? 'PM' : 'AM';
-    const h12 = hr % 12 === 0 ? 12 : hr % 12;
-    return `${String(h12).padStart(2, '0')}:${String(mn).padStart(2, '0')} ${ampm}`;
-  };
-  const startMin = (h || 0) * 60 + (m || 0);
-  return `${fmt(startMin)} – ${fmt(startMin + SESSION_DURATION_MINUTES)}`;
-};
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
@@ -58,6 +43,7 @@ const BookAppointmentModal: React.FC<BookAppointmentModalProps> = ({
   onClose,
 }) => {
   const { showAlert } = useAlert();
+  const { sessionDuration } = useSessionConfig();
   const [timeSlot, setTimeSlot] = useState<string | null>(null);
   const [message, setMessage] = useState('');
   const [sending, setSending] = useState(false);
@@ -151,8 +137,7 @@ const BookAppointmentModal: React.FC<BookAppointmentModalProps> = ({
   /** Select a slot. The server is the source of truth — it validates on POST. */
   const handleSelectSlot = (slot: string) => {
     if (!doctor) return;
-    // Store the 24‑hour slot internally, but show 12‑hour format in the UI.
-    setTimeSlot(parseSlot24(formatSlotDisplay(slot)));
+    setTimeSlot(slot);
   };
 
   const handleSend = async () => {
@@ -161,6 +146,25 @@ const BookAppointmentModal: React.FC<BookAppointmentModalProps> = ({
       showAlert({
         title: 'Select a time slot',
         message: 'Please choose an available time slot.',
+        actions: [{ text: 'OK' }],
+      });
+      return;
+    }
+
+    // Client-side check: is the selected slot actually available?
+    const selectedSlotData = slots.find((s) => s.time_slot === timeSlot);
+    if (selectedSlotData?.isBooked) {
+      showAlert({
+        title: 'Slot Booked',
+        message: 'This slot is already booked. Please choose another time.',
+        actions: [{ text: 'OK' }],
+      });
+      return;
+    }
+    if (selectedSlotData?.isPast) {
+      showAlert({
+        title: 'Slot Expired',
+        message: 'This slot has already passed. Please choose a future time.',
         actions: [{ text: 'OK' }],
       });
       return;
