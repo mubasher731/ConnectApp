@@ -61,11 +61,26 @@ const formatCountdown = (totalSeconds: number) => {
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 };
 
+/** Human-friendly "N day(s) / hour(s) / minute(s) left" for a future time. */
+const formatSessionRelative = (target: dayjs.Dayjs): string => {
+  const mins = Math.max(0, Math.floor(target.diff(dayjs(), 'minute')));
+  const hours = Math.floor(target.diff(dayjs(), 'hour'));
+  const days = Math.floor(target.diff(dayjs(), 'day'));
+  if (mins < 1) return 'Starting now';
+  if (mins < 60) return `${mins} minute${mins === 1 ? '' : 's'} left`;
+  if (hours < 24) return `${hours} hour${hours === 1 ? '' : 's'} left`;
+  return `${days} day${days === 1 ? '' : 's'} left`;
+};
+
 /** Label for the divider that opens a new session block. */
 const sessionDividerLabel = (item: Message): string => {
   const d = dayjs(item.createdAt);
   if (d.isValid()) {
     const time = d.format('h:mm A');
+    if (d.isAfter(dayjs())) {
+      // Future / scheduled session — show a relative countdown instead of "Today's Session".
+      return `${formatSessionRelative(d)} • ${time}`;
+    }
     if (d.isSame(dayjs(), 'day')) return `Today's Session • ${time}`;
     if (d.isSame(dayjs().subtract(1, 'day'), 'day')) return `Yesterday's Session • ${time}`;
     return `${d.format('DD MMM YYYY')} Session • ${time}`;
@@ -437,7 +452,12 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
     countdownTone = 'ended';
   } else if (state === 'in_progress' && scheduledAtMs !== null) {
     const secs = Math.max(0, Math.ceil((scheduledAtMs - now) / 1000));
-    countdownLabel = `Starts in ${formatCountdown(secs)}`;
+    // Under 30 minutes → live MM:SS countdown (e.g. "Starts in 29:30");
+    // otherwise a human-friendly relative label ("2 hours left", "1 day left").
+    countdownLabel =
+      secs < 30 * 60
+        ? `Starts in ${formatCountdown(secs)}`
+        : formatSessionRelative(dayjs(scheduledAtMs));
     countdownTone = 'start';
   } else if (state === 'active' && endAtMs !== null) {
     const secs = Math.max(0, Math.ceil((endAtMs - now) / 1000));
@@ -564,12 +584,12 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
     });
   }, [showAlert, handleEndSession]);
 
-  const initiateCall = useCallback(
+  const handleStartCall = useCallback(
     (callType: 'audio' | 'video') => {
       if (!peerUserIdRef.current || !conversation || !effectiveName) return;
-      initiateCall(peerUserIdRef.current, effectiveName, callType, conversation.id);
+      initiateCall(peerUserIdRef.current, effectiveName, callType, Number(conversation.id));
     },
-    [conversation, effectiveName]
+    [conversation, effectiveName, initiateCall]
   );
 
   // Header actions — call buttons + doctor end session
@@ -588,7 +608,7 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
             <View key="calls" style={styles.headerCallButtons}>
               <TouchableOpacity
                 style={styles.headerCallButton}
-                onPress={() => initiateCall('audio')}
+                onPress={() => handleStartCall('audio')}
                 activeOpacity={0.7}
                 disabled={callState.status !== 'idle'}
               >
@@ -596,7 +616,7 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.headerCallButton}
-                onPress={() => initiateCall('video')}
+                onPress={() => handleStartCall('video')}
                 activeOpacity={0.7}
                 disabled={callState.status !== 'idle'}
               >
@@ -631,7 +651,16 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
         return <View style={styles.headerActions}>{actions}</View>;
       },
     });
-  }, [navigation, conversation, effectiveName, canEndSession, endingSession, confirmEndSession, state.status]);
+  }, [
+    navigation,
+    conversation,
+    effectiveName,
+    canEndSession,
+    endingSession,
+    confirmEndSession,
+    callState.status,
+    handleStartCall,
+  ]);
 
   const sendMessage = useCallback(async () => {
     const trimmed = inputText.trim();

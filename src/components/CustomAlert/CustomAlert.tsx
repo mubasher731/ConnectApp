@@ -145,6 +145,8 @@ const styles = StyleSheet.create({
   },
   cancelBtn: {
     backgroundColor: Colors.inputBackground,
+    borderWidth: 1,
+    borderColor: Colors.border,
     ...Shadows.raised,
   },
   destructiveBtn: {
