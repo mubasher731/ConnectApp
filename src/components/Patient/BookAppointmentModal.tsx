@@ -439,7 +439,7 @@ const BookAppointmentModal: React.FC<BookAppointmentModalProps> = ({
             )}
 
             {/* Message */}
-            <Text style={styles.label}>Reason (3–5 words)</Text>
+            <Text style={styles.label}>Reason (In 3–5 words)</Text>
             <TextInput
               style={styles.messageInput}
               placeholder="e.g. Need a follow-up consultation"
@@ -450,9 +450,6 @@ const BookAppointmentModal: React.FC<BookAppointmentModalProps> = ({
               maxLength={500}
               textAlignVertical="top"
             />
-            <Text style={styles.wordHint}>
-              {message.trim() ? `${message.trim().split(/\s+/).filter(Boolean).length} word(s)` : 'Enter 3–5 words'}
-            </Text>
 
             {/* Actions */}
             <View style={styles.actionRow}>
@@ -507,6 +504,7 @@ const styles = StyleSheet.create({
   },
   body: {
     flexGrow: 0,
+    flexShrink: 1,
   },
   header: {
     flexDirection: 'row',
@@ -765,12 +763,6 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.md,
     fontSize: 14,
     color: Colors.text,
-  },
-  wordHint: {
-    fontSize: 12,
-    color: Colors.textTertiary,
-    textAlign: 'right',
-    marginTop: -Spacing.sm,
     marginBottom: Spacing.lg,
   },
   actionRow: {
@@ -778,6 +770,7 @@ const styles = StyleSheet.create({
   },
   actionBtn: {
     flex: 1,
+    minHeight: 48,
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: Spacing.md,
@@ -785,6 +778,8 @@ const styles = StyleSheet.create({
   },
   cancelBtn: {
     backgroundColor: Colors.inputBackground,
+    borderWidth: 1,
+    borderColor: Colors.border,
     marginRight: Spacing.sm,
   },
   cancelText: {

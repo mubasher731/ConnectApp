@@ -60,11 +60,26 @@ const formatCountdown = (totalSeconds: number) => {
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 };
 
+/** Human-friendly "N day(s) / hour(s) / minute(s) left" for a future time. */
+const formatSessionRelative = (target: dayjs.Dayjs): string => {
+  const mins = Math.max(0, Math.floor(target.diff(dayjs(), 'minute')));
+  const hours = Math.floor(target.diff(dayjs(), 'hour'));
+  const days = Math.floor(target.diff(dayjs(), 'day'));
+  if (mins < 1) return 'Starting now';
+  if (mins < 60) return `${mins} minute${mins === 1 ? '' : 's'} left`;
+  if (hours < 24) return `${hours} hour${hours === 1 ? '' : 's'} left`;
+  return `${days} day${days === 1 ? '' : 's'} left`;
+};
+
 /** Label for the divider that opens a new session block. */
 const sessionDividerLabel = (item: Message): string => {
   const d = dayjs(item.createdAt);
   if (d.isValid()) {
     const time = d.format('h:mm A');
+    if (d.isAfter(dayjs())) {
+      // Future / scheduled session — show a relative countdown instead of "Today's Session".
+      return `${formatSessionRelative(d)} • ${time}`;
+    }
     if (d.isSame(dayjs(), 'day')) return `Today's Session • ${time}`;
     if (d.isSame(dayjs().subtract(1, 'day'), 'day')) return `Yesterday's Session • ${time}`;
     return `${d.format('DD MMM YYYY')} Session • ${time}`;
@@ -562,30 +577,72 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
     });
   }, [showAlert, handleEndSession]);
 
-  // Header "End Session" action — doctor only, while the session is active.
+  // Placeholder audio/video call actions — call functionality ships later.
+  const handleAudioCall = useCallback(() => {
+    showAlert({
+      title: 'Audio Call',
+      message: 'Audio calling will be available soon.',
+      actions: [{ text: 'OK' }],
+    });
+  }, [showAlert]);
+
+  const handleVideoCall = useCallback(() => {
+    showAlert({
+      title: 'Video Call',
+      message: 'Video calling will be available soon.',
+      actions: [{ text: 'OK' }],
+    });
+  }, [showAlert]);
+
+  // Header actions: audio + video call buttons (WhatsApp-style) on the right,
+  // plus the "End Session" action for doctors while the session is active.
   useEffect(() => {
     navigation.setOptions({
       // eslint-disable-next-line react/no-unstable-nested-components
-      headerRight: () =>
-        canEndSession ? (
+      headerRight: () => (
+        <View style={styles.headerCallRow}>
           <TouchableOpacity
-            style={styles.headerEndButton}
-            onPress={confirmEndSession}
-            disabled={endingSession}
+            style={styles.headerCallButton}
+            onPress={handleAudioCall}
             activeOpacity={0.7}
           >
-            {endingSession ? (
-              <ActivityIndicator size="small" color={Colors.error} />
-            ) : (
-              <>
-                <AppIcon name="stop-circle-outline" size={16} color={Colors.error} />
-                <Text style={styles.headerEndText}>End Session</Text>
-              </>
-            )}
+            <AppIcon name="call-outline" size={20} color={Colors.text} />
           </TouchableOpacity>
-        ) : null,
+          <TouchableOpacity
+            style={styles.headerCallButton}
+            onPress={handleVideoCall}
+            activeOpacity={0.7}
+          >
+            <AppIcon name="videocam-outline" size={20} color={Colors.text} />
+          </TouchableOpacity>
+          {canEndSession ? (
+            <TouchableOpacity
+              style={styles.headerEndButton}
+              onPress={confirmEndSession}
+              disabled={endingSession}
+              activeOpacity={0.7}
+            >
+              {endingSession ? (
+                <ActivityIndicator size="small" color={Colors.error} />
+              ) : (
+                <>
+                  <AppIcon name="stop-circle-outline" size={16} color={Colors.error} />
+                  <Text style={styles.headerEndText}>End Session</Text>
+                </>
+              )}
+            </TouchableOpacity>
+          ) : null}
+        </View>
+      ),
     });
-  }, [navigation, canEndSession, endingSession, confirmEndSession]);
+  }, [
+    navigation,
+    canEndSession,
+    endingSession,
+    confirmEndSession,
+    handleAudioCall,
+    handleVideoCall,
+  ]);
 
   const sendMessage = useCallback(async () => {
     const trimmed = inputText.trim();
@@ -1342,6 +1399,20 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: Colors.success,
     fontWeight: '500',
+  },
+  headerCallRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginRight: Spacing.xs,
+  },
+  headerCallButton: {
+    width: 36,
+    height: 36,
+    borderRadius: Radius.round,
+    backgroundColor: Colors.primarySoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: Spacing.sm,
   },
   headerEndButton: {
     flexDirection: 'row',
