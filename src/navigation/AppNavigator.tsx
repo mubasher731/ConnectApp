@@ -23,7 +23,8 @@ import CallsScreen from '../screens/patient/CallsScreen';
 import ProfileScreen from '../screens/patient/ProfileScreen';
 import DoctorsScreen from '../screens/patient/DoctorsScreen';
 import DoctorDashboardScreen from '../screens/doctor/DoctorDashboardScreen';
-import { CallScreen } from '../components/Call';
+//import { CallScreen } from '../components/Call/CallScreen';
+import { CallScreen } from '../components/Call/CallScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();

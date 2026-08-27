@@ -4,7 +4,7 @@ import { RTCView } from 'react-native-webrtc';
 import { Clock, Wifi, WifiOff, AlertCircle } from 'lucide-react-native';
 import { useCall } from '../../context/CallContext';
 import { CallControls } from './CallControls';
-import { COLORS, SPACING } from '../../theme';
+import { Colors, Spacing } from '../../theme';
 
 export const CallScreen: React.FC = () => {
   const { state, endCall } = useCall();
@@ -58,11 +58,11 @@ export const CallScreen: React.FC = () => {
   const getConnectionIcon = () => {
     switch (connectionQuality) {
       case 'good':
-        return <Wifi size={16} color={COLORS.success} />;
+        return <Wifi size={16} color={Colors.success} />;
       case 'poor':
-        return <WifiOff size={16} color={COLORS.warning} />;
+        return <WifiOff size={16} color={Colors.warning} />;
       case 'disconnected':
-        return <AlertCircle size={16} color={COLORS.danger} />;
+        return <AlertCircle size={16} color="#DC2626" />;
     }
   };
 
@@ -188,15 +188,15 @@ export const CallScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: Colors.background,
   },
   statusBar: {
     height: 44, // iOS status bar height
   },
   header: {
-    paddingHorizontal: SPACING.lg,
-    paddingTop: SPACING.md,
-    paddingBottom: SPACING.sm,
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.md,
+    paddingBottom: Spacing.sm,
   },
   headerLeft: {
     flexDirection: 'row',
@@ -206,10 +206,10 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: COLORS.primary,
+    backgroundColor: Colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: SPACING.md,
+    marginRight: Spacing.lg,
   },
   remoteAvatarImage: {
     width: 40,
@@ -219,7 +219,7 @@ const styles = StyleSheet.create({
   remoteAvatarText: {
     fontSize: 16,
     fontWeight: '600',
-    color: COLORS.white,
+    color: Colors.white,
   },
   headerInfo: {
     flex: 1,
@@ -227,30 +227,30 @@ const styles = StyleSheet.create({
   remoteName: {
     fontSize: 17,
     fontWeight: '600',
-    color: COLORS.text,
+    color: Colors.text,
   },
   statusRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: SPACING.xs,
+    gap: Spacing.xs,
     marginTop: 2,
   },
   statusText: {
     fontSize: 13,
-    color: COLORS.textSecondary,
+    color: Colors.textSecondary,
   },
   statusActive: {
-    color: COLORS.success,
+    color: Colors.success,
     fontWeight: '500',
   },
   statusOutgoing: {
-    color: COLORS.warning,
+    color: Colors.warning,
   },
   statusIncoming: {
-    color: COLORS.primary,
+    color: Colors.primary,
   },
   connectionQuality: {
-    marginLeft: SPACING.xs,
+    marginLeft: Spacing.xs,
   },
   remoteVideoContainer: {
     flex: 1,
@@ -263,25 +263,25 @@ const styles = StyleSheet.create({
   connectingOverlay: {
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: COLORS.background,
+    backgroundColor: Colors.background,
   },
   connectingText: {
     fontSize: 16,
-    color: COLORS.textSecondary,
+    color: Colors.textSecondary,
   },
   audioOnlyOverlay: {
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: COLORS.background,
+    backgroundColor: Colors.background,
   },
   audioAvatar: {
     width: 120,
     height: 120,
     borderRadius: 60,
-    backgroundColor: COLORS.primary,
+    backgroundColor: Colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: SPACING.lg,
+    marginBottom: Spacing.lg,
   },
   audioAvatarImage: {
     width: 120,
@@ -291,24 +291,24 @@ const styles = StyleSheet.create({
   audioAvatarText: {
     fontSize: 48,
     fontWeight: '600',
-    color: COLORS.white,
+    color: Colors.white,
   },
   audioOnlyText: {
     fontSize: 18,
     fontWeight: '500',
-    color: COLORS.textSecondary,
+    color: Colors.textSecondary,
   },
   localVideoContainer: {
     position: 'absolute',
     top: 100,
-    right: SPACING.lg,
+    right: Spacing.lg,
     width: 100,
     height: 150,
     borderRadius: 16,
     overflow: 'hidden',
     borderWidth: 2,
-    borderColor: COLORS.white,
-    shadowColor: COLORS.black,
+    borderColor: Colors.white,
+    shadowColor: Colors.black,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
@@ -321,17 +321,17 @@ const styles = StyleSheet.create({
   indicator: {
     position: 'absolute',
     bottom: 160,
-    left: SPACING.lg,
-    right: SPACING.lg,
+    left: Spacing.lg,
+    right: Spacing.lg,
     backgroundColor: 'rgba(0, 0, 0, 0.7)',
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.xs,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.xs,
     borderRadius: 20,
     alignItems: 'center',
   },
   indicatorText: {
     fontSize: 12,
-    color: COLORS.white,
+    color: Colors.white,
     fontWeight: '500',
   },
 });
