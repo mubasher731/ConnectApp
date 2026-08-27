@@ -450,7 +450,12 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
     countdownTone = 'ended';
   } else if (state === 'in_progress' && scheduledAtMs !== null) {
     const secs = Math.max(0, Math.ceil((scheduledAtMs - now) / 1000));
-    countdownLabel = `Starts in ${formatCountdown(secs)}`;
+    // Under 30 minutes → live MM:SS countdown (e.g. "Starts in 29:30");
+    // otherwise a human-friendly relative label ("2 hours left", "1 day left").
+    countdownLabel =
+      secs < 30 * 60
+        ? `Starts in ${formatCountdown(secs)}`
+        : formatSessionRelative(dayjs(scheduledAtMs));
     countdownTone = 'start';
   } else if (state === 'active' && endAtMs !== null) {
     const secs = Math.max(0, Math.ceil((endAtMs - now) / 1000));
