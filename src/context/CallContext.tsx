@@ -1,10 +1,12 @@
 import React, { createContext, useContext, useReducer, useEffect, useCallback, ReactNode, useRef } from 'react';
 import { io, Socket } from 'socket.io-client';
-import { useAuth } from './AuthContext';
-import { API_URL } from '../api/config';
+import { getApiBaseUrl } from '../api/config';
+import { tokenStore } from '../api/client';
 import { webRTCService, WebRTCEvents } from '../services/WebRTCService';
+import { MediaStream } from 'react-native-webrtc';
 import InCallManager from 'react-native-incall-manager';
 
+type RTCPeerConnectionState = 'new' | 'connecting' | 'connected' | 'disconnected' | 'failed' | 'closed';
 type CallStatus = 'idle' | 'outgoing' | 'incoming' | 'active' | 'reconnecting';
 
 interface CallState {
@@ -79,6 +81,8 @@ function callReducer(state: CallState, action: CallAction): CallState {
 
 interface CallContextType {
   state: CallState;
+  localStream: MediaStream | null;
+  remoteStream: MediaStream | null;
   initiateCall: (userId: number, name: string, callType: 'audio' | 'video', sessionId: number) => void;
   acceptCall: () => void;
   rejectCall: () => void;
@@ -120,7 +124,6 @@ let durationInterval: ReturnType<typeof setInterval> | null = null;
 let ringTimeout: ReturnType<typeof setTimeout> | null = null;
 
 export const CallProvider: React.FC<CallProviderProps> = ({ children }) => {
-  const { user, token } = useAuth();
   const [state, dispatch] = useReducer(callReducer, initialState);
   const isMounted = useRef(true);
 
@@ -129,48 +132,46 @@ export const CallProvider: React.FC<CallProviderProps> = ({ children }) => {
     return () => { isMounted.current = false; };
   }, []);
 
-  // Initialize InCallManager
-  useEffect(() => {
-    InCallManager.start({ media: 'audio' });
-    InCallManager.setSpeakerphoneOn(true);
-    InCallManager.setForceSpeakerphoneOn(true);
-
-    return () => {
-      InCallManager.stop();
-    };
-  }, []);
+  // InCallManager is initialized on call start (acceptCall), not on mount,
+  // to avoid activating the proximity sensor when no call is active.
 
   // Initialize socket connection
   useEffect(() => {
-    if (!token) return;
+    let cancelled = false;
 
-    socket = io(API_URL, {
-      transports: ['websocket'],
-      auth: { token },
-      reconnection: true,
-      reconnectionAttempts: 5,
-      reconnectionDelay: 1000,
-    });
+    (async () => {
+      const token = await tokenStore.get();
+      if (cancelled || !token) return;
 
-    socket.on('connect', () => {
-      console.log('[Call] Socket connected');
-    });
+      socket = io(getApiBaseUrl(), {
+        transports: ['websocket'],
+        auth: { token },
+        reconnection: true,
+        reconnectionAttempts: 5,
+        reconnectionDelay: 1000,
+      });
 
-    socket.on('disconnect', (reason) => {
-      console.log('[Call] Socket disconnected:', reason);
-      if (state.status === 'active' || state.status === 'outgoing') {
-        dispatch({ type: 'SET_STATUS', status: 'reconnecting' });
-      }
-    });
+      socket.on('connect', () => {
+        console.log('[Call] Socket connected');
+      });
 
-    socket.on('call:incoming', handleIncomingCall);
-    socket.on('call:answer', handleCallAnswer);
-    socket.on('call:ice-candidate', handleIceCandidate);
-    socket.on('call:ended', handleCallEnded);
-    socket.on('call:rejected', handleCallRejected);
-    socket.on('call:busy', handleCallBusy);
+      socket.on('disconnect', (reason) => {
+        console.log('[Call] Socket disconnected:', reason);
+        if (state.status === 'active' || state.status === 'outgoing') {
+          dispatch({ type: 'SET_STATUS', status: 'reconnecting' });
+        }
+      });
+
+      socket.on('call:incoming', handleIncomingCall);
+      socket.on('call:answer', handleCallAnswer);
+      socket.on('call:ice-candidate', handleIceCandidate);
+      socket.on('call:ended', handleCallEnded);
+      socket.on('call:rejected', handleCallRejected);
+      socket.on('call:busy', handleCallBusy);
+    })();
 
     return () => {
+      cancelled = true;
       socket?.off('call:incoming', handleIncomingCall);
       socket?.off('call:answer', handleCallAnswer);
       socket?.off('call:ice-candidate', handleIceCandidate);
@@ -180,7 +181,7 @@ export const CallProvider: React.FC<CallProviderProps> = ({ children }) => {
       socket?.disconnect();
       socket = null;
     };
-  }, [token]);
+  }, []);
 
   // Duration timer
   useEffect(() => {
@@ -213,7 +214,7 @@ export const CallProvider: React.FC<CallProviderProps> = ({ children }) => {
       },
       onError: (error) => {
         console.error('[CallContext] WebRTC error:', error);
-        endCall();
+        handleCallEnded();
       },
       onIceCandidate: (candidate) => {
         if (state.remoteUser?.userId && socket) {
@@ -285,10 +286,13 @@ export const CallProvider: React.FC<CallProviderProps> = ({ children }) => {
         if (isMounted.current) {
           dispatch({ type: 'SET_STATUS', status: 'active' });
           dispatch({ type: 'SET_DURATION', duration: 0 });
+          // Start InCallManager for the caller side too
+          InCallManager.start({ media: state.callType === 'video' ? 'video' : 'audio' });
+          InCallManager.setSpeakerphoneOn(true);
         }
       }
     },
-    [state.status, state.remoteUser?.userId]
+    [state.status, state.remoteUser?.userId, state.callType]
   );
 
   const handleIceCandidate = useCallback(
@@ -423,6 +427,8 @@ export const CallProvider: React.FC<CallProviderProps> = ({ children }) => {
 
   const value: CallContextType = {
     state,
+    localStream: webRTCService.getLocalStream(),
+    remoteStream: webRTCService.getRemoteStream(),
     initiateCall,
     acceptCall,
     rejectCall,

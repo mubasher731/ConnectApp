@@ -14,8 +14,9 @@ import { RTC_CONFIG, CALL_CONFIG } from '../config/webrtc';
 registerGlobals();
 
 type CallType = 'audio' | 'video';
+type RTCPeerConnectionState = 'new' | 'connecting' | 'connected' | 'disconnected' | 'failed' | 'closed';
 
-interface WebRTCEvents {
+export interface WebRTCEvents {
   onRemoteStream: (stream: MediaStream) => void;
   onCallEnded: () => void;
   onError: (error: Error) => void;

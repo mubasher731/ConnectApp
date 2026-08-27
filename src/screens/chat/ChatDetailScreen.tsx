@@ -612,7 +612,7 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
                 activeOpacity={0.7}
                 disabled={callState.status !== 'idle'}
               >
-                <AppIcon name="phone-outline" size={20} color={Colors.primary} />
+                <AppIcon name="call-outline" size={20} color={Colors.primary} />
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.headerCallButton}
@@ -620,7 +620,7 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
                 activeOpacity={0.7}
                 disabled={callState.status !== 'idle'}
               >
-                <AppIcon name="video-outline" size={20} color={Colors.primary} />
+                <AppIcon name="videocam-outline" size={20} color={Colors.primary} />
               </TouchableOpacity>
             </View>
           );

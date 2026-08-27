@@ -2,7 +2,7 @@ import React, { useEffect } from 'react';
 import { View, StyleSheet, Text, Image, Animated, Easing, Platform, BackHandler, TouchableOpacity } from 'react-native';
 import { Phone, Video, X, Check } from 'lucide-react-native';
 import { useCall } from '../../context/CallContext';
-import { COLORS, SPACING } from '../../theme';
+import { Colors, Spacing } from '../../theme';
 
 interface IncomingCallModalProps {
   visible: boolean;
@@ -69,7 +69,7 @@ export const IncomingCallModal: React.FC<IncomingCallModalProps> = ({
 
   if (!visible) return null;
 
-  const callTypeIcon = state.callType === 'video' ? <Video size={28} color={COLORS.white} /> : <Phone size={28} color={COLORS.white} />;
+  const callTypeIcon = state.callType === 'video' ? <Video size={28} color={Colors.white} /> : <Phone size={28} color={Colors.white} />;
   const callTypeText = state.callType === 'video' ? 'Video Call' : 'Audio Call';
 
   return (
@@ -125,7 +125,7 @@ export const IncomingCallModal: React.FC<IncomingCallModalProps> = ({
               onPress={onReject}
               activeOpacity={0.8}
             >
-              <X size={28} color={COLORS.white} />
+              <X size={28} color={Colors.white} />
             </TouchableOpacity>
             <Text style={styles.buttonLabel}>Decline</Text>
           </Animated.View>
@@ -141,7 +141,7 @@ export const IncomingCallModal: React.FC<IncomingCallModalProps> = ({
               onPress={onAccept}
               activeOpacity={0.8}
             >
-              <Check size={28} color={COLORS.white} />
+              <Check size={28} color={Colors.white} />
             </TouchableOpacity>
             <Text style={styles.buttonLabel}>Accept</Text>
           </Animated.View>
@@ -170,17 +170,17 @@ const styles = StyleSheet.create({
   },
   modal: {
     alignItems: 'center',
-    paddingHorizontal: SPACING.xl,
+    paddingHorizontal: Spacing.xl,
   },
   callTypeBadge: {
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: COLORS.primary,
+    backgroundColor: Colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: SPACING.lg,
-    shadowColor: COLORS.primary,
+    marginBottom: Spacing.lg,
+    shadowColor: Colors.primary,
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.5,
     shadowRadius: 20,
@@ -189,50 +189,50 @@ const styles = StyleSheet.create({
   callTypeText: {
     fontSize: 18,
     fontWeight: '500',
-    color: COLORS.textSecondary,
-    marginBottom: SPACING.xl,
+    color: Colors.textSecondary,
+    marginBottom: Spacing.xl,
   },
   avatarContainer: {
-    marginBottom: SPACING.lg,
+    marginBottom: Spacing.lg,
   },
   avatar: {
     width: 140,
     height: 140,
     borderRadius: 70,
     borderWidth: 4,
-    borderColor: COLORS.white,
-    shadowColor: COLORS.black,
+    borderColor: Colors.white,
+    shadowColor: Colors.black,
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.3,
     shadowRadius: 16,
     elevation: 8,
   },
   avatarPlaceholder: {
-    backgroundColor: COLORS.primary,
+    backgroundColor: Colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
   },
   avatarText: {
     fontSize: 56,
     fontWeight: '600',
-    color: COLORS.white,
+    color: Colors.white,
   },
   callerName: {
     fontSize: 28,
     fontWeight: '600',
-    color: COLORS.white,
-    marginBottom: SPACING.xs,
+    color: Colors.white,
+    marginBottom: Spacing.xs,
   },
   incomingText: {
     fontSize: 16,
-    color: COLORS.textSecondary,
-    marginBottom: SPACING.xxxl,
+    color: Colors.textSecondary,
+    marginBottom: Spacing.xxxl,
   },
   buttonsContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: SPACING.xxxl,
+    gap: Spacing.xxxl,
   },
   actionButton: {
     alignItems: 'center',
@@ -241,10 +241,10 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: COLORS.danger,
+    backgroundColor: Colors.danger,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: COLORS.danger,
+    shadowColor: Colors.danger,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.4,
     shadowRadius: 8,
@@ -254,30 +254,30 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: COLORS.success,
+    backgroundColor: Colors.success,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: COLORS.success,
+    shadowColor: Colors.success,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.4,
     shadowRadius: 8,
     elevation: 6,
   },
   buttonLabel: {
-    marginTop: SPACING.sm,
+    marginTop: Spacing.sm,
     fontSize: 14,
     fontWeight: '600',
-    color: COLORS.white,
+    color: Colors.white,
   },
   swipeHint: {
-    marginTop: SPACING.xxxl,
-    paddingHorizontal: SPACING.xl,
-    paddingVertical: SPACING.sm,
+    marginTop: Spacing.xxxl,
+    paddingHorizontal: Spacing.xl,
+    paddingVertical: Spacing.sm,
     borderRadius: 20,
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
   },
   swipeText: {
     fontSize: 13,
-    color: COLORS.textSecondary,
+    color: Colors.textSecondary,
   },
 });

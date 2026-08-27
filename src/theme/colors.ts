@@ -43,6 +43,8 @@ export const Colors = {
   // Misc
   white: '#FFFFFF',
   black: '#000000',
+  grey: '#6B7280',
+  danger: '#F87171',
   overlay: 'rgba(2, 4, 14, 0.65)',
   tabInactive: '#8C94B5',
   shadow: '#000000',

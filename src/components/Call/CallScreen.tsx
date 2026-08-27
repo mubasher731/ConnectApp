@@ -7,7 +7,7 @@ import { CallControls } from './CallControls';
 import { Colors, Spacing } from '../../theme';
 
 export const CallScreen: React.FC = () => {
-  const { state, endCall } = useCall();
+  const { state, endCall, localStream, remoteStream } = useCall();
   const [connectionQuality, setConnectionQuality] = React.useState<'good' | 'poor' | 'disconnected'>('good');
   const [opacity] = React.useState(new Animated.Value(0));
   const [scale] = React.useState(new Animated.Value(0.95));
@@ -120,10 +120,10 @@ export const CallScreen: React.FC = () => {
 
       {/* Remote Video - Full Screen */}
       <View style={styles.remoteVideoContainer}>
-        {state.remoteUser && (
+        {state.remoteUser && remoteStream && state.callType === 'video' && (
           <RTCView
             style={styles.remoteVideo}
-            streamURL={state.callType === 'video' ? 'remote' : ''}
+            streamURL={remoteStream.toURL()}
             objectFit="cover"
             zOrder={1}
           />
@@ -155,11 +155,11 @@ export const CallScreen: React.FC = () => {
       </View>
 
       {/* Local Video - PiP */}
-      {state.callType === 'video' && state.status === 'active' && (
+      {state.callType === 'video' && state.status === 'active' && localStream && (
         <View style={styles.localVideoContainer}>
           <RTCView
             style={styles.localVideo}
-            streamURL="local"
+            streamURL={localStream.toURL()}
             objectFit="cover"
             zOrder={2}
             mirror={true}
