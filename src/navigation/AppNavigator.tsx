@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { StyleSheet } from 'react-native';
+import { StyleSheet, View, Text, TouchableOpacity } from 'react-native';
 import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -7,8 +7,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { heightPercentageToDP as hp } from 'react-native-responsive-screen';
 import { AppIcon } from '../components';
 import { useAuth } from '../context/AuthContext';
+import { useCall } from '../context/CallContext';
 import { Colors } from '../theme/colors';
-import { navigationRef } from './navigationRef';
+import { navigationRef, navigate } from './navigationRef';
 
 import SplashScreen from '../screens/splash/SplashScreen';
 import LoginScreen from '../screens/auth/LoginScreen';
@@ -110,14 +111,49 @@ function useTabOptions(icons: Record<string, [string, string]>) {
   });
 }
 
+/** Resolve the currently focused screen name (handles nested navigators). */
+const getActiveRouteName = (state: any): string => {
+  if (!state) return '';
+  const route = state.routes?.[state.index];
+  if (!route) return '';
+  return route.state ? getActiveRouteName(route.state) : (route.name ?? '');
+};
+
+/** Floating "Back to Call" pill (WhatsApp-style) for returning to an active call. */
+const BackToCallBanner: React.FC<{ currentRoute: string }> = ({ currentRoute }) => {
+  const insets = useSafeAreaInsets();
+  const { state: callState } = useCall();
+
+  if (callState.status === 'idle' || currentRoute === 'Call') return null;
+
+  return (
+    <View style={[styles.backToCallWrap, { top: insets.top + 8 }]} pointerEvents="box-none">
+      <TouchableOpacity
+        style={styles.backToCall}
+        onPress={() => navigate('Call')}
+        activeOpacity={0.9}
+      >
+        <AppIcon name="call" size={16} color={Colors.white} />
+        <Text style={styles.backToCallText}>Back to Call</Text>
+      </TouchableOpacity>
+    </View>
+  );
+};
+
 const AppNavigator: React.FC = () => {
   const { user, initializing } = useAuth();
 
   // Show splash until auth init is done AND minimum animation time (1.5s) passed.
   const [minDelayDone, setMinDelayDone] = useState(false);
+  const [currentRouteName, setCurrentRouteName] = useState('');
   useEffect(() => {
     const timer = setTimeout(() => setMinDelayDone(true), 1500);
     return () => clearTimeout(timer);
+  }, []);
+
+  // Track the focused screen so the "Back to Call" banner hides on the Call screen.
+  useEffect(() => {
+    setCurrentRouteName(navigationRef.getCurrentRoute()?.name ?? '');
   }, []);
 
   if (initializing || !minDelayDone) {
@@ -129,7 +165,12 @@ const AppNavigator: React.FC = () => {
   const isDoctor = user?.role_id === 3;
 
   return (
-    <NavigationContainer ref={navigationRef} theme={navTheme}>
+    <>
+      <NavigationContainer
+        ref={navigationRef}
+        theme={navTheme}
+        onStateChange={(s) => setCurrentRouteName(getActiveRouteName(s))}
+      >
       <Stack.Navigator
         screenOptions={{
           headerStyle: { backgroundColor: Colors.background },
@@ -196,7 +237,9 @@ const AppNavigator: React.FC = () => {
           </>
         )}
       </Stack.Navigator>
-    </NavigationContainer>
+      </NavigationContainer>
+      <BackToCallBanner currentRoute={currentRouteName} />
+    </>
   );
 };
 
@@ -229,6 +272,32 @@ const styles = StyleSheet.create({
   },
   tabItem: {
     flex: 1,
+  },
+  backToCallWrap: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    zIndex: 1000,
+  },
+  backToCall: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.primary,
+    borderRadius: 999,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    gap: 8,
+    shadowColor: Colors.shadow,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35,
+    shadowRadius: 10,
+    elevation: 10,
+  },
+  backToCallText: {
+    color: Colors.white,
+    fontWeight: '700',
+    fontSize: 14,
   },
 });
 

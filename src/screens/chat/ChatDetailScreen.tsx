@@ -263,6 +263,8 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
   const [endingSession, setEndingSession] = useState(false);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
   const [sendingMedia, setSendingMedia] = useState(false);
+  // Guards against duplicate sends when the send button is tapped rapidly.
+  const sendingTextRef = useRef(false);
   const [recording, setRecording] = useState(false);
   const [recordingSecs, setRecordingSecs] = useState(0);
   const [playingVoiceId, setPlayingVoiceId] = useState<string | null>(null);
@@ -408,23 +410,41 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
       }
     };
     const onSessionTimer = (payload: any) => {
-      const { conversationId, state, remainingTime } = unwrap(payload);
+      const { conversationId, state: nextState, remainingTime } = unwrap(payload);
       if (conversationId !== undefined && String(conversationId) !== String(chatId)) return;
-      if (state === 'active' || state === 'in_progress') {
+
+      // Keep the lifecycle state in sync so the countdown transitions live
+      // (e.g. in_progress -> active at start time) without needing to re-enter.
+      if (nextState === 'active' || nextState === 'in_progress') {
         setChatDisabled(false);
         setSessionNotice(null);
-        // Move the end time forward to match the server's remaining time, so a
-        // doctor's extension reaches the patient instantly instead of the
-        // patient's end time staying stuck at the original schedule.
-        if (typeof remainingTime === 'number' && remainingTime > 0) {
-          const serverEnd = new Date(Date.now() + remainingTime).toISOString();
-          setConversation((prev) =>
-            prev && dayjs(serverEnd).valueOf() > dayjs(prev.scheduled_end).valueOf()
-              ? { ...prev, scheduled_end: serverEnd }
-              : prev
-          );
-        }
       }
+
+      setConversation((prev) => {
+        if (!prev) return prev;
+        const next = { ...prev };
+        if (nextState === 'active' || nextState === 'in_progress' || nextState === 'ended') {
+          next.state = nextState;
+        }
+        if (typeof remainingTime === 'number' && remainingTime > 0) {
+          // Move the end time forward to match the server's remaining time, so a
+          // doctor's extension reaches the patient instantly instead of the
+          // patient's end time staying stuck at the original schedule.
+          const serverEnd = new Date(Date.now() + remainingTime).toISOString();
+          if (dayjs(serverEnd).valueOf() > dayjs(next.scheduled_end).valueOf()) {
+            next.scheduled_end = serverEnd;
+          }
+        } else if (nextState === 'active') {
+          // No server end time provided — keep the scheduled window but shift it
+          // to start now so the countdown doesn't sit at "00:00 remaining".
+          const startMs = dayjs(next.scheduled_start).valueOf();
+          const endMs = dayjs(next.scheduled_end).valueOf();
+          if (endMs > startMs && dayjs(next.scheduled_end).isBefore(dayjs())) {
+            next.scheduled_end = new Date(Date.now() + (endMs - startMs)).toISOString();
+          }
+        }
+        return next;
+      });
     };
     const onSessionEnded = (payload: any) => {
       const { conversationId } = unwrap(payload);
@@ -736,7 +756,8 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
 
   const sendMessage = useCallback(async () => {
     const trimmed = inputText.trim();
-    if (!trimmed || !chatId || locked) return;
+    if (!trimmed || !chatId || locked || sendingTextRef.current) return;
+    sendingTextRef.current = true;
 
     socketService.sendTypingStopped(chatId);
     const localId = `local-${Date.now()}`;
@@ -750,6 +771,10 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
       sentByMe: true,
     };
     setMessages((prev) => [...prev, optimistic]);
+    // Clear the composer immediately (optimistic) so the message is removed
+    // right away and rapid re-taps can't resend the same text.
+    setInputText('');
+    setShowEmoji(false);
 
     try {
       const saved = await chatService.sendMessage({ sessionId: chatId, content: trimmed });
@@ -758,9 +783,9 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
       );
     } catch {
       setMessages((prev) => prev.filter((m) => m.id !== localId));
+    } finally {
+      sendingTextRef.current = false;
     }
-    setInputText('');
-    setShowEmoji(false);
   }, [chatId, inputText, locked, user?.id]);
 
   const handleChangeText = (text: string) => {

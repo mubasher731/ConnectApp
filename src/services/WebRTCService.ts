@@ -175,7 +175,8 @@ export class WebRTCService {
     try {
       await this.peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
       console.log('[WebRTC] Set remote offer');
-      await this.createAnswer();
+      // NOTE: the SDP answer is created later in acceptCall(), so the caller
+      // hears/sees nothing until the callee actually accepts the call.
       // Remote description is ready — apply any queued ICE candidates.
       this.processQueuedCandidates();
     } catch (error) {

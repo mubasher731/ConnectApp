@@ -109,7 +109,7 @@ export const IncomingCallModal: React.FC<IncomingCallModalProps> = ({
         </View>
 
         {/* Caller name */}
-        <Text style={styles.callerName}>{state.remoteUser?.name || 'Unknown'}</Text>
+        <Text style={styles.callerName}>{state.remoteUser?.name || 'Incoming Call'}</Text>
         <Text style={styles.incomingText}>Incoming call...</Text>
 
         {/* Action buttons */}

@@ -385,6 +385,7 @@ export const CallProvider: React.FC<CallProviderProps> = ({ children }) => {
       clearTimeout(ringTimeout);
       ringTimeout = null;
     }
+    startingCallRef.current = false;
     webRTCService.cleanup();
     InCallManager.stop();
     setStreams({ local: null, remote: null });
@@ -399,6 +400,7 @@ export const CallProvider: React.FC<CallProviderProps> = ({ children }) => {
       clearTimeout(ringTimeout);
       ringTimeout = null;
     }
+    startingCallRef.current = false;
     webRTCService.cleanup();
     setStreams({ local: null, remote: null });
     if (isMounted.current) {
@@ -408,6 +410,7 @@ export const CallProvider: React.FC<CallProviderProps> = ({ children }) => {
   }, []);
 
   const handleCallBusy = useCallback(() => {
+    startingCallRef.current = false;
     webRTCService.cleanup();
     setStreams({ local: null, remote: null });
     if (isMounted.current) {
@@ -462,8 +465,11 @@ export const CallProvider: React.FC<CallProviderProps> = ({ children }) => {
     InCallManager.start({ media: state.callType === 'video' ? 'video' : 'audio' });
     InCallManager.setSpeakerphoneOn(true);
 
-    // The answer was already created in handleIncomingCall via setRemoteOffer -> createAnswer
-    // It will be sent via onAnswerCreated event
+    // Create + send the SDP answer ONLY now, so the caller hears/sees nothing
+    // until the callee actually accepts the call. Emitted via onAnswerCreated.
+    webRTCService.createAnswer().catch((error) => {
+      console.error('[CallContext] createAnswer failed:', error);
+    });
   }, [state.status, state.callType]);
 
   const rejectCall = useCallback(() => {
