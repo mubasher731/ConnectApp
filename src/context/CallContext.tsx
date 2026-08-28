@@ -486,10 +486,17 @@ export const CallProvider: React.FC<CallProviderProps> = ({ children }) => {
   }, [state.status, state.remoteUser?.userId, user?.id]);
 
   const endCall = useCallback(() => {
-    if (state.status !== 'active' && state.status !== 'outgoing') return;
+    // Either participant may end the call at any time (active, outgoing, or
+    // while the callee is still ringing). While ringing, ending = rejecting.
+    if (state.status !== 'active' && state.status !== 'outgoing' && state.status !== 'incoming') {
+      return;
+    }
 
     if (state.remoteUser?.userId && socket) {
-      socket.emit('call:end', { to: state.remoteUser.userId, from: user?.id ?? 0 });
+      socket.emit(state.status === 'incoming' ? 'call:reject' : 'call:end', {
+        to: state.remoteUser.userId,
+        from: user?.id ?? 0,
+      });
     }
 
     webRTCService.cleanup();

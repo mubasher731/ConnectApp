@@ -50,9 +50,9 @@ const DoctorAppointmentCard: React.FC<DoctorAppointmentCardProps> = ({
         </View>
       </View>
 
-      {conversation.appointment?.reason ? (
+      {(conversation.appointment?.reason ?? conversation.reason) ? (
         <Text style={styles.reason} numberOfLines={2}>
-          {conversation.appointment.reason}
+          {conversation.appointment?.reason ?? conversation.reason}
         </Text>
       ) : null}
     </View>

@@ -79,12 +79,12 @@ const sessionDividerLabel = (item: Message): string => {
   if (d.isValid()) {
     const time = d.format('h:mm A');
     if (d.isAfter(dayjs())) {
-      // Future / scheduled session — show a relative countdown instead of "Today's Session".
+      // Future / scheduled session — show a relative countdown instead of a date.
       return `${formatSessionRelative(d)} • ${time}`;
     }
-    if (d.isSame(dayjs(), 'day')) return `Today's Session • ${time}`;
-    if (d.isSame(dayjs().subtract(1, 'day'), 'day')) return `Yesterday's Session • ${time}`;
-    return `${d.format('DD MMM YYYY')} Session • ${time}`;
+    if (d.isSame(dayjs(), 'day')) return `Today • ${time}`;
+    if (d.isSame(dayjs().subtract(1, 'day'), 'day')) return `Yesterday • ${time}`;
+    return `${d.format('DD MMM YYYY')} • ${time}`;
   }
   return item.text || 'New session';
 };

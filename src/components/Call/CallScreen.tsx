@@ -4,10 +4,11 @@ import { RTCView } from 'react-native-webrtc';
 import { Clock, Wifi, WifiOff, AlertCircle } from 'lucide-react-native';
 import { useCall } from '../../context/CallContext';
 import { CallControls } from './CallControls';
+import { IncomingCallModal } from './IncomingCallModal';
 import { Colors, Spacing } from '../../theme';
 
 export const CallScreen: React.FC = () => {
-  const { state, endCall, localStream, remoteStream } = useCall();
+  const { state, endCall, acceptCall, rejectCall, localStream, remoteStream } = useCall();
   const [connectionQuality, setConnectionQuality] = React.useState<'good' | 'poor' | 'disconnected'>('good');
   const [opacity] = React.useState(new Animated.Value(0));
   const [scale] = React.useState(new Animated.Value(0.95));
@@ -176,6 +177,13 @@ export const CallScreen: React.FC = () => {
           <Text style={styles.indicatorText}>📷 Camera Off</Text>
         </View>
       )}
+
+      {/* Incoming call overlay: Accept / Decline for the callee */}
+      <IncomingCallModal
+        visible={state.status === 'incoming'}
+        onAccept={acceptCall}
+        onReject={rejectCall}
+      />
     </View>
   );
 };

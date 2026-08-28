@@ -141,6 +141,8 @@ export interface Conversation {
   doctor_name?: string;
   patient_name?: string;
   appointment?: ConversationAppointment | null;
+  /** Reason the patient gave when booking (may also be nested under appointment). */
+  reason?: string;
   /** The other participant's user id (for socket presence). */
   peer_user_id?: number;
   /** Whether the peer currently has a connected socket. */

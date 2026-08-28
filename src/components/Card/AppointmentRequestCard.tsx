@@ -45,7 +45,7 @@ const AppointmentRequestCard: React.FC<AppointmentRequestCardProps> = ({
         <DoctorPill label={meta.label} color={meta.color} bg={meta.bg} />
       </View>
 
-      {appt?.reason ? (
+      {(appt?.reason ?? request.reason) ? (
         <View style={styles.messageRow}>
           <AppIcon
             name="chatbubble-ellipses-outline"
@@ -53,7 +53,7 @@ const AppointmentRequestCard: React.FC<AppointmentRequestCardProps> = ({
             color={Colors.textTertiary}
           />
           <Text style={styles.message} numberOfLines={2}>
-            {appt.reason}
+            {appt?.reason ?? request.reason}
           </Text>
         </View>
       ) : null}

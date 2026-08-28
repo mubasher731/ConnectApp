@@ -176,6 +176,8 @@ export class WebRTCService {
       await this.peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
       console.log('[WebRTC] Set remote offer');
       await this.createAnswer();
+      // Remote description is ready — apply any queued ICE candidates.
+      this.processQueuedCandidates();
     } catch (error) {
       console.error('[WebRTC] Set remote offer error:', error);
       this.events.onError?.(error as Error);
@@ -188,6 +190,8 @@ export class WebRTCService {
     try {
       await this.peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
       console.log('[WebRTC] Set remote answer');
+      // Remote description is ready — apply any queued ICE candidates.
+      this.processQueuedCandidates();
     } catch (error) {
       console.error('[WebRTC] Set remote answer error:', error);
       this.events.onError?.(error as Error);
@@ -195,7 +199,10 @@ export class WebRTCService {
   }
 
   async addIceCandidate(candidate: RTCIceCandidateInit) {
-    if (!this.peerConnection) {
+    // The remote description must exist before candidates can be added. If it
+    // is not ready yet (e.g. candidates arrive before the offer/answer), queue
+    // them and flush once the remote description is set.
+    if (!this.peerConnection || !this.peerConnection.remoteDescription) {
       this.iceCandidatesQueue.push(candidate);
       return;
     }
@@ -209,7 +216,11 @@ export class WebRTCService {
   }
 
   private processQueuedCandidates() {
-    while (this.iceCandidatesQueue.length > 0 && this.peerConnection) {
+    while (
+      this.iceCandidatesQueue.length > 0 &&
+      this.peerConnection &&
+      this.peerConnection.remoteDescription
+    ) {
       const candidate = this.iceCandidatesQueue.shift();
       if (candidate) {
         this.addIceCandidate(candidate);

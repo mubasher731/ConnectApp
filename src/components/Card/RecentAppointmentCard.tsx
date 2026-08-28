@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import dayjs from 'dayjs';
 import Avatar from '../Icon/Avatar';
 import DoctorPill from '../Doctor/DoctorPill';
+import AppIcon from '../Icon/AppIcon';
 import { CONVERSATION_STATE_META } from '../../context/appData';
 import { Conversation } from '../../types';
 import { Colors, Radius, Shadows, Spacing } from '../../theme';
@@ -21,6 +22,7 @@ const RecentAppointmentCard: React.FC<RecentAppointmentCardProps> = ({
   const start = dayjs(conversation.scheduled_start);
   const name = conversation.patient_name?.trim() || 'Patient';
   const timeLabel = start.isValid() ? start.format('MMM D, h:mm A') : '';
+  const reason = conversation.appointment?.reason ?? conversation.reason;
 
   return (
     <TouchableOpacity
@@ -40,6 +42,19 @@ const RecentAppointmentCard: React.FC<RecentAppointmentCardProps> = ({
         </View>
         <DoctorPill label={meta.label} color={meta.color} bg={meta.bg} />
       </View>
+
+      {reason ? (
+        <View style={styles.reasonRow}>
+          <AppIcon
+            name="chatbubble-ellipses-outline"
+            size={14}
+            color={Colors.textTertiary}
+          />
+          <Text style={styles.reason} numberOfLines={2}>
+            {reason}
+          </Text>
+        </View>
+      ) : null}
     </TouchableOpacity>
   );
 };
@@ -79,6 +94,20 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: Colors.textTertiary,
     marginTop: 2,
+  },
+  reasonRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    paddingTop: Spacing.sm,
+    marginTop: Spacing.sm,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: Colors.border,
+  },
+  reason: {
+    flex: 1,
+    fontSize: 12,
+    color: Colors.textSecondary,
+    marginLeft: Spacing.sm,
   },
 });
 
