@@ -138,6 +138,10 @@ export const CallProvider: React.FC<CallProviderProps> = ({ children }) => {
   const [state, dispatch] = useReducer(callReducer, initialState);
   const isMounted = useRef(true);
   const { user } = useAuth();
+  // Synchronous guard: blocks a second initiateCall while a peer connection is
+  // still being set up (rapid taps would otherwise call cleanup() on a live/
+  // mid-gathering PC, which is a native WebRTC abort trigger).
+  const startingCallRef = useRef(false);
 
   // Live view of the latest state for socket handlers (avoids stale closures).
   const stateRef = useRef(state);
@@ -405,7 +409,8 @@ export const CallProvider: React.FC<CallProviderProps> = ({ children }) => {
   // Actions
   const initiateCall = useCallback(
     (userId: number, name: string, callType: 'audio' | 'video', sessionId: number) => {
-      if (state.status !== 'idle') return;
+      if (state.status !== 'idle' || startingCallRef.current) return;
+      startingCallRef.current = true;
 
       dispatch({ type: 'SET_REMOTE_USER', user: { userId, name, avatar: undefined } });
       dispatch({ type: 'SET_CALL_TYPE', callType });
@@ -415,11 +420,18 @@ export const CallProvider: React.FC<CallProviderProps> = ({ children }) => {
 
       // Awaited so the offer is only sent after local media is attached, and
       // failures are handled instead of leaving a dangling peer connection.
-      webRTCService.createPeerConnection(userId, true, callType).catch((error) => {
-        console.error('[CallContext] initiateCall failed:', error);
-        webRTCService.cleanup();
-        if (isMounted.current) dispatch({ type: 'RESET' });
-      });
+      webRTCService
+        .createPeerConnection(userId, true, callType)
+        .then(() => {
+          // Peer connection is set up (offer created) — allow future calls.
+          startingCallRef.current = false;
+        })
+        .catch((error) => {
+          console.error('[CallContext] initiateCall failed:', error);
+          webRTCService.cleanup();
+          if (isMounted.current) dispatch({ type: 'RESET' });
+          startingCallRef.current = false;
+        });
       // Offer will be sent via onOfferCreated event
     },
     [state.status]

@@ -5,10 +5,16 @@
 
 export const RTC_CONFIG = {
   iceServers: [
-    // ── Google STUN (free) ────────────────────────────────────────────────
-    { urls: 'stun:stun.l.google.com:19302' },
-    { urls: 'stun:stun1.l.google.com:19302' },
-    // ── Public TURN relay for calls across different networks ─────────────
+    // ── TURN relay over TCP:443 (firewall-friendly, like ngrok) ───────────
+    // Required for media to flow between the two different mobile networks.
+    // UDP STUN to Google (port 19302) is often blocked on mobile data and has
+    // triggered a native libjingle SIGABRT on the network thread during ICE
+    // gathering, so we avoid the UDP-STUN path entirely.
+    {
+      urls: 'turn:openrelay.metered.ca:443?transport=tcp',
+      username: 'openrelayproject',
+      credential: 'openrelayproject',
+    },
     {
       urls: 'turn:openrelay.metered.ca:443',
       username: 'openrelayproject',
