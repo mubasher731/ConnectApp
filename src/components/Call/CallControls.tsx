@@ -42,42 +42,40 @@ export const CallControls: React.FC<CallControlsProps> = ({ onEndCall }) => {
       )}
 
       <View style={styles.controlsRow}>
-        <View style={styles.togglesGroup}>
-          {state.callType === 'video' &&
-            renderToggle('flip', <RotateCcw size={22} color={Colors.white} />, false, switchCamera)}
+        {state.callType === 'video' &&
+          renderToggle('flip', <RotateCcw size={24} color={Colors.white} />, false, switchCamera)}
 
-          {renderToggle(
-            'mute',
-            state.isMuted ? (
-              <MicOff size={22} color={Colors.primary} />
+        {renderToggle(
+          'mute',
+          state.isMuted ? (
+            <MicOff size={24} color={Colors.primary} />
+          ) : (
+            <Mic size={24} color={Colors.white} />
+          ),
+          state.isMuted,
+          toggleMute
+        )}
+
+        {renderToggle(
+          'speaker',
+          <Volume2 size={24} color={state.isSpeakerOn ? Colors.primary : Colors.white} />,
+          state.isSpeakerOn,
+          toggleSpeaker
+        )}
+
+        {state.callType === 'video' &&
+          renderToggle(
+            'video',
+            state.isVideoEnabled ? (
+              <Video size={24} color={Colors.white} />
             ) : (
-              <Mic size={22} color={Colors.white} />
+              <VideoOff size={24} color={Colors.primary} />
             ),
-            state.isMuted,
-            toggleMute
+            !state.isVideoEnabled,
+            toggleVideo
           )}
 
-          {renderToggle(
-            'speaker',
-            <Volume2 size={22} color={state.isSpeakerOn ? Colors.primary : Colors.white} />,
-            state.isSpeakerOn,
-            toggleSpeaker
-          )}
-
-          {state.callType === 'video' &&
-            renderToggle(
-              'video',
-              state.isVideoEnabled ? (
-                <Video size={22} color={Colors.white} />
-              ) : (
-                <VideoOff size={22} color={Colors.primary} />
-              ),
-              !state.isVideoEnabled,
-              toggleVideo
-            )}
-        </View>
-
-        {/* End call — red, always at the far right */}
+        {/* End call — red, same size, centered with the toggles */}
         <TouchableOpacity style={styles.endCallButton} onPress={onEndCall} activeOpacity={0.8}>
           <Phone size={26} color={Colors.white} />
         </TouchableOpacity>
@@ -107,17 +105,13 @@ const styles = StyleSheet.create({
   controlsRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  togglesGroup: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 16,
+    justifyContent: 'center',
+    gap: 18,
   },
   toggleButton: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     backgroundColor: 'rgba(255, 255, 255, 0.14)',
     justifyContent: 'center',
     alignItems: 'center',
@@ -126,9 +120,9 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.white,
   },
   endCallButton: {
-    width: 62,
-    height: 62,
-    borderRadius: 31,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     backgroundColor: '#EF4444',
     justifyContent: 'center',
     alignItems: 'center',

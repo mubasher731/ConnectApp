@@ -154,8 +154,8 @@ export const CallScreen: React.FC = () => {
         )}
       </View>
 
-      {/* Local Video - PiP */}
-      {state.callType === 'video' && state.status === 'active' && localStream && (
+      {/* Local Video - PiP (shows as soon as local media is ready) */}
+      {state.callType === 'video' && localStream && (
         <View style={styles.localVideoContainer}>
           <RTCView
             style={styles.localVideo}

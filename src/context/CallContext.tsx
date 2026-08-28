@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useReducer, useEffect, useCallback, ReactNode, useRef } from 'react';
+import React, { createContext, useContext, useReducer, useEffect, useCallback, useState, ReactNode, useRef } from 'react';
 import { Socket } from 'socket.io-client';
 import { socketService } from '../api/socket';
 import { navigationRef, navigate, goBack } from '../navigation/navigationRef';
@@ -136,6 +136,10 @@ const leaveCallScreen = (): void => {
 
 export const CallProvider: React.FC<CallProviderProps> = ({ children }) => {
   const [state, dispatch] = useReducer(callReducer, initialState);
+  const [streams, setStreams] = useState<{
+    local: MediaStream | null;
+    remote: MediaStream | null;
+  }>({ local: null, remote: null });
   const isMounted = useRef(true);
   const { user } = useAuth();
   // Synchronous guard: blocks a second initiateCall while a peer connection is
@@ -264,8 +268,11 @@ export const CallProvider: React.FC<CallProviderProps> = ({ children }) => {
   useEffect(() => {
     const myId = user?.id ?? 0;
     const events: WebRTCEvents = {
-      onRemoteStream: () => {
-        // Stream is handled by WebRTCService directly
+      onLocalStream: (stream) => {
+        setStreams((prev) => ({ ...prev, local: stream }));
+      },
+      onRemoteStream: (stream) => {
+        setStreams((prev) => ({ ...prev, remote: stream }));
       },
       onCallEnded: () => {
         handlersRef.current.onCallEnded();
@@ -380,6 +387,7 @@ export const CallProvider: React.FC<CallProviderProps> = ({ children }) => {
     }
     webRTCService.cleanup();
     InCallManager.stop();
+    setStreams({ local: null, remote: null });
     if (isMounted.current) {
       dispatch({ type: 'RESET' });
       leaveCallScreen();
@@ -392,6 +400,7 @@ export const CallProvider: React.FC<CallProviderProps> = ({ children }) => {
       ringTimeout = null;
     }
     webRTCService.cleanup();
+    setStreams({ local: null, remote: null });
     if (isMounted.current) {
       dispatch({ type: 'RESET' });
       leaveCallScreen();
@@ -400,6 +409,7 @@ export const CallProvider: React.FC<CallProviderProps> = ({ children }) => {
 
   const handleCallBusy = useCallback(() => {
     webRTCService.cleanup();
+    setStreams({ local: null, remote: null });
     if (isMounted.current) {
       dispatch({ type: 'RESET' });
       leaveCallScreen();
@@ -529,8 +539,8 @@ export const CallProvider: React.FC<CallProviderProps> = ({ children }) => {
 
   const value: CallContextType = {
     state,
-    localStream: webRTCService.getLocalStream(),
-    remoteStream: webRTCService.getRemoteStream(),
+    localStream: streams.local,
+    remoteStream: streams.remote,
     initiateCall,
     acceptCall,
     rejectCall,

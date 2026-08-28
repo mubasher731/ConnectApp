@@ -17,6 +17,7 @@ type CallType = 'audio' | 'video';
 type RTCPeerConnectionState = 'new' | 'connecting' | 'connected' | 'disconnected' | 'failed' | 'closed';
 
 export interface WebRTCEvents {
+  onLocalStream?: (stream: MediaStream) => void;
   onRemoteStream: (stream: MediaStream) => void;
   onCallEnded: () => void;
   onError: (error: Error) => void;
@@ -108,6 +109,8 @@ export class WebRTCService {
       this.localStream.getTracks().forEach((track) => {
         this.peerConnection?.addTrack(track, this.localStream!);
       });
+      // Notify the UI that local media is ready (updates the PiP preview).
+      this.events.onLocalStream?.(this.localStream);
     } catch (error) {
       console.error('[WebRTC] Failed to get user media:', error);
       this.events.onError?.(error as Error);
