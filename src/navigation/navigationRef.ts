@@ -9,3 +9,10 @@ export const navigate = (name: string, params?: object): void => {
     (navigationRef.navigate as (n: string, p?: object) => void)(name, params);
   }
 };
+
+/** Go back one screen (used by the call flow to leave the Call screen). */
+export const goBack = (): void => {
+  if (navigationRef.isReady() && navigationRef.canGoBack()) {
+    navigationRef.goBack();
+  }
+};

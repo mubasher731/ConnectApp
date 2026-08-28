@@ -1,7 +1,8 @@
 import React, { createContext, useContext, useReducer, useEffect, useCallback, ReactNode, useRef } from 'react';
-import { io, Socket } from 'socket.io-client';
-import { getApiBaseUrl } from '../api/config';
-import { tokenStore } from '../api/client';
+import { Socket } from 'socket.io-client';
+import { socketService } from '../api/socket';
+import { navigationRef, navigate, goBack } from '../navigation/navigationRef';
+import { useAuth } from './AuthContext';
 import { webRTCService, WebRTCEvents } from '../services/WebRTCService';
 import { MediaStream } from 'react-native-webrtc';
 import InCallManager from 'react-native-incall-manager';
@@ -123,68 +124,114 @@ let socket: Socket | null = null;
 let durationInterval: ReturnType<typeof setInterval> | null = null;
 let ringTimeout: ReturnType<typeof setTimeout> | null = null;
 
+/** Navigate to the in-call screen (global, from anywhere in the app). */
+const goToCallScreen = (): void => navigate('Call');
+
+/** Leave the in-call screen only when it is the current route. */
+const leaveCallScreen = (): void => {
+  if (navigationRef.getCurrentRoute()?.name === 'Call' && navigationRef.canGoBack()) {
+    goBack();
+  }
+};
+
 export const CallProvider: React.FC<CallProviderProps> = ({ children }) => {
   const [state, dispatch] = useReducer(callReducer, initialState);
   const isMounted = useRef(true);
+  const { user } = useAuth();
+
+  // Live view of the latest state for socket handlers (avoids stale closures).
+  const stateRef = useRef(state);
+  useEffect(() => {
+    stateRef.current = state;
+  }, [state]);
+
+  // Always points at the latest handler closures so socket listeners, which are
+  // registered once, never act on state from the first render.
+  const handlersRef = useRef({
+    onIncomingCall: (data: any) => {},
+    onCallAnswer: (data: any) => {},
+    onIceCandidate: (data: any) => {},
+    onCallEnded: () => {},
+    onCallRejected: () => {},
+    onCallBusy: () => {},
+  });
+
+  // Stable socket-listener wrappers: they dispatch through handlersRef, so the
+  // same listener functions can be cleanly removed in the cleanup below.
+  const callListeners = useRef({
+    incoming: (d: any) => handlersRef.current.onIncomingCall(d),
+    offer: (d: any) => handlersRef.current.onIncomingCall(d),
+    answer: (d: any) => handlersRef.current.onCallAnswer(d),
+    ice: (d: any) => handlersRef.current.onIceCandidate(d),
+    ended: () => handlersRef.current.onCallEnded(),
+    end: () => handlersRef.current.onCallEnded(),
+    rejected: () => handlersRef.current.onCallRejected(),
+    reject: () => handlersRef.current.onCallRejected(),
+    busy: () => handlersRef.current.onCallBusy(),
+    disconnect: (reason: string) => {
+      console.log('[Call] Socket disconnected:', reason);
+      const status = stateRef.current.status;
+      if (status === 'active' || status === 'outgoing') {
+        dispatch({ type: 'SET_STATUS', status: 'reconnecting' });
+      }
+    },
+  });
 
   useEffect(() => {
     isMounted.current = true;
-    return () => { isMounted.current = false; };
+    return () => {
+      isMounted.current = false;
+    };
   }, []);
 
   // InCallManager is initialized on call start (acceptCall), not on mount,
   // to avoid activating the proximity sensor when no call is active.
 
-  // Initialize socket connection
+  // Initialize call signaling. Reuses the app-wide socketService socket (the
+  // one registered with the backend's onlineUsers via addUser), so call events
+  // relayed by the backend actually reach this client. The shared socket is
+  // NOT disconnected on unmount — only the call listeners are removed.
   useEffect(() => {
     let cancelled = false;
 
-    (async () => {
-      const token = await tokenStore.get();
-      if (cancelled || !token) return;
+    const setup = async () => {
+      let s = socketService.getSocket();
+      if (!s?.connected) {
+        s = await socketService.connect();
+      }
+      if (cancelled || !s) return;
+      socket = s;
 
-      socket = io(getApiBaseUrl(), {
-        transports: ['websocket'],
-        auth: { token },
-        reconnection: true,
-        reconnectionAttempts: 5,
-        reconnectionDelay: 1000,
-      });
+      const L = callListeners.current;
+      s.on('disconnect', L.disconnect);
+      s.on('call:incoming', L.incoming);
+      s.on('call:offer', L.offer); // backend relays call:offer
+      s.on('call:answer', L.answer);
+      s.on('call:ice-candidate', L.ice);
+      s.on('call:ended', L.ended);
+      s.on('call:end', L.end);
+      s.on('call:rejected', L.rejected);
+      s.on('call:reject', L.reject);
+      s.on('call:busy', L.busy);
+    };
 
-      socket.on('connect', () => {
-        console.log('[Call] Socket connected');
-      });
-
-      socket.on('disconnect', (reason) => {
-        console.log('[Call] Socket disconnected:', reason);
-        if (state.status === 'active' || state.status === 'outgoing') {
-          dispatch({ type: 'SET_STATUS', status: 'reconnecting' });
-        }
-      });
-
-      socket.on('call:incoming', handleIncomingCall);
-      socket.on('call:offer', handleIncomingCall); // backend may relay as either name
-      socket.on('call:answer', handleCallAnswer);
-      socket.on('call:ice-candidate', handleIceCandidate);
-      socket.on('call:ended', handleCallEnded);
-      socket.on('call:end', handleCallEnded);
-      socket.on('call:rejected', handleCallRejected);
-      socket.on('call:reject', handleCallRejected);
-      socket.on('call:busy', handleCallBusy);
-    })();
+    setup();
 
     return () => {
       cancelled = true;
-      socket?.off('call:incoming', handleIncomingCall);
-      socket?.off('call:offer', handleIncomingCall);
-      socket?.off('call:answer', handleCallAnswer);
-      socket?.off('call:ice-candidate', handleIceCandidate);
-      socket?.off('call:ended', handleCallEnded);
-      socket?.off('call:end', handleCallEnded);
-      socket?.off('call:rejected', handleCallRejected);
-      socket?.off('call:reject', handleCallRejected);
-      socket?.off('call:busy', handleCallBusy);
-      socket?.disconnect();
+      if (socket) {
+        const L = callListeners.current;
+        socket.off('disconnect', L.disconnect);
+        socket.off('call:incoming', L.incoming);
+        socket.off('call:offer', L.offer);
+        socket.off('call:answer', L.answer);
+        socket.off('call:ice-candidate', L.ice);
+        socket.off('call:ended', L.ended);
+        socket.off('call:end', L.end);
+        socket.off('call:rejected', L.rejected);
+        socket.off('call:reject', L.reject);
+        socket.off('call:busy', L.busy);
+      }
       socket = null;
     };
   }, []);
@@ -211,21 +258,23 @@ export const CallProvider: React.FC<CallProviderProps> = ({ children }) => {
 
   // WebRTC event handlers
   useEffect(() => {
+    const myId = user?.id ?? 0;
     const events: WebRTCEvents = {
       onRemoteStream: () => {
         // Stream is handled by WebRTCService directly
       },
       onCallEnded: () => {
-        handleCallEnded();
+        handlersRef.current.onCallEnded();
       },
       onError: (error) => {
         console.error('[CallContext] WebRTC error:', error);
-        handleCallEnded();
+        handlersRef.current.onCallEnded();
       },
       onIceCandidate: (candidate) => {
         if (state.remoteUser?.userId && socket) {
           socket.emit('call:ice-candidate', {
             to: state.remoteUser.userId,
+            from: myId,
             candidate,
           });
         }
@@ -237,6 +286,8 @@ export const CallProvider: React.FC<CallProviderProps> = ({ children }) => {
         if (state.remoteUser?.userId && socket) {
           socket.emit('call:offer', {
             to: state.remoteUser.userId,
+            from: myId,
+            fromName: user?.name ?? '',
             offer,
             sessionId: state.sessionId,
             callType: state.callType,
@@ -247,6 +298,7 @@ export const CallProvider: React.FC<CallProviderProps> = ({ children }) => {
         if (state.remoteUser?.userId && socket) {
           socket.emit('call:answer', {
             to: state.remoteUser.userId,
+            from: myId,
             answer,
           });
         }
@@ -258,13 +310,13 @@ export const CallProvider: React.FC<CallProviderProps> = ({ children }) => {
     return () => {
       webRTCService.setEvents({});
     };
-  }, [state.remoteUser?.userId, state.sessionId, state.callType, socket]);
+  }, [state.remoteUser?.userId, state.sessionId, state.callType, socket, user?.id, user?.name]);
 
   // Handle incoming call
   const handleIncomingCall = useCallback(
     (data: { from: number; fromName: string; offer: any; sessionId: number; callType: string }) => {
       if (state.status !== 'idle') {
-        socket?.emit('call:busy', { to: data.from });
+        socket?.emit('call:busy', { to: data.from, from: user?.id ?? 0 });
         return;
       }
 
@@ -289,7 +341,7 @@ export const CallProvider: React.FC<CallProviderProps> = ({ children }) => {
           webRTCService.cleanup();
         });
     },
-    [state.status]
+    [state.status, user?.id]
   );
 
   const handleCallAnswer = useCallback(
@@ -401,7 +453,7 @@ export const CallProvider: React.FC<CallProviderProps> = ({ children }) => {
     }
 
     if (state.remoteUser?.userId && socket) {
-      socket.emit('call:reject', { to: state.remoteUser.userId });
+      socket.emit('call:reject', { to: state.remoteUser.userId, from: user?.id ?? 0 });
     }
 
     webRTCService.cleanup();
@@ -409,13 +461,13 @@ export const CallProvider: React.FC<CallProviderProps> = ({ children }) => {
       dispatch({ type: 'RESET' });
       leaveCallScreen();
     }
-  }, [state.status, state.remoteUser?.userId]);
+  }, [state.status, state.remoteUser?.userId, user?.id]);
 
   const endCall = useCallback(() => {
     if (state.status !== 'active' && state.status !== 'outgoing') return;
 
     if (state.remoteUser?.userId && socket) {
-      socket.emit('call:end', { to: state.remoteUser.userId });
+      socket.emit('call:end', { to: state.remoteUser.userId, from: user?.id ?? 0 });
     }
 
     webRTCService.cleanup();
@@ -424,7 +476,7 @@ export const CallProvider: React.FC<CallProviderProps> = ({ children }) => {
       dispatch({ type: 'RESET' });
       leaveCallScreen();
     }
-  }, [state.status, state.remoteUser?.userId]);
+  }, [state.status, state.remoteUser?.userId, user?.id]);
 
   const toggleMute = useCallback(() => {
     const newMuted = !state.isMuted;
@@ -449,6 +501,19 @@ export const CallProvider: React.FC<CallProviderProps> = ({ children }) => {
   const switchCamera = useCallback(() => {
     webRTCService.switchCamera();
   }, []);
+
+  // Keep handlersRef pointing at the latest useCallback versions. Placed after
+  // the handler declarations so TypeScript sees them as already assigned.
+  useEffect(() => {
+    handlersRef.current = {
+      onIncomingCall: handleIncomingCall,
+      onCallAnswer: handleCallAnswer,
+      onIceCandidate: handleIceCandidate,
+      onCallEnded: handleCallEnded,
+      onCallRejected: handleCallRejected,
+      onCallBusy: handleCallBusy,
+    };
+  }, [handleIncomingCall, handleCallAnswer, handleIceCandidate, handleCallEnded, handleCallRejected, handleCallBusy]);
 
   const value: CallContextType = {
     state,

@@ -51,7 +51,7 @@ export const IncomingCallModal: React.FC<IncomingCallModalProps> = ({
             }),
           ]),
           { iterations: -1 }
-        ).start(),
+        ),
       ]).start();
 
       // Prevent back button from dismissing
@@ -226,13 +226,13 @@ const styles = StyleSheet.create({
   incomingText: {
     fontSize: 16,
     color: Colors.textSecondary,
-    marginBottom: Spacing.xxxl,
+    marginBottom: Spacing.xxl,
   },
   buttonsContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: Spacing.xxxl,
+    gap: Spacing.xxl,
   },
   actionButton: {
     alignItems: 'center',
@@ -270,7 +270,7 @@ const styles = StyleSheet.create({
     color: Colors.white,
   },
   swipeHint: {
-    marginTop: Spacing.xxxl,
+    marginTop: Spacing.xxl,
     paddingHorizontal: Spacing.xl,
     paddingVertical: Spacing.sm,
     borderRadius: 20,
