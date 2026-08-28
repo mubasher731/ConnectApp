@@ -5,6 +5,7 @@ import {
   TextInput,
   FlatList,
   TouchableOpacity,
+  Pressable,
   StyleSheet,
   Platform,
   Animated,
@@ -17,7 +18,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import dayjs from 'dayjs';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { launchCamera, launchImageLibrary } from 'react-native-image-picker';
 import { pick, types, errorCodes, isErrorWithCode } from '@react-native-documents/picker';
 import Sound from 'react-native-nitro-sound';
@@ -123,11 +124,122 @@ const ChatHeaderTitle: React.FC<{ name: string; online: boolean }> = ({ name, on
   <View style={styles.headerTitleRow}>
     <Avatar name={name || '?'} size={34} online={online} />
     <View style={styles.headerTitleText}>
-      <Text style={styles.headerTitleName}>{name}</Text>
-      <Text style={styles.headerTitleStatus}>{online ? 'online' : 'offline'}</Text>
+      <Text style={styles.headerTitleName} numberOfLines={1}>
+        {name}
+      </Text>
+      <Text style={[styles.headerTitleStatus, !online && styles.headerTitleStatusOffline]}>
+        {online ? 'online' : 'offline'}
+      </Text>
     </View>
   </View>
 );
+
+/** Three-dots header menu: Audio Call / Video Call / End Session. */
+interface ChatHeaderMenuProps {
+  canCall: boolean;
+  canEnd: boolean;
+  endingSession: boolean;
+  callInProgress: boolean;
+  onAudioCall: () => void;
+  onVideoCall: () => void;
+  onEndSession: () => void;
+}
+
+const ChatHeaderMenu: React.FC<ChatHeaderMenuProps> = ({
+  canCall,
+  canEnd,
+  endingSession,
+  callInProgress,
+  onAudioCall,
+  onVideoCall,
+  onEndSession,
+}) => {
+  const [open, setOpen] = useState(false);
+  const insets = useSafeAreaInsets();
+  const close = () => setOpen(false);
+
+  const makePress = (fn: () => void) => () => {
+    close();
+    fn();
+  };
+
+  const options: {
+    key: string;
+    icon: string;
+    label: string;
+    onPress: () => void;
+    danger?: boolean;
+    disabled?: boolean;
+  }[] = [];
+
+  if (canCall) {
+    options.push({
+      key: 'audio',
+      icon: 'call-outline',
+      label: 'Audio Call',
+      onPress: makePress(onAudioCall),
+      disabled: callInProgress,
+    });
+    options.push({
+      key: 'video',
+      icon: 'videocam-outline',
+      label: 'Video Call',
+      onPress: makePress(onVideoCall),
+      disabled: callInProgress,
+    });
+  }
+  if (canEnd) {
+    options.push({
+      key: 'end',
+      icon: 'stop-circle-outline',
+      label: endingSession ? 'Ending…' : 'End Session',
+      onPress: makePress(onEndSession),
+      danger: true,
+      disabled: endingSession,
+    });
+  }
+
+  return (
+    <>
+      <TouchableOpacity
+        style={styles.headerMenuButton}
+        onPress={() => setOpen(true)}
+        activeOpacity={0.7}
+        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+      >
+        <AppIcon name="ellipsis-vertical-outline" size={22} color={Colors.text} />
+      </TouchableOpacity>
+
+      <Modal transparent visible={open} animationType="fade" onRequestClose={close}>
+        <Pressable
+          style={[styles.menuOverlay, { paddingTop: insets.top + 56 }]}
+          onPress={close}
+        >
+          <View style={styles.menuCard}>
+            {options.map((opt) => (
+              <TouchableOpacity
+                key={opt.key}
+                style={styles.menuItem}
+                onPress={opt.onPress}
+                disabled={opt.disabled}
+                activeOpacity={0.6}
+              >
+                <AppIcon
+                  name={opt.icon}
+                  size={20}
+                  color={opt.danger ? Colors.error : Colors.text}
+                />
+                <Text style={[styles.menuItemText, opt.danger && styles.menuItemDanger]}>
+                  {opt.label}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </Pressable>
+      </Modal>
+    </>
+  );
+};
 
 const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }) => {
   const { chatId, participantName } = route.params ?? {};
@@ -592,64 +704,24 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
     [conversation, effectiveName, initiateCall]
   );
 
-  // Header actions — call buttons + doctor end session
+  // Header actions — three-dots menu with call + end-session actions
   useEffect(() => {
     const sessionActive = conversation?.state === 'active';
     const showCallButtons = sessionActive && peerUserIdRef.current && effectiveName;
 
     navigation.setOptions({
       // eslint-disable-next-line react/no-unstable-nested-components
-      headerRight: () => {
-        const actions: React.ReactNode[] = [];
-
-        // Call buttons (both roles, only during active session)
-        if (showCallButtons) {
-          actions.push(
-            <View key="calls" style={styles.headerCallButtons}>
-              <TouchableOpacity
-                style={styles.headerCallButton}
-                onPress={() => handleStartCall('audio')}
-                activeOpacity={0.7}
-                disabled={callState.status !== 'idle'}
-              >
-                <AppIcon name="call-outline" size={20} color={Colors.primary} />
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.headerCallButton}
-                onPress={() => handleStartCall('video')}
-                activeOpacity={0.7}
-                disabled={callState.status !== 'idle'}
-              >
-                <AppIcon name="videocam-outline" size={20} color={Colors.primary} />
-              </TouchableOpacity>
-            </View>
-          );
-        }
-
-        // Doctor end session button
-        if (canEndSession) {
-          actions.push(
-            <TouchableOpacity
-              key="end"
-              style={styles.headerEndButton}
-              onPress={confirmEndSession}
-              disabled={endingSession}
-              activeOpacity={0.7}
-            >
-              {endingSession ? (
-                <ActivityIndicator size="small" color={Colors.error} />
-              ) : (
-                <>
-                  <AppIcon name="stop-circle-outline" size={16} color={Colors.error} />
-                  <Text style={styles.headerEndText}>End Session</Text>
-                </>
-              )}
-            </TouchableOpacity>
-          );
-        }
-
-        return <View style={styles.headerActions}>{actions}</View>;
-      },
+      headerRight: () => (
+        <ChatHeaderMenu
+          canCall={showCallButtons}
+          canEnd={canEndSession}
+          endingSession={endingSession}
+          callInProgress={callState.status !== 'idle'}
+          onAudioCall={() => handleStartCall('audio')}
+          onVideoCall={() => handleStartCall('video')}
+          onEndSession={confirmEndSession}
+        />
+      ),
     });
   }, [
     navigation,
@@ -1418,38 +1490,52 @@ const styles = StyleSheet.create({
     color: Colors.success,
     fontWeight: '500',
   },
-  headerEndButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Colors.errorSoft,
-    borderRadius: Radius.round,
-    paddingHorizontal: Spacing.sm + 2,
-    paddingVertical: 6,
-    marginRight: Spacing.xs,
+  headerTitleStatusOffline: {
+    color: Colors.textTertiary,
   },
-  headerEndText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: Colors.error,
-    marginLeft: 4,
-  },
-  headerActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  headerCallButtons: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.xs,
-    marginRight: Spacing.sm,
-  },
-  headerCallButton: {
+  headerMenuButton: {
     width: 36,
     height: 36,
     borderRadius: Radius.round,
     backgroundColor: Colors.primarySoft,
     justifyContent: 'center',
     alignItems: 'center',
+    marginRight: Spacing.xs,
+  },
+  menuOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.45)',
+    justifyContent: 'flex-start',
+    alignItems: 'flex-end',
+    paddingRight: Spacing.md,
+  },
+  menuCard: {
+    minWidth: 220,
+    backgroundColor: Colors.card,
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    overflow: 'hidden',
+    shadowColor: Colors.shadow,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  menuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.md,
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.md,
+  },
+  menuItemText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: Colors.text,
+  },
+  menuItemDanger: {
+    color: Colors.error,
   },
   messagesList: {
     paddingHorizontal: Spacing.md,
