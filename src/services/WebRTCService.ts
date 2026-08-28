@@ -62,6 +62,13 @@ export class WebRTCService {
   }
 
   async createPeerConnection(remoteUserId: number, isInitiator: boolean, callType: CallType) {
+    // Never create a new peer connection while another is still live — doing so
+    // (e.g. getUserMedia too fast, double-tap, or a stale connection) can crash
+    // the native WebRTC library. Clean up any existing state first.
+    if (this.peerConnection || this.localStream) {
+      this.cleanup();
+    }
+
     this.remoteUserId = remoteUserId;
     this.isInitiator = isInitiator;
     this.callType = callType;

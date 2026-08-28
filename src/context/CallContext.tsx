@@ -163,20 +163,26 @@ export const CallProvider: React.FC<CallProviderProps> = ({ children }) => {
       });
 
       socket.on('call:incoming', handleIncomingCall);
+      socket.on('call:offer', handleIncomingCall); // backend may relay as either name
       socket.on('call:answer', handleCallAnswer);
       socket.on('call:ice-candidate', handleIceCandidate);
       socket.on('call:ended', handleCallEnded);
+      socket.on('call:end', handleCallEnded);
       socket.on('call:rejected', handleCallRejected);
+      socket.on('call:reject', handleCallRejected);
       socket.on('call:busy', handleCallBusy);
     })();
 
     return () => {
       cancelled = true;
       socket?.off('call:incoming', handleIncomingCall);
+      socket?.off('call:offer', handleIncomingCall);
       socket?.off('call:answer', handleCallAnswer);
       socket?.off('call:ice-candidate', handleIceCandidate);
       socket?.off('call:ended', handleCallEnded);
+      socket?.off('call:end', handleCallEnded);
       socket?.off('call:rejected', handleCallRejected);
+      socket?.off('call:reject', handleCallRejected);
       socket?.off('call:busy', handleCallBusy);
       socket?.disconnect();
       socket = null;
@@ -266,15 +272,22 @@ export const CallProvider: React.FC<CallProviderProps> = ({ children }) => {
       dispatch({ type: 'SET_CALL_TYPE', callType: data.callType as 'audio' | 'video' });
       dispatch({ type: 'SET_SESSION_ID', sessionId: data.sessionId });
       dispatch({ type: 'SET_STATUS', status: 'incoming' });
+      goToCallScreen();
 
       // Auto-reject after 30 seconds
       ringTimeout = setTimeout(() => {
         if (isMounted.current) rejectCall();
       }, 30000);
 
-      // Set up WebRTC with the offer
-      webRTCService.createPeerConnection(data.from, false, data.callType as 'audio' | 'video');
-      webRTCService.setRemoteOffer(data.offer);
+      // Set up WebRTC with the offer — await so the local stream/tracks are
+      // added BEFORE the remote offer is applied (avoids a native race/crash).
+      webRTCService
+        .createPeerConnection(data.from, false, data.callType as 'audio' | 'video')
+        .then(() => webRTCService.setRemoteOffer(data.offer))
+        .catch((error) => {
+          console.error('[CallContext] WebRTC incoming setup failed:', error);
+          webRTCService.cleanup();
+        });
     },
     [state.status]
   );
@@ -313,6 +326,7 @@ export const CallProvider: React.FC<CallProviderProps> = ({ children }) => {
     InCallManager.stop();
     if (isMounted.current) {
       dispatch({ type: 'RESET' });
+      leaveCallScreen();
     }
   }, []);
 
@@ -324,6 +338,7 @@ export const CallProvider: React.FC<CallProviderProps> = ({ children }) => {
     webRTCService.cleanup();
     if (isMounted.current) {
       dispatch({ type: 'RESET' });
+      leaveCallScreen();
     }
   }, []);
 
@@ -331,6 +346,7 @@ export const CallProvider: React.FC<CallProviderProps> = ({ children }) => {
     webRTCService.cleanup();
     if (isMounted.current) {
       dispatch({ type: 'RESET' });
+      leaveCallScreen();
     }
   }, []);
 
@@ -343,8 +359,15 @@ export const CallProvider: React.FC<CallProviderProps> = ({ children }) => {
       dispatch({ type: 'SET_CALL_TYPE', callType });
       dispatch({ type: 'SET_SESSION_ID', sessionId });
       dispatch({ type: 'SET_STATUS', status: 'outgoing' });
+      goToCallScreen();
 
-      webRTCService.createPeerConnection(userId, true, callType);
+      // Awaited so the offer is only sent after local media is attached, and
+      // failures are handled instead of leaving a dangling peer connection.
+      webRTCService.createPeerConnection(userId, true, callType).catch((error) => {
+        console.error('[CallContext] initiateCall failed:', error);
+        webRTCService.cleanup();
+        if (isMounted.current) dispatch({ type: 'RESET' });
+      });
       // Offer will be sent via onOfferCreated event
     },
     [state.status]
@@ -384,6 +407,7 @@ export const CallProvider: React.FC<CallProviderProps> = ({ children }) => {
     webRTCService.cleanup();
     if (isMounted.current) {
       dispatch({ type: 'RESET' });
+      leaveCallScreen();
     }
   }, [state.status, state.remoteUser?.userId]);
 
@@ -398,6 +422,7 @@ export const CallProvider: React.FC<CallProviderProps> = ({ children }) => {
     InCallManager.stop();
     if (isMounted.current) {
       dispatch({ type: 'RESET' });
+      leaveCallScreen();
     }
   }, [state.status, state.remoteUser?.userId]);
 

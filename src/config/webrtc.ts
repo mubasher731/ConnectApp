@@ -5,29 +5,18 @@
 
 export const RTC_CONFIG = {
   iceServers: [
-    // ── Local Development (Free) ──────────────────────────────────────────
+    // ── Google STUN (free) ────────────────────────────────────────────────
     { urls: 'stun:stun.l.google.com:19302' },
     { urls: 'stun:stun1.l.google.com:19302' },
+    // ── Public TURN relay for calls across different networks ─────────────
     {
       urls: 'turn:openrelay.metered.ca:443',
       username: 'openrelayproject',
       credential: 'openrelayproject',
     },
-
-    // ── Production (Uncomment for VPS coturn) ─────────────────────────────
-    // {
-    //   urls: 'turn:your-vps-ip:3478',
-    //   username: 'fountain',
-    //   credential: 'your-secure-password',
-    // },
-    // {
-    //   urls: 'turn:your-vps-ip:3478?transport=tcp',
-    //   username: 'fountain',
-    //   credential: 'your-secure-password',
-    // },
   ],
-  iceCandidatePoolSize: 10,
 };
+
 
 export const CALL_CONFIG = {
   RING_TIMEOUT_MS: 30000,
