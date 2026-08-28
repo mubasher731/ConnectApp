@@ -171,11 +171,6 @@ export const CallScreen: React.FC = () => {
       <CallControls onEndCall={endCall} />
 
       {/* Status indicators */}
-      {state.isMuted && (
-        <View style={styles.indicator}>
-          <Text style={styles.indicatorText}>🔇 Muted</Text>
-        </View>
-      )}
       {state.callType === 'video' && !state.isVideoEnabled && (
         <View style={styles.indicator}>
           <Text style={styles.indicatorText}>📷 Camera Off</Text>

@@ -1,6 +1,6 @@
 import React from 'react';
-import { View, StyleSheet, TouchableOpacity } from 'react-native';
-import { Mic, MicOff, Video, VideoOff, Phone, Volume2, RotateCcw, X } from 'lucide-react-native';
+import { View, StyleSheet, TouchableOpacity, Text } from 'react-native';
+import { Mic, MicOff, Video, VideoOff, Phone, Volume2, RotateCcw } from 'lucide-react-native';
 import { useCall } from '../../context/CallContext';
 import { Colors } from '../../theme/colors';
 
@@ -8,15 +8,24 @@ interface CallControlsProps {
   onEndCall: () => void;
 }
 
+/**
+ * WhatsApp-style call controls.
+ * - Single toggle buttons (Mute / Speaker / Video): white circle + colored icon when active.
+ * - Distinct red End Call button pinned to the far right.
+ * - "Call Muted" pill shown above the controls while muted.
+ */
 export const CallControls: React.FC<CallControlsProps> = ({ onEndCall }) => {
   const { state, toggleMute, toggleVideo, toggleSpeaker, switchCamera } = useCall();
 
-  const controlButton = (icon: React.ReactNode, active: boolean, onPress: () => void, color = Colors.white) => (
+  const renderToggle = (
+    key: string,
+    icon: React.ReactNode,
+    active: boolean,
+    onPress: () => void
+  ) => (
     <TouchableOpacity
-      style={[
-        styles.controlButton,
-        active && styles.controlButtonActive,
-      ]}
+      key={key}
+      style={[styles.toggleButton, active && styles.toggleButtonActive]}
       onPress={onPress}
       activeOpacity={0.7}
     >
@@ -26,39 +35,52 @@ export const CallControls: React.FC<CallControlsProps> = ({ onEndCall }) => {
 
   return (
     <View style={styles.container}>
+      {state.isMuted && (
+        <View style={styles.mutedBadge}>
+          <Text style={styles.mutedBadgeText}>Call Muted</Text>
+        </View>
+      )}
+
       <View style={styles.controlsRow}>
-        {state.callType === 'video' && (
-          controlButton(
-            <RotateCcw size={24} color={Colors.white} />,
-            false,
-            switchCamera,
-          )
-        )}
-        controlButton(
-          state.isMuted ? <MicOff size={24} color={Colors.white} /> : <Mic size={24} color={Colors.white} />,
-          state.isMuted,
-          toggleMute,
-        )
-        controlButton(
-          <Phone size={24} color={Colors.white} />,
-          false,
-          onEndCall,
-          Colors.danger,
-        )
-        controlButton(
-          state.isVideoEnabled && state.callType === 'video'
-            ? <Video size={24} color={Colors.white} />
-            : <VideoOff size={24} color={Colors.white} />,
-          !state.isVideoEnabled || state.callType === 'audio',
-          toggleVideo,
-        )
-        controlButton(
-          state.isSpeakerOn
-            ? <Volume2 size={24} color={Colors.white} />
-            : <Volume2 size={24} color={Colors.grey} />,
-          state.isSpeakerOn,
-          toggleSpeaker,
-        )
+        <View style={styles.togglesGroup}>
+          {state.callType === 'video' &&
+            renderToggle('flip', <RotateCcw size={22} color={Colors.white} />, false, switchCamera)}
+
+          {renderToggle(
+            'mute',
+            state.isMuted ? (
+              <MicOff size={22} color={Colors.primary} />
+            ) : (
+              <Mic size={22} color={Colors.white} />
+            ),
+            state.isMuted,
+            toggleMute
+          )}
+
+          {renderToggle(
+            'speaker',
+            <Volume2 size={22} color={state.isSpeakerOn ? Colors.primary : Colors.white} />,
+            state.isSpeakerOn,
+            toggleSpeaker
+          )}
+
+          {state.callType === 'video' &&
+            renderToggle(
+              'video',
+              state.isVideoEnabled ? (
+                <Video size={22} color={Colors.white} />
+              ) : (
+                <VideoOff size={22} color={Colors.primary} />
+              ),
+              !state.isVideoEnabled,
+              toggleVideo
+            )}
+        </View>
+
+        {/* End call — red, always at the far right */}
+        <TouchableOpacity style={styles.endCallButton} onPress={onEndCall} activeOpacity={0.8}>
+          <Phone size={26} color={Colors.white} />
+        </TouchableOpacity>
       </View>
     </View>
   );
@@ -66,27 +88,54 @@ export const CallControls: React.FC<CallControlsProps> = ({ onEndCall }) => {
 
 const styles = StyleSheet.create({
   container: {
-    paddingHorizontal: 20,
-    paddingBottom: 30,
+    paddingHorizontal: 24,
+    paddingBottom: 32,
+  },
+  mutedBadge: {
+    alignSelf: 'center',
+    marginBottom: 16,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 999,
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+  },
+  mutedBadgeText: {
+    color: Colors.white,
+    fontSize: 13,
+    fontWeight: '500',
   },
   controlsRow: {
     flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  togglesGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+  },
+  toggleButton: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: 'rgba(255, 255, 255, 0.14)',
     justifyContent: 'center',
     alignItems: 'center',
-    gap: 20,
   },
-  controlButton: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  toggleButtonActive: {
+    backgroundColor: Colors.white,
+  },
+  endCallButton: {
+    width: 62,
+    height: 62,
+    borderRadius: 31,
+    backgroundColor: '#EF4444',
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
-  },
-  controlButtonActive: {
-    backgroundColor: Colors.primary,
-    borderColor: Colors.primary,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
   },
 });
