@@ -6,6 +6,8 @@ let socket: Socket | null = null;
 let currentUser: { id: number | string; role_id: number } | null = null;
 /** Conversation rooms the client is currently joined to (re-joined on reconnect). */
 const joinedRooms = new Set<string>();
+/** Guards against concurrent connect() calls creating duplicate sockets. */
+let connectPromise: Promise<Socket | null> | null = null;
 
 const userRole = (): 'doctor' | 'patient' =>
   currentUser?.role_id === 3 ? 'doctor' : 'patient';
@@ -43,68 +45,77 @@ export const socketService = {
 
   /** Connect to the socket server (safe to call multiple times). */
   async connect(): Promise<Socket | null> {
-    // Reuse any socket that is connected or still (re)connecting. Killing a
-    // connecting socket here races with the concurrent connect() call from
-    // AuthContext — the 2nd call would orphan the socket that CallContext
-    // registered its call listeners on, so calls never reach the other device.
-    // disconnect() already nulls the socket on logout, so a fresh one is made
-    // on the next login; only a permanently dead socket (reconnection
-    // exhausted, `active` false) gets dropped and recreated here.
+    // If a connect() is already in-flight, return the same promise so two
+    // concurrent callers (AuthContext + CallContext) share one socket instead
+    // of racing to create two.
+    if (connectPromise) return connectPromise;
+
+    // Reuse any socket that is connected or still (re)connecting.
     if (socket) {
-      if (socket.connected || socket.active) return socket;
+      if (socket.connected || socket.active) {
+        connectPromise = null;
+        return socket;
+      }
       socket.disconnect();
       socket = null;
     }
 
-    const token = await tokenStore.get();
-    socket = io(getApiBaseUrl(), {
-      auth: token ? { token } : undefined,
-      query: token ? { token } : undefined,
-      reconnection: true,
-      reconnectionAttempts: 10,
-      reconnectionDelay: 1000,
-      reconnectionDelayMax: 5000,
-      // websocket first, polling fallback — survives proxy/ngrok upgrade failures
-      transports: ['websocket', 'polling'],
-    });
+    connectPromise = (async () => {
+      const token = await tokenStore.get();
+      socket = io(getApiBaseUrl(), {
+        auth: token ? { token } : undefined,
+        query: token ? { token } : undefined,
+        reconnection: true,
+        reconnectionAttempts: 10,
+        reconnectionDelay: 1000,
+        reconnectionDelayMax: 5000,
+        transports: ['websocket', 'polling'],
+      });
 
-    socket.on('connect', () => {
-      console.log('[socket] ✅ Connected:', socket?.id);
-      // Re-register on reconnect so presence stays accurate.
-      if (currentUser) socketService.addUser();
-      // Re-join any conversation rooms the user had open.
-      joinedRooms.forEach((id) => socketService.joinSession(id));
-    });
-    socket.on('disconnect', (reason) => {
-      console.log('[socket] Disconnected:', reason);
-    });
-    socket.on('connect_error', (err) => {
-      console.error('[socket] ❌ Connection failed:', err.message);
-    });
-    socket.on('error', (err) => {
-      console.error('[socket] ❌ Socket error:', err.message);
-    });
+      socket.on('connect', () => {
+        // Re-register on reconnect so presence stays accurate.
+        if (currentUser) socketService.addUser();
+        joinedRooms.forEach((id) => socketService.joinSession(id));
+      });
+      socket.on('disconnect', () => {});
+      socket.on('connect_error', () => {});
+      socket.on('error', () => {});
 
-    // Forward data-affecting events so list screens can auto-refresh live.
-    const broadcast = () => liveData.emit();
-    (
-      [
-        'chat-request',
-        'chat-decision',
-        'schedule-shifted',
-        'session-timer-update',
-        'session-ended',
-        'new-message',
-        'user-joined',
-        'user-left',
-      ] as const
-    ).forEach((ev) => socket?.on(ev, broadcast));
+      // Forward data-affecting events so list screens can auto-refresh live.
+      const broadcast = () => liveData.emit();
+      (
+        [
+          'chat-request',
+          'chat-decision',
+          'schedule-shifted',
+          'session-timer-update',
+          'session-ended',
+          'new-message',
+          'user-joined',
+          'user-left',
+        ] as const
+      ).forEach((ev) => socket?.on(ev, broadcast));
 
-    return socket;
+      // Wait for the socket to actually connect before returning, so callers
+      // get a connected socket (or null on failure) instead of a half-open one.
+      return new Promise<Socket | null>((resolve) => {
+        if (!socket) { connectPromise = null; resolve(null); return; }
+        const onConnect = () => { cleanup(); connectPromise = null; resolve(socket); };
+        const onError = (err: Error) => { cleanup(); connectPromise = null; socket?.disconnect(); socket = null; resolve(null); };
+        const cleanup = () => { socket?.off('connect', onConnect); socket?.off('connect_error', onError); };
+        socket.on('connect', onConnect);
+        socket.on('connect_error', onError);
+        // If already connected (race), resolve immediately
+        if (socket.connected) { cleanup(); connectPromise = null; resolve(socket); }
+      });
+    })();
+
+    return connectPromise;
   },
 
   disconnect(): void {
     joinedRooms.clear();
+    connectPromise = null;
     socket?.disconnect();
     socket = null;
   },
