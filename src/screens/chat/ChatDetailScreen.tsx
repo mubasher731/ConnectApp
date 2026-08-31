@@ -140,6 +140,8 @@ interface ChatHeaderMenuProps {
   canEnd: boolean;
   endingSession: boolean;
   callInProgress: boolean;
+  /** Menu is non-functional before the session starts (mirrors input lock). */
+  disabled?: boolean;
   onAudioCall: () => void;
   onVideoCall: () => void;
   onEndSession: () => void;
@@ -150,6 +152,7 @@ const ChatHeaderMenu: React.FC<ChatHeaderMenuProps> = ({
   canEnd,
   endingSession,
   callInProgress,
+  disabled = false,
   onAudioCall,
   onVideoCall,
   onEndSession,
@@ -157,6 +160,12 @@ const ChatHeaderMenu: React.FC<ChatHeaderMenuProps> = ({
   const [open, setOpen] = useState(false);
   const insets = useSafeAreaInsets();
   const close = () => setOpen(false);
+
+  // If the menu becomes non-functional (e.g. the session ends while it's open),
+  // close it so no stale actions are shown.
+  useEffect(() => {
+    if (disabled) setOpen(false);
+  }, [disabled]);
 
   const makePress = (fn: () => void) => () => {
     close();
@@ -202,12 +211,17 @@ const ChatHeaderMenu: React.FC<ChatHeaderMenuProps> = ({
   return (
     <>
       <TouchableOpacity
-        style={styles.headerMenuButton}
+        style={[styles.headerMenuButton, disabled && styles.headerMenuButtonDisabled]}
         onPress={() => setOpen(true)}
+        disabled={disabled}
         activeOpacity={0.7}
         hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
       >
-        <AppIcon name="ellipsis-vertical-outline" size={22} color={Colors.text} />
+        <AppIcon
+          name="ellipsis-vertical-outline"
+          size={22}
+          color={disabled ? Colors.textTertiary : Colors.text}
+        />
       </TouchableOpacity>
 
       <Modal transparent visible={open} animationType="fade" onRequestClose={close}>
@@ -757,6 +771,7 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
           canEnd={canEndSession}
           endingSession={endingSession}
           callInProgress={callState.status !== 'idle'}
+          disabled={locked}
           onAudioCall={() => handleStartCall('audio')}
           onVideoCall={() => handleStartCall('video')}
           onEndSession={confirmEndSession}
@@ -772,6 +787,7 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
     endingSession,
     confirmEndSession,
     callState.status,
+    locked,
     handleStartCall,
   ]);
 
@@ -1547,6 +1563,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: Spacing.xs,
+  },
+  headerMenuButtonDisabled: {
+    opacity: 0.45,
   },
   menuOverlay: {
     flex: 1,
