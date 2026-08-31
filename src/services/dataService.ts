@@ -62,7 +62,7 @@ const mapMessage = (
   const sentByMe = (raw.role === 'patient') === isPatient;
   return {
     id: raw.id,
-    sessionId: raw.conversation_id ?? conversationId,
+    sessionId: raw.consultation_id ?? conversationId,
     senderId: sentByMe ? meId : 0,
     senderRole: raw.role,
     text: raw.content ?? '',

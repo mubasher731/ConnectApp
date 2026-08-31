@@ -4,6 +4,7 @@ import { socketService } from '../api/socket';
 import { navigationRef, navigate, goBack } from '../navigation/navigationRef';
 import { useAuth } from './AuthContext';
 import { webRTCService, WebRTCEvents } from '../services/WebRTCService';
+import { sessionService } from '../services/sessionService';
 import { MediaStream } from 'react-native-webrtc';
 import InCallManager from 'react-native-incall-manager';
 
@@ -147,6 +148,18 @@ export const CallProvider: React.FC<CallProviderProps> = ({ children }) => {
   // mid-gathering PC, which is a native WebRTC abort trigger).
   const startingCallRef = useRef(false);
 
+  // Call parameters captured at call start. Socket handlers read from this ref
+  // instead of React state so an offer/answer is still emitted even if the
+  // peer connection resolves before the state-update effect re-runs — the old
+  // state-closure approach could silently skip the emit (call never goes out).
+  const callParamsRef = useRef<{
+    targetId: number | null;
+    myId: number;
+    myName: string;
+    sessionId: number | null;
+    callType: 'audio' | 'video';
+  }>({ targetId: null, myId: 0, myName: '', sessionId: null, callType: 'video' });
+
   // Live view of the latest state for socket handlers (avoids stale closures).
   const stateRef = useRef(state);
   useEffect(() => {
@@ -282,11 +295,19 @@ export const CallProvider: React.FC<CallProviderProps> = ({ children }) => {
         handlersRef.current.onCallEnded();
       },
       onIceCandidate: (candidate) => {
-        if (state.remoteUser?.userId && socket) {
+        const p = callParamsRef.current;
+        const sender = p.myId || myId;
+        if (p.targetId && socket) {
           socket.emit('call:ice-candidate', {
-            to: state.remoteUser.userId,
-            from: myId,
+            to: p.targetId,
+            from: sender,
             candidate,
+          });
+        } else {
+          console.warn('[Call] ICE candidate skipped — no target/socket', {
+            targetId: p.targetId,
+            socket: !!socket,
+            connected: socket?.connected,
           });
         }
       },
@@ -294,23 +315,40 @@ export const CallProvider: React.FC<CallProviderProps> = ({ children }) => {
         dispatch({ type: 'SET_CONNECTION_STATE', state: connectionState });
       },
       onOfferCreated: (offer) => {
-        if (state.remoteUser?.userId && socket) {
+        const p = callParamsRef.current;
+        const sender = p.myId || myId;
+        if (p.targetId && socket) {
+          console.log('[Call] Emitting call:offer →', p.targetId, p.callType, 'session', p.sessionId);
           socket.emit('call:offer', {
-            to: state.remoteUser.userId,
-            from: myId,
-            fromName: user?.name ?? '',
+            to: p.targetId,
+            from: sender,
+            fromName: p.myName || user?.name || '',
             offer,
-            sessionId: state.sessionId,
-            callType: state.callType,
+            sessionId: p.sessionId,
+            callType: p.callType,
+          });
+        } else {
+          console.warn('[Call] Offer NOT emitted — missing target/socket', {
+            targetId: p.targetId,
+            socket: !!socket,
+            connected: socket?.connected,
           });
         }
       },
       onAnswerCreated: (answer) => {
-        if (state.remoteUser?.userId && socket) {
+        const p = callParamsRef.current;
+        const sender = p.myId || myId;
+        if (p.targetId && socket) {
           socket.emit('call:answer', {
-            to: state.remoteUser.userId,
-            from: myId,
+            to: p.targetId,
+            from: sender,
             answer,
+          });
+        } else {
+          console.warn('[Call] Answer NOT emitted — missing target/socket', {
+            targetId: p.targetId,
+            socket: !!socket,
+            connected: socket?.connected,
           });
         }
       },
@@ -325,17 +363,54 @@ export const CallProvider: React.FC<CallProviderProps> = ({ children }) => {
 
   // Handle incoming call
   const handleIncomingCall = useCallback(
-    (data: { from: number; fromName: string; offer: any; sessionId: number; callType: string }) => {
+    (data: { from: number; fromName?: string; offer: any; sessionId: number; callType: string }) => {
       if (state.status !== 'idle') {
         socket?.emit('call:busy', { to: data.from, from: user?.id ?? 0 });
         return;
       }
 
-      dispatch({ type: 'SET_REMOTE_USER', user: { userId: data.from, name: data.fromName, avatar: undefined } });
+      const myId = user?.id ?? 0;
+      // Capture the call context so accept/answer emits route correctly.
+      callParamsRef.current = {
+        targetId: data.from,
+        myId,
+        myName: user?.name ?? '',
+        sessionId: data.sessionId,
+        callType: data.callType as 'audio' | 'video',
+      };
+
+      dispatch({ type: 'SET_REMOTE_USER', user: { userId: data.from, name: data.fromName ?? '', avatar: undefined } });
       dispatch({ type: 'SET_CALL_TYPE', callType: data.callType as 'audio' | 'video' });
       dispatch({ type: 'SET_SESSION_ID', sessionId: data.sessionId });
       dispatch({ type: 'SET_STATUS', status: 'incoming' });
       goToCallScreen();
+
+      // The backend relay may not forward fromName, so resolve the caller's real
+      // name from the conversation (doctor_name/patient_name) and refresh the UI
+      // when found — the incoming screen must show the caller, never "Unknown".
+      const resolveCallerName = async (): Promise<string> => {
+        if (data.fromName && data.fromName.trim()) return data.fromName;
+        try {
+          const convs = await sessionService.getConversations();
+          const conv = convs.find((c) => String(c.id) === String(data.sessionId));
+          if (conv) {
+            const iAmPatient = conv.patient_id === myId;
+            const name = iAmPatient ? conv.doctor_name : conv.patient_name;
+            if (name && name.trim()) return name;
+          }
+        } catch (e) {
+          console.warn('[Call] Could not resolve caller name:', e);
+        }
+        return data.fromName ?? '';
+      };
+      resolveCallerName().then((name) => {
+        if (isMounted.current && name) {
+          dispatch({
+            type: 'SET_REMOTE_USER',
+            user: { userId: data.from, name, avatar: undefined },
+          });
+        }
+      });
 
       // Auto-reject after 30 seconds
       ringTimeout = setTimeout(() => {
@@ -352,7 +427,7 @@ export const CallProvider: React.FC<CallProviderProps> = ({ children }) => {
           webRTCService.cleanup();
         });
     },
-    [state.status, user?.id]
+    [state.status, user?.id, user?.name]
   );
 
   const handleCallAnswer = useCallback(
@@ -386,6 +461,7 @@ export const CallProvider: React.FC<CallProviderProps> = ({ children }) => {
       ringTimeout = null;
     }
     startingCallRef.current = false;
+    callParamsRef.current.targetId = null;
     webRTCService.cleanup();
     InCallManager.stop();
     setStreams({ local: null, remote: null });
@@ -401,6 +477,7 @@ export const CallProvider: React.FC<CallProviderProps> = ({ children }) => {
       ringTimeout = null;
     }
     startingCallRef.current = false;
+    callParamsRef.current.targetId = null;
     webRTCService.cleanup();
     setStreams({ local: null, remote: null });
     if (isMounted.current) {
@@ -411,6 +488,7 @@ export const CallProvider: React.FC<CallProviderProps> = ({ children }) => {
 
   const handleCallBusy = useCallback(() => {
     startingCallRef.current = false;
+    callParamsRef.current.targetId = null;
     webRTCService.cleanup();
     setStreams({ local: null, remote: null });
     if (isMounted.current) {
@@ -424,6 +502,17 @@ export const CallProvider: React.FC<CallProviderProps> = ({ children }) => {
     (userId: number, name: string, callType: 'audio' | 'video', sessionId: number) => {
       if (state.status !== 'idle' || startingCallRef.current) return;
       startingCallRef.current = true;
+
+      // Capture the call context up front so the offer emit never reads stale
+      // state (the previous closure-based read could miss the dispatch update
+      // and skip the call:offer emit entirely).
+      callParamsRef.current = {
+        targetId: userId,
+        myId: user?.id ?? 0,
+        myName: user?.name ?? '',
+        sessionId,
+        callType,
+      };
 
       dispatch({ type: 'SET_REMOTE_USER', user: { userId, name, avatar: undefined } });
       dispatch({ type: 'SET_CALL_TYPE', callType });
@@ -447,7 +536,7 @@ export const CallProvider: React.FC<CallProviderProps> = ({ children }) => {
         });
       // Offer will be sent via onOfferCreated event
     },
-    [state.status]
+    [state.status, user?.id, user?.name]
   );
 
   const acceptCall = useCallback(() => {

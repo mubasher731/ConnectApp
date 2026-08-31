@@ -3,7 +3,7 @@ import { AppointmentRequest, BackendNotification, Conversation, DoctorAvailabili
 
 export interface MessageRaw {
   id: string | number;
-  conversation_id: string | number;
+  consultation_id: string | number;
   role: 'patient' | 'doctor';
   content: string;
   type?: string;

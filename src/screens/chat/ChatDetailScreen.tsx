@@ -315,6 +315,11 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
   // Prefer the route-passed name, but if it's missing/generic (e.g. opened
   // from a notification), resolve the real peer name from the conversation.
   const effectiveName = resolvedName ?? participantName ?? '';
+  // Peer user id used for call signaling. The backend routes call events by the
+  // participant's real users.id (registered via addUser), and `peer_user_id` in
+  // GET /api/conversations IS the peer's real users.id (doctor_id is the doctors
+  // table PK, NOT users.id), so the call target is peer_user_id.
+  const callPeerId = conversation?.peer_user_id ?? peerUserIdRef.current;
   useEffect(() => {
     if (!conversation) return;
     const cur = (participantName ?? '').trim().toLowerCase();
@@ -350,6 +355,9 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
         if (mounted && conv) {
           setConversation(conv);
           peerUserIdRef.current = conv.peer_user_id ?? null;
+          // The backend returns a live peer_online snapshot — seed the header so
+          // it shows online immediately instead of waiting for a presence event.
+          setOnline(!!conv.peer_online);
         }
       } catch {
         // ignore — messages may still load
@@ -368,14 +376,13 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
     load();
     socketService.joinSession(chatId);
 
-    const socket = socketService.getSocket();
     const mapIncoming = (raw: any): Message => {
       const isPatient = user?.role_id === 4;
       const role = raw.role ?? 'patient';
       const sentByMe = (role === 'patient') === isPatient;
       return {
         id: raw.id ?? `s-${Date.now()}`,
-        sessionId: raw.conversation_id ?? chatId,
+        sessionId: raw.consultation_id ?? chatId,
         senderId: sentByMe ? user?.id ?? 0 : 0,
         senderRole: role,
         text: raw.content ?? '',
@@ -401,8 +408,8 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
       );
     };
     const onTyping = (payload: any) => {
-      const { conversationId, isTyping } = unwrap(payload);
-      if (conversationId !== undefined && String(conversationId) !== String(chatId)) return;
+      const { consultationId, isTyping } = unwrap(payload);
+      if (consultationId !== undefined && String(consultationId) !== String(chatId)) return;
       setOtherTyping(!!isTyping);
       if (typingTimeout.current) clearTimeout(typingTimeout.current);
       if (isTyping) {
@@ -410,8 +417,8 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
       }
     };
     const onSessionTimer = (payload: any) => {
-      const { conversationId, state: nextState, remainingTime } = unwrap(payload);
-      if (conversationId !== undefined && String(conversationId) !== String(chatId)) return;
+      const { consultation_id, state: nextState, remainingTime } = unwrap(payload);
+      if (consultation_id !== undefined && String(consultation_id) !== String(chatId)) return;
 
       // Keep the lifecycle state in sync so the countdown transitions live
       // (e.g. in_progress -> active at start time) without needing to re-enter.
@@ -447,8 +454,8 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
       });
     };
     const onSessionEnded = (payload: any) => {
-      const { conversationId } = unwrap(payload);
-      if (conversationId !== undefined && String(conversationId) !== String(chatId)) return;
+      const { consultation_id } = unwrap(payload);
+      if (consultation_id !== undefined && String(consultation_id) !== String(chatId)) return;
       setChatDisabled(true);
       setSessionNotice('Session ended');
     };
@@ -465,8 +472,8 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
       if (userId !== undefined && userId === peerUserIdRef.current) setOnline(false);
     };
     const onChatDecision = (payload: any) => {
-      const { conversation_id, status } = unwrap(payload);
-      if (conversation_id !== undefined && String(conversation_id) !== String(chatId)) return;
+      const { consultation_id, status } = unwrap(payload);
+      if (consultation_id !== undefined && String(consultation_id) !== String(chatId)) return;
       if (status === 'approved') {
         // Doctor approved → session moves to in_progress ("Starts in" countdown).
         setConversation((prev) => (prev ? { ...prev, state: 'in_progress' } : prev));
@@ -479,25 +486,38 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
       }
     };
 
-    socket?.on('new-message', onNewMessage);
-    socket?.on('typing', onTyping);
-    socket?.on('session-timer-update', onSessionTimer);
-    socket?.on('session-ended', onSessionEnded);
-    socket?.on('user-online', onUserOnline);
-    socket?.on('user-joined', onUserJoined);
-    socket?.on('user-left', onUserLeft);
-    socket?.on('chat-decision', onChatDecision);
+    // Ensure the socket is available (connect if needed) BEFORE attaching
+    // listeners, so real-time events aren't missed when this screen mounts
+    // before the socket finishes connecting.
+    let socket: ReturnType<typeof socketService.getSocket> = null;
+    (async () => {
+      const s = socketService.getSocket();
+      socket = s ?? (await socketService.connect());
+      if (!mounted || !socket) return;
+      socket.on('new-message', onNewMessage);
+      socket.on('typing', onTyping);
+      socket.on('session-timer-update', onSessionTimer);
+      socket.on('session-ended', onSessionEnded);
+      socket.on('user-online', onUserOnline);
+      socket.on('user-offline', onUserOnline); // offline presence = same handler
+      socket.on('user-joined', onUserJoined);
+      socket.on('user-left', onUserLeft);
+      socket.on('chat-decision', onChatDecision);
+    })();
 
     return () => {
       mounted = false;
-      socket?.off('new-message', onNewMessage);
-      socket?.off('typing', onTyping);
-      socket?.off('session-timer-update', onSessionTimer);
-      socket?.off('session-ended', onSessionEnded);
-      socket?.off('user-online', onUserOnline);
-      socket?.off('user-joined', onUserJoined);
-      socket?.off('user-left', onUserLeft);
-      socket?.off('chat-decision', onChatDecision);
+      if (socket) {
+        socket.off('new-message', onNewMessage);
+        socket.off('typing', onTyping);
+        socket.off('session-timer-update', onSessionTimer);
+        socket.off('session-ended', onSessionEnded);
+        socket.off('user-online', onUserOnline);
+        socket.off('user-offline', onUserOnline);
+        socket.off('user-joined', onUserJoined);
+        socket.off('user-left', onUserLeft);
+        socket.off('chat-decision', onChatDecision);
+      }
       socketService.leaveSession(chatId);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -718,16 +738,16 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
 
   const handleStartCall = useCallback(
     (callType: 'audio' | 'video') => {
-      if (!peerUserIdRef.current || !conversation || !effectiveName) return;
-      initiateCall(peerUserIdRef.current, effectiveName, callType, Number(conversation.id));
+      if (!callPeerId || !conversation || !effectiveName) return;
+      initiateCall(callPeerId, effectiveName, callType, Number(conversation.id));
     },
-    [conversation, effectiveName, initiateCall]
+    [callPeerId, conversation, effectiveName, initiateCall]
   );
 
   // Header actions — three-dots menu with call + end-session actions
   useEffect(() => {
     const sessionActive = conversation?.state === 'active';
-    const showCallButtons = sessionActive && peerUserIdRef.current && effectiveName;
+    const showCallButtons = sessionActive && callPeerId && effectiveName;
 
     navigation.setOptions({
       // eslint-disable-next-line react/no-unstable-nested-components
@@ -747,6 +767,7 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
     navigation,
     conversation,
     effectiveName,
+    callPeerId,
     canEndSession,
     endingSession,
     confirmEndSession,

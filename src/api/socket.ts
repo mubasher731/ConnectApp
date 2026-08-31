@@ -87,6 +87,7 @@ export const socketService = {
         'schedule-shifted',
         'session-timer-update',
         'session-ended',
+        'new-message',
         'user-joined',
         'user-left',
       ] as const
@@ -114,7 +115,7 @@ export const socketService = {
 
   joinSession(conversationId: number | string): void {
     joinedRooms.add(String(conversationId));
-    socket?.emit('join-consultation', { consultationId: Number(conversationId) });
+    socket?.emit('join-conversation', { conversationId });
   },
 
   leaveSession(conversationId: number | string): void {
