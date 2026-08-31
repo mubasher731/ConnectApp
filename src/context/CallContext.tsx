@@ -421,7 +421,11 @@ export const CallProvider: React.FC<CallProviderProps> = ({ children }) => {
   // Handle incoming call
   const handleIncomingCall = useCallback(
     (data: { from: number; fromName?: string; offer: any; sessionId: number; callType: string }) => {
+<<<<<<< Updated upstream
       console.log('[Call] handleIncomingCall received:', { from: data.from, callType: data.callType, sessionId: data.sessionId, currentStatus: state.status });
+=======
+      console.log('[Call] Incoming call from', data.from, 'type', data.callType, 'session', data.sessionId);
+>>>>>>> Stashed changes
       if (state.status !== 'idle') {
         console.log('[Call] handleIncomingCall BUSY — sending call:busy to', data.from);
         socket?.emit('call:busy', { to: data.from, from: user?.id ?? 0 });

@@ -43,8 +43,15 @@ export const socketService = {
 
   /** Connect to the socket server (safe to call multiple times). */
   async connect(): Promise<Socket | null> {
-    if (socket?.connected) return socket;
+    // Reuse any socket that is connected or still (re)connecting. Killing a
+    // connecting socket here races with the concurrent connect() call from
+    // AuthContext — the 2nd call would orphan the socket that CallContext
+    // registered its call listeners on, so calls never reach the other device.
+    // disconnect() already nulls the socket on logout, so a fresh one is made
+    // on the next login; only a permanently dead socket (reconnection
+    // exhausted, `active` false) gets dropped and recreated here.
     if (socket) {
+      if (socket.connected || socket.active) return socket;
       socket.disconnect();
       socket = null;
     }
