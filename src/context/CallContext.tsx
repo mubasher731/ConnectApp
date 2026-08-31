@@ -25,6 +25,8 @@ interface CallState {
   isVideoEnabled: boolean;
   isSpeakerOn: boolean;
   connectionState: RTCPeerConnectionState;
+  /** True once the local peer connection + remote offer are set up, so the callee can safely answer. */
+  peerReady: boolean;
 }
 
 type CallAction =
@@ -38,6 +40,7 @@ type CallAction =
   | { type: 'SET_VIDEO_ENABLED'; enabled: boolean }
   | { type: 'SET_SPEAKER'; speaker: boolean }
   | { type: 'SET_CONNECTION_STATE'; state: RTCPeerConnectionState }
+  | { type: 'SET_PEER_READY'; ready: boolean }
   | { type: 'RESET' };
 
 const initialState: CallState = {
@@ -50,6 +53,7 @@ const initialState: CallState = {
   isVideoEnabled: true,
   isSpeakerOn: true,
   connectionState: 'new',
+  peerReady: false,
 };
 
 function callReducer(state: CallState, action: CallAction): CallState {
@@ -74,6 +78,8 @@ function callReducer(state: CallState, action: CallAction): CallState {
       return { ...state, isSpeakerOn: action.speaker };
     case 'SET_CONNECTION_STATE':
       return { ...state, connectionState: action.state };
+    case 'SET_PEER_READY':
+      return { ...state, peerReady: action.ready };
     case 'RESET':
       return { ...initialState };
     default:
@@ -210,14 +216,28 @@ export const CallProvider: React.FC<CallProviderProps> = ({ children }) => {
 
   // Initialize call signaling. Reuses the app-wide socketService socket (the
   // one registered with the backend's onlineUsers via addUser), so call events
-  // relayed by the backend actually reach this client. The shared socket is
-  // NOT disconnected on unmount — only the call listeners are removed.
+  // relayed by the backend actually reach this client. Keyed on user?.id so the
+  // listeners are re-registered on the FRESH socket after a logout → login
+  // cycle (socketService.connect() creates a new Socket object each time, so
+  // listeners registered once on mount would stay on the dead old socket and
+  // incoming calls would be silently lost). The shared socket is NOT
+  // disconnected on unmount — only the call listeners are removed.
   useEffect(() => {
+    if (!user?.id) {
+      // Signed out — drop the stale socket ref and reset any in-flight call so
+      // the next login starts from a clean 'idle' state.
+      socket = null;
+      dispatch({ type: 'RESET' });
+      return;
+    }
     let cancelled = false;
 
     const setup = async () => {
+      // Prefer the existing socket when present (socket.io reconnects the same
+      // instance, so listeners persist). Only create one when there is no socket
+      // at all (initial mount after auth, or right after logout).
       let s = socketService.getSocket();
-      if (!s?.connected) {
+      if (!s) {
         s = await socketService.connect();
       }
       if (cancelled || !s) return;
@@ -255,7 +275,7 @@ export const CallProvider: React.FC<CallProviderProps> = ({ children }) => {
       }
       socket = null;
     };
-  }, []);
+  }, [user?.id]);
 
   // Duration timer
   useEffect(() => {
@@ -422,9 +442,16 @@ export const CallProvider: React.FC<CallProviderProps> = ({ children }) => {
       webRTCService
         .createPeerConnection(data.from, false, data.callType as 'audio' | 'video')
         .then(() => webRTCService.setRemoteOffer(data.offer))
+        .then(() => {
+          // Peer connection + remote offer are ready — the callee can now safely
+          // accept (createAnswer() would no-op on a null peer connection, leaving
+          // the caller on "Calling..." until the 30s auto-reject).
+          if (isMounted.current) dispatch({ type: 'SET_PEER_READY', ready: true });
+        })
         .catch((error) => {
           console.error('[CallContext] WebRTC incoming setup failed:', error);
           webRTCService.cleanup();
+          if (isMounted.current) dispatch({ type: 'SET_PEER_READY', ready: false });
         });
     },
     [state.status, user?.id, user?.name]
@@ -527,6 +554,7 @@ export const CallProvider: React.FC<CallProviderProps> = ({ children }) => {
         .then(() => {
           // Peer connection is set up (offer created) — allow future calls.
           startingCallRef.current = false;
+          if (isMounted.current) dispatch({ type: 'SET_PEER_READY', ready: true });
         })
         .catch((error) => {
           console.error('[CallContext] initiateCall failed:', error);
@@ -540,7 +568,10 @@ export const CallProvider: React.FC<CallProviderProps> = ({ children }) => {
   );
 
   const acceptCall = useCallback(() => {
-    if (state.status !== 'incoming') return;
+    // Don't answer before the peer connection + remote offer are ready —
+    // createAnswer() would silently no-op and the caller would hang on
+    // "Calling..." until the 30s auto-reject.
+    if (state.status !== 'incoming' || !state.peerReady) return;
 
     if (ringTimeout) {
       clearTimeout(ringTimeout);
@@ -559,7 +590,7 @@ export const CallProvider: React.FC<CallProviderProps> = ({ children }) => {
     webRTCService.createAnswer().catch((error) => {
       console.error('[CallContext] createAnswer failed:', error);
     });
-  }, [state.status, state.callType]);
+  }, [state.status, state.peerReady, state.callType]);
 
   const rejectCall = useCallback(() => {
     if (state.status !== 'incoming' && state.status !== 'outgoing') return;

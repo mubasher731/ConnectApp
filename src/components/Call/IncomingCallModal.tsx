@@ -137,13 +137,16 @@ export const IncomingCallModal: React.FC<IncomingCallModalProps> = ({
             ]}
           >
             <TouchableOpacity
-              style={styles.acceptButtonInner}
+              style={[styles.acceptButtonInner, !state.peerReady && styles.acceptButtonDisabled]}
               onPress={onAccept}
+              disabled={!state.peerReady}
               activeOpacity={0.8}
             >
               <Check size={28} color={Colors.white} />
             </TouchableOpacity>
-            <Text style={styles.buttonLabel}>Accept</Text>
+            <Text style={styles.buttonLabel}>
+              {state.peerReady ? 'Accept' : 'Preparing…'}
+            </Text>
           </Animated.View>
         </View>
 
@@ -262,6 +265,9 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.4,
     shadowRadius: 8,
     elevation: 6,
+  },
+  acceptButtonDisabled: {
+    opacity: 0.4,
   },
   buttonLabel: {
     marginTop: Spacing.sm,
