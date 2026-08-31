@@ -288,8 +288,10 @@ export const CallProvider: React.FC<CallProviderProps> = ({ children }) => {
       }
       if (cancelled || !s) return;
       socket = s;
+      console.log('[Call] setup — socket ready:', { id: s.id, connected: s.connected, userId: user?.id });
 
       register(s);
+      console.log('[Call] setup — call listeners registered on socket', s.id);
       // Re-register on every (re)connect so call listeners are always on the
       // live socket — even if a socket is created/recreated outside a user
       // change (off-first prevents duplicates).
@@ -419,7 +421,9 @@ export const CallProvider: React.FC<CallProviderProps> = ({ children }) => {
   // Handle incoming call
   const handleIncomingCall = useCallback(
     (data: { from: number; fromName?: string; offer: any; sessionId: number; callType: string }) => {
+      console.log('[Call] handleIncomingCall received:', { from: data.from, callType: data.callType, sessionId: data.sessionId, currentStatus: state.status });
       if (state.status !== 'idle') {
+        console.log('[Call] handleIncomingCall BUSY — sending call:busy to', data.from);
         socket?.emit('call:busy', { to: data.from, from: user?.id ?? 0 });
         return;
       }
@@ -550,6 +554,7 @@ export const CallProvider: React.FC<CallProviderProps> = ({ children }) => {
   }, []);
 
   const handleCallBusy = useCallback(() => {
+    console.log('[Call] handleCallBusy — remote user busy');
     startingCallRef.current = false;
     callParamsRef.current.targetId = null;
     webRTCService.cleanup();
@@ -564,7 +569,11 @@ export const CallProvider: React.FC<CallProviderProps> = ({ children }) => {
   // Actions
   const initiateCall = useCallback(
     (userId: number, name: string, callType: 'audio' | 'video', sessionId: number) => {
-      if (state.status !== 'idle' || startingCallRef.current) return;
+      console.log('[Call] initiateCall:', { targetUserId: userId, name, callType, sessionId, myId: user?.id, currentStatus: state.status });
+      if (state.status !== 'idle' || startingCallRef.current) {
+        console.log('[Call] initiateCall BLOCKED:', { status: state.status, startingCall: startingCallRef.current });
+        return;
+      }
       startingCallRef.current = true;
 
       // Capture the call context up front so the offer emit never reads stale
