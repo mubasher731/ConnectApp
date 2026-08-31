@@ -602,7 +602,9 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
   const isBeforeStart =
     !isPending && scheduledAtMs !== null && now < scheduledAtMs;
   const hasEnded =
-    state === 'ended' || (endAtMs !== null && now >= endAtMs);
+    state === 'ended' ||
+    state === 'rejected' ||
+    (endAtMs !== null && now >= endAtMs);
   const locked =
     chatDisabled || !conversation || isPending || isBeforeStart || hasEnded;
 

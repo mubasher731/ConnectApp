@@ -47,7 +47,11 @@ const DoctorDashboardScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
     [conversations, pendingRequests]
   );
 
-  const recent = conversations.filter((c) => c.state !== 'pending');
+  // Rejected requests are hidden here — they're not real appointments and no
+  // chat/session is created for them (they surface as "No Show" in the Chats tab).
+  const recent = conversations.filter(
+    (c) => c.state !== 'pending' && c.state !== 'rejected'
+  );
 
   const filteredRecent = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();

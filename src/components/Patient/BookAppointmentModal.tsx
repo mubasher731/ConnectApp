@@ -57,6 +57,9 @@ const BookAppointmentModal: React.FC<BookAppointmentModalProps> = ({
   const [slots, setSlots] = useState<SlotAvailability[]>([]);
   const [slotsLoading, setSlotsLoading] = useState(false);
 
+  // Hide slots that have already passed — only show available/upcoming ones.
+  const visibleSlots = slots.filter((s) => !s.isPast);
+
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);
 
@@ -357,11 +360,11 @@ const BookAppointmentModal: React.FC<BookAppointmentModalProps> = ({
                     <ActivityIndicator size="small" color={Colors.primary} />
                     <Text style={styles.slotLoadingText}>Loading slots…</Text>
                   </View>
-                ) : slots.length === 0 ? (
+                ) : visibleSlots.length === 0 ? (
                   <Text style={styles.noSlots}>No slots available on this day.</Text>
                 ) : (
-                  slots.map((s) => {
-                    const disabled = s.isPast || s.isBooked;
+                  visibleSlots.map((s) => {
+                    const disabled = s.isBooked;
                     const selected = timeSlot === s.time_slot;
                     return (
                       <TouchableOpacity
@@ -405,9 +408,7 @@ const BookAppointmentModal: React.FC<BookAppointmentModalProps> = ({
                         >
                           {formatSlotDisplay(s.time_slot)}
                         </Text>
-                        {s.isPast ? (
-                          <Text style={styles.slotRowTag}>Past</Text>
-                        ) : s.isBooked ? (
+                        {s.isBooked ? (
                           <Text style={styles.slotRowTagBooked}>Booked</Text>
                         ) : selected ? (
                           <Text style={styles.slotRowTagSelected}>Selected</Text>

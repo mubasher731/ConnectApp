@@ -22,6 +22,7 @@ const mapConversationToChat = (c: Conversation, meId: number): Chat => {
   const otherName = isPatient ? c.doctor_name ?? 'Doctor' : c.patient_name ?? 'Patient';
   let lastMessage = 'Session scheduled';
   if (c.state === 'pending') lastMessage = 'Request pending';
+  else if (c.state === 'rejected') lastMessage = 'Request rejected';
   else if (c.state === 'active' || c.state === 'in_progress') lastMessage = 'Session active';
   else if (c.state === 'ended') lastMessage = 'Session ended';
 
@@ -79,10 +80,14 @@ export const chatService = {
   async getChats(): Promise<Chat[]> {
     const me = await authService.getMe();
     const conversations = await sessionService.getConversations();
+    // Rejected requests are not real sessions — hide them from the chat list so
+    // no chat/session card is created for them (they never appear as an
+    // openable chat; they only count as "No Show" records on the backend).
+    const visible = conversations.filter((c) => c.state !== 'rejected');
     // Defensive: keep only the most recent conversation per peer so the list
     // shows one row per patient–doctor pair.
     const byPeer = new Map<string, Conversation>();
-    for (const c of conversations) {
+    for (const c of visible) {
       const peer = String(
         c.peer_user_id ?? (c.patient_id === me.id ? c.doctor_id : c.patient_id)
       );

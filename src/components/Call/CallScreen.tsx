@@ -327,6 +327,12 @@ const styles = StyleSheet.create({
   localVideo: {
     flex: 1,
     width: '100%',
+    height: '100%',
+    // Round the video itself (not just the frame) so it fits inside the curved
+    // border even on Android where overflow clipping of the native surface can
+    // fail and leave square corners.
+    borderRadius: 14,
+    overflow: 'hidden',
   },
   indicator: {
     position: 'absolute',

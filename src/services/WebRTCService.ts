@@ -45,6 +45,8 @@ export class WebRTCService {
   private remoteUserId: number | null = null;
   private isInitiator = false;
   private iceCandidatesQueue: RTCIceCandidateInit[] = [];
+  /** Current camera (toggled by switchCamera; getSettings() is unreliable). */
+  private facingMode: 'user' | 'environment' = 'user';
 
   setEvents(events: Partial<WebRTCEvents>) {
     this.events = { ...this.events, ...events };
@@ -135,6 +137,13 @@ export class WebRTCService {
 
     try {
       const stream = await mediaDevices.getUserMedia(constraints);
+      // Remember which camera we got so switchCamera() can flip reliably
+      // (getSettings().facingMode can be undefined on some devices, which made
+      // the camera appear "stuck" on the front camera).
+      if (callType === 'video') {
+        const requested = (constraints.video as any)?.facingMode;
+        this.facingMode = requested === 'environment' ? 'environment' : 'user';
+      }
       console.log('[WebRTC] Got user media:', callType);
       return stream;
     } catch (error) {
@@ -264,33 +273,63 @@ export class WebRTCService {
     return videoTracks.length > 0 ? videoTracks[0].enabled : false;
   }
 
-  switchCamera() {
+  async switchCamera() {
     if (!this.localStream || this.callType === 'audio') return;
+    const local = this.localStream;
 
-    const videoTracks = this.localStream.getVideoTracks();
+    const videoTracks = local.getVideoTracks();
     if (videoTracks.length === 0) return;
 
     const currentTrack = videoTracks[0];
-    const facingMode = currentTrack.getSettings().facingMode === 'user' ? 'environment' : 'user';
+    const nextFacing = this.facingMode === 'user' ? 'environment' : 'user';
 
-    mediaDevices
-      .getUserMedia({
+    try {
+      // Release the current camera BEFORE requesting the next one. Requesting
+      // getUserMedia while the old track still holds the camera can hang/freeze
+      // the camera on Android (camera already in use), leaving it "stuck".
+      local.removeTrack(currentTrack);
+      currentTrack.stop();
+
+      const stream = await mediaDevices.getUserMedia({
         audio: false,
-        video: { facingMode, width: { ideal: 640 }, height: { ideal: 480 } },
-      })
-      .then((stream) => {
-        const newTrack = stream.getVideoTracks()[0];
-        const sender = this.peerConnection?.getSenders().find((s) => s.track?.kind === 'video');
-        if (sender && newTrack) {
-          sender.replaceTrack(newTrack);
-        }
-        currentTrack.stop();
-        this.localStream?.removeTrack(currentTrack);
-        this.localStream?.addTrack(newTrack);
-      })
-      .catch((error) => {
-        console.error('[WebRTC] Switch camera error:', error);
+        video: { facingMode: nextFacing, width: { ideal: 640 }, height: { ideal: 480 } },
       });
+      const newTrack = stream.getVideoTracks()[0];
+      if (!newTrack) {
+        stream.getTracks().forEach((t) => t.stop());
+        return;
+      }
+
+      this.facingMode = nextFacing;
+      local.addTrack(newTrack);
+
+      // Swap the sender so the remote sees the new camera.
+      const sender = this.peerConnection?.getSenders().find((s) => s.track?.kind === 'video');
+      if (sender) {
+        await sender.replaceTrack(newTrack);
+      }
+
+      // Re-emit the local stream so the PiP preview refreshes with the new camera.
+      this.events.onLocalStream?.(local);
+    } catch (error) {
+      console.error('[WebRTC] Switch camera error:', error);
+      // Try to restore a camera so the call isn't left without video.
+      try {
+        const restore = await mediaDevices.getUserMedia({
+          audio: false,
+          video: { facingMode: this.facingMode, width: { ideal: 640 }, height: { ideal: 480 } },
+        });
+        const restoreTrack = restore.getVideoTracks()[0];
+        if (restoreTrack) {
+          local.addTrack(restoreTrack);
+          const sender = this.peerConnection?.getSenders().find((s) => s.track?.kind === 'video');
+          if (sender) await sender.replaceTrack(restoreTrack);
+          this.events.onLocalStream?.(local);
+        }
+      } catch (_) {
+        // give up — no camera available
+      }
+    }
   }
 
   cleanup() {

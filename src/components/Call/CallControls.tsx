@@ -3,6 +3,7 @@ import { View, StyleSheet, TouchableOpacity, Text } from 'react-native';
 import { Mic, MicOff, Video, VideoOff, Phone, Volume2, RotateCcw } from 'lucide-react-native';
 import { useCall } from '../../context/CallContext';
 import { Colors } from '../../theme/colors';
+import { responsiveSize } from '../../theme';
 
 interface CallControlsProps {
   onEndCall: () => void;
@@ -16,6 +17,7 @@ interface CallControlsProps {
  */
 export const CallControls: React.FC<CallControlsProps> = ({ onEndCall }) => {
   const { state, toggleMute, toggleVideo, toggleSpeaker, switchCamera } = useCall();
+  const iconSize = responsiveSize(22);
 
   const renderToggle = (
     key: string,
@@ -43,14 +45,14 @@ export const CallControls: React.FC<CallControlsProps> = ({ onEndCall }) => {
 
       <View style={styles.controlsRow}>
         {state.callType === 'video' &&
-          renderToggle('flip', <RotateCcw size={24} color={Colors.white} />, false, switchCamera)}
+          renderToggle('flip', <RotateCcw size={iconSize} color={Colors.white} />, false, switchCamera)}
 
         {renderToggle(
           'mute',
           state.isMuted ? (
-            <MicOff size={24} color={Colors.primary} />
+            <MicOff size={iconSize} color={Colors.primary} />
           ) : (
-            <Mic size={24} color={Colors.white} />
+            <Mic size={iconSize} color={Colors.white} />
           ),
           state.isMuted,
           toggleMute
@@ -58,7 +60,7 @@ export const CallControls: React.FC<CallControlsProps> = ({ onEndCall }) => {
 
         {renderToggle(
           'speaker',
-          <Volume2 size={24} color={state.isSpeakerOn ? Colors.primary : Colors.white} />,
+          <Volume2 size={iconSize} color={state.isSpeakerOn ? Colors.primary : Colors.white} />,
           state.isSpeakerOn,
           toggleSpeaker
         )}
@@ -67,9 +69,9 @@ export const CallControls: React.FC<CallControlsProps> = ({ onEndCall }) => {
           renderToggle(
             'video',
             state.isVideoEnabled ? (
-              <Video size={24} color={Colors.white} />
+              <Video size={iconSize} color={Colors.white} />
             ) : (
-              <VideoOff size={24} color={Colors.primary} />
+              <VideoOff size={iconSize} color={Colors.primary} />
             ),
             !state.isVideoEnabled,
             toggleVideo
@@ -77,7 +79,7 @@ export const CallControls: React.FC<CallControlsProps> = ({ onEndCall }) => {
 
         {/* End call — red, same size, centered with the toggles */}
         <TouchableOpacity style={styles.endCallButton} onPress={onEndCall} activeOpacity={0.8}>
-          <Phone size={26} color={Colors.white} />
+          <Phone size={iconSize} color={Colors.white} />
         </TouchableOpacity>
       </View>
     </View>
@@ -86,14 +88,14 @@ export const CallControls: React.FC<CallControlsProps> = ({ onEndCall }) => {
 
 const styles = StyleSheet.create({
   container: {
-    paddingHorizontal: 24,
-    paddingBottom: 32,
+    paddingHorizontal: responsiveSize(18),
+    paddingBottom: responsiveSize(30),
   },
   mutedBadge: {
     alignSelf: 'center',
-    marginBottom: 16,
-    paddingHorizontal: 14,
-    paddingVertical: 6,
+    marginBottom: responsiveSize(14),
+    paddingHorizontal: responsiveSize(14),
+    paddingVertical: responsiveSize(6),
     borderRadius: 999,
     backgroundColor: 'rgba(255, 255, 255, 0.12)',
   },
@@ -106,12 +108,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 18,
+    gap: responsiveSize(10),
   },
+  // Buttons flex to fit any screen width (flex:1 + aspectRatio keeps them round)
+  // and cap out on large screens so they don't get oversized.
   toggleButton: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    flex: 1,
+    maxWidth: 62,
+    aspectRatio: 1,
+    borderRadius: 999,
     backgroundColor: 'rgba(255, 255, 255, 0.14)',
     justifyContent: 'center',
     alignItems: 'center',
@@ -120,9 +125,10 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.white,
   },
   endCallButton: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    flex: 1,
+    maxWidth: 62,
+    aspectRatio: 1,
+    borderRadius: 999,
     backgroundColor: '#EF4444',
     justifyContent: 'center',
     alignItems: 'center',
