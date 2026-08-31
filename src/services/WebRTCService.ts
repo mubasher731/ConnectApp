@@ -94,8 +94,13 @@ export class WebRTCService {
       this.events.onConnectionStateChange?.(state);
 
       if (state === 'disconnected' || state === 'failed' || state === 'closed') {
-        this.cleanup();
-        this.events.onCallEnded?.();
+        // Guard against re-entry: cleanup() closes the peer connection, which
+        // fires 'closed' → this handler again. Once the PC is null, skip —
+        // otherwise onCallEnded would fire twice (double RESET/stop/leave).
+        if (this.peerConnection) {
+          this.cleanup();
+          this.events.onCallEnded?.();
+        }
       }
     };
 

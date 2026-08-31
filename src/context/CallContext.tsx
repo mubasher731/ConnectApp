@@ -136,6 +136,7 @@ const goToCallScreen = (): void => navigate('Call');
 
 /** Leave the in-call screen only when it is the current route. */
 const leaveCallScreen = (): void => {
+  if (!navigationRef.isReady()) return;
   if (navigationRef.getCurrentRoute()?.name === 'Call' && navigationRef.canGoBack()) {
     goBack();
   }
@@ -165,6 +166,23 @@ export const CallProvider: React.FC<CallProviderProps> = ({ children }) => {
     sessionId: number | null;
     callType: 'audio' | 'video';
   }>({ targetId: null, myId: 0, myName: '', sessionId: null, callType: 'video' });
+
+  // Tracks whether InCallManager was started so we never call stop() on a
+  // manager that was never started — native audio routing breaks on the 2nd+
+  // call if stop() runs without a prior start() (call ends while still ringing,
+  // call rejected, connection drops before answer, etc.).
+  const inCallManagerStarted = useRef(false);
+  const startInCallManager = (media: 'audio' | 'video') => {
+    InCallManager.start({ media });
+    InCallManager.setSpeakerphoneOn(true);
+    inCallManagerStarted.current = true;
+  };
+  const stopInCallManager = () => {
+    if (inCallManagerStarted.current) {
+      InCallManager.stop();
+      inCallManagerStarted.current = false;
+    }
+  };
 
   // Live view of the latest state for socket handlers (avoids stale closures).
   const stateRef = useRef(state);
@@ -231,6 +249,34 @@ export const CallProvider: React.FC<CallProviderProps> = ({ children }) => {
       return;
     }
     let cancelled = false;
+    let reRegister: (() => void) | null = null;
+
+    const register = (target: Socket) => {
+      const L = callListeners.current;
+      target.on('disconnect', L.disconnect);
+      target.on('call:incoming', L.incoming);
+      target.on('call:offer', L.offer); // backend relays call:offer
+      target.on('call:answer', L.answer);
+      target.on('call:ice-candidate', L.ice);
+      target.on('call:ended', L.ended);
+      target.on('call:end', L.end);
+      target.on('call:rejected', L.rejected);
+      target.on('call:reject', L.reject);
+      target.on('call:busy', L.busy);
+    };
+    const unregister = (target: Socket) => {
+      const L = callListeners.current;
+      target.off('disconnect', L.disconnect);
+      target.off('call:incoming', L.incoming);
+      target.off('call:offer', L.offer);
+      target.off('call:answer', L.answer);
+      target.off('call:ice-candidate', L.ice);
+      target.off('call:ended', L.ended);
+      target.off('call:end', L.end);
+      target.off('call:rejected', L.rejected);
+      target.off('call:reject', L.reject);
+      target.off('call:busy', L.busy);
+    };
 
     const setup = async () => {
       // Prefer the existing socket when present (socket.io reconnects the same
@@ -243,17 +289,15 @@ export const CallProvider: React.FC<CallProviderProps> = ({ children }) => {
       if (cancelled || !s) return;
       socket = s;
 
-      const L = callListeners.current;
-      s.on('disconnect', L.disconnect);
-      s.on('call:incoming', L.incoming);
-      s.on('call:offer', L.offer); // backend relays call:offer
-      s.on('call:answer', L.answer);
-      s.on('call:ice-candidate', L.ice);
-      s.on('call:ended', L.ended);
-      s.on('call:end', L.end);
-      s.on('call:rejected', L.rejected);
-      s.on('call:reject', L.reject);
-      s.on('call:busy', L.busy);
+      register(s);
+      // Re-register on every (re)connect so call listeners are always on the
+      // live socket — even if a socket is created/recreated outside a user
+      // change (off-first prevents duplicates).
+      reRegister = () => {
+        unregister(s);
+        register(s);
+      };
+      s.on('connect', reRegister);
     };
 
     setup();
@@ -261,17 +305,8 @@ export const CallProvider: React.FC<CallProviderProps> = ({ children }) => {
     return () => {
       cancelled = true;
       if (socket) {
-        const L = callListeners.current;
-        socket.off('disconnect', L.disconnect);
-        socket.off('call:incoming', L.incoming);
-        socket.off('call:offer', L.offer);
-        socket.off('call:answer', L.answer);
-        socket.off('call:ice-candidate', L.ice);
-        socket.off('call:ended', L.ended);
-        socket.off('call:end', L.end);
-        socket.off('call:rejected', L.rejected);
-        socket.off('call:reject', L.reject);
-        socket.off('call:busy', L.busy);
+        if (reRegister) socket.off('connect', reRegister);
+        unregister(socket);
       }
       socket = null;
     };
@@ -450,7 +485,8 @@ export const CallProvider: React.FC<CallProviderProps> = ({ children }) => {
         })
         .catch((error) => {
           console.error('[CallContext] WebRTC incoming setup failed:', error);
-          webRTCService.cleanup();
+          // onError already ended the call (cleanup + RESET); just clear the
+          // readiness flag so the UI doesn't offer Accept on a dead call.
           if (isMounted.current) dispatch({ type: 'SET_PEER_READY', ready: false });
         });
     },
@@ -465,8 +501,7 @@ export const CallProvider: React.FC<CallProviderProps> = ({ children }) => {
           dispatch({ type: 'SET_STATUS', status: 'active' });
           dispatch({ type: 'SET_DURATION', duration: 0 });
           // Start InCallManager for the caller side too
-          InCallManager.start({ media: state.callType === 'video' ? 'video' : 'audio' });
-          InCallManager.setSpeakerphoneOn(true);
+          startInCallManager(state.callType === 'video' ? 'video' : 'audio');
         }
       }
     },
@@ -490,7 +525,7 @@ export const CallProvider: React.FC<CallProviderProps> = ({ children }) => {
     startingCallRef.current = false;
     callParamsRef.current.targetId = null;
     webRTCService.cleanup();
-    InCallManager.stop();
+    stopInCallManager();
     setStreams({ local: null, remote: null });
     if (isMounted.current) {
       dispatch({ type: 'RESET' });
@@ -506,6 +541,7 @@ export const CallProvider: React.FC<CallProviderProps> = ({ children }) => {
     startingCallRef.current = false;
     callParamsRef.current.targetId = null;
     webRTCService.cleanup();
+    stopInCallManager();
     setStreams({ local: null, remote: null });
     if (isMounted.current) {
       dispatch({ type: 'RESET' });
@@ -517,6 +553,7 @@ export const CallProvider: React.FC<CallProviderProps> = ({ children }) => {
     startingCallRef.current = false;
     callParamsRef.current.targetId = null;
     webRTCService.cleanup();
+    stopInCallManager();
     setStreams({ local: null, remote: null });
     if (isMounted.current) {
       dispatch({ type: 'RESET' });
@@ -558,8 +595,8 @@ export const CallProvider: React.FC<CallProviderProps> = ({ children }) => {
         })
         .catch((error) => {
           console.error('[CallContext] initiateCall failed:', error);
-          webRTCService.cleanup();
-          if (isMounted.current) dispatch({ type: 'RESET' });
+          // onError already ended the call (cleanup + RESET + leaveCallScreen);
+          // just release the guard so future calls aren't blocked.
           startingCallRef.current = false;
         });
       // Offer will be sent via onOfferCreated event
@@ -582,8 +619,7 @@ export const CallProvider: React.FC<CallProviderProps> = ({ children }) => {
     dispatch({ type: 'SET_DURATION', duration: 0 });
 
     // Start InCallManager
-    InCallManager.start({ media: state.callType === 'video' ? 'video' : 'audio' });
-    InCallManager.setSpeakerphoneOn(true);
+    startInCallManager(state.callType === 'video' ? 'video' : 'audio');
 
     // Create + send the SDP answer ONLY now, so the caller hears/sees nothing
     // until the callee actually accepts the call. Emitted via onAnswerCreated.
@@ -626,7 +662,7 @@ export const CallProvider: React.FC<CallProviderProps> = ({ children }) => {
     }
 
     webRTCService.cleanup();
-    InCallManager.stop();
+    stopInCallManager();
     if (isMounted.current) {
       dispatch({ type: 'RESET' });
       leaveCallScreen();

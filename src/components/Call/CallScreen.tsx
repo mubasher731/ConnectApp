@@ -9,7 +9,7 @@ import { Colors, Spacing } from '../../theme';
 
 export const CallScreen: React.FC = () => {
   const { state, endCall, acceptCall, rejectCall, localStream, remoteStream } = useCall();
-  const [connectionQuality, setConnectionQuality] = React.useState<'good' | 'poor' | 'disconnected'>('good');
+  const [connectionQuality, setConnectionQuality] = React.useState<'good' | 'poor' | 'disconnected' | null>(null);
   const [opacity] = React.useState(new Animated.Value(0));
   const [scale] = React.useState(new Animated.Value(0.95));
 
@@ -38,25 +38,28 @@ export const CallScreen: React.FC = () => {
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  // Connection quality indicator based on state
+  // Connection quality indicator based on state. 'new'/'connecting' means the
+  // call is still being established — show NO indicator yet (the initial state
+  // is also null), so an outgoing/incoming call doesn't falsely show a poor
+  // connection before it has even connected.
   useEffect(() => {
     switch (state.connectionState) {
       case 'connected':
         setConnectionQuality('good');
-        break;
-      case 'connecting':
-      case 'new':
-        setConnectionQuality('poor');
         break;
       case 'disconnected':
       case 'failed':
       case 'closed':
         setConnectionQuality('disconnected');
         break;
+      default:
+        setConnectionQuality(null);
+        break;
     }
   }, [state.connectionState]);
 
   const getConnectionIcon = () => {
+    if (!connectionQuality) return null;
     switch (connectionQuality) {
       case 'good':
         return <Wifi size={16} color={Colors.success} />;
@@ -64,6 +67,8 @@ export const CallScreen: React.FC = () => {
         return <WifiOff size={16} color={Colors.warning} />;
       case 'disconnected':
         return <AlertCircle size={16} color="#DC2626" />;
+      default:
+        return null;
     }
   };
 
@@ -111,9 +116,11 @@ export const CallScreen: React.FC = () => {
                 {state.status === 'incoming' && 'Incoming call'}
                 {state.status === 'reconnecting' && 'Reconnecting...'}
               </Text>
-              <View style={styles.connectionQuality}>
-                {getConnectionIcon()}
-              </View>
+              {state.status === 'active' && (
+                <View style={styles.connectionQuality}>
+                  {getConnectionIcon()}
+                </View>
+              )}
             </View>
           </View>
         </View>

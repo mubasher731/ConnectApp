@@ -151,9 +151,15 @@ const AppNavigator: React.FC = () => {
     return () => clearTimeout(timer);
   }, []);
 
-  // Track the focused screen so the "Back to Call" banner hides on the Call screen.
+  // Track the focused screen so the "Back to Call" banner hides on the Call
+  // screen. Guarded with isReady() because during the Splash phase the
+  // NavigationContainer isn't mounted yet (ref.current is null), and calling
+  // getCurrentRoute() then logs the "navigation object hasn't been initialized"
+  // error. The onStateChange callback keeps it up to date afterwards.
   useEffect(() => {
-    setCurrentRouteName(navigationRef.getCurrentRoute()?.name ?? '');
+    setCurrentRouteName(
+      navigationRef.isReady() ? (navigationRef.getCurrentRoute()?.name ?? '') : ''
+    );
   }, []);
 
   if (initializing || !minDelayDone) {
