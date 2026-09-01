@@ -301,7 +301,12 @@ export class WebRTCService {
       }
 
       this.facingMode = nextFacing;
-      local.addTrack(newTrack);
+
+      // Build a BRAND-NEW MediaStream (same audio + new video). A new stream
+      // has a new reactTag/URL, so the RTCView local preview re-renders with
+      // the new camera — swapping tracks on the same stream keeps the same URL,
+      // so the preview froze on the old camera.
+      const newLocal = new MediaStream([...local.getAudioTracks(), newTrack]);
 
       // Swap the sender so the remote sees the new camera.
       const sender = this.peerConnection?.getSenders().find((s) => s.track?.kind === 'video');
@@ -309,8 +314,9 @@ export class WebRTCService {
         await sender.replaceTrack(newTrack);
       }
 
-      // Re-emit the local stream so the PiP preview refreshes with the new camera.
-      this.events.onLocalStream?.(local);
+      this.localStream = newLocal;
+      // Emit the NEW stream so the UI preview (localStream.toURL()) updates.
+      this.events.onLocalStream?.(this.localStream);
     } catch (error) {
       console.error('[WebRTC] Switch camera error:', error);
       // Try to restore a camera so the call isn't left without video.
@@ -321,10 +327,14 @@ export class WebRTCService {
         });
         const restoreTrack = restore.getVideoTracks()[0];
         if (restoreTrack) {
-          local.addTrack(restoreTrack);
+          const restored = new MediaStream([
+            ...(this.localStream?.getAudioTracks() ?? []),
+            restoreTrack,
+          ]);
           const sender = this.peerConnection?.getSenders().find((s) => s.track?.kind === 'video');
           if (sender) await sender.replaceTrack(restoreTrack);
-          this.events.onLocalStream?.(local);
+          this.localStream = restored;
+          this.events.onLocalStream?.(this.localStream);
         }
       } catch (_) {
         // give up — no camera available

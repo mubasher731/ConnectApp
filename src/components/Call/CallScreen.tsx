@@ -308,30 +308,29 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     color: Colors.textSecondary,
   },
+  // WhatsApp-style rounded PiP: a dark rounded frame with no border. Android's
+  // native video surface can't be clipped to rounded corners, so we keep the
+  // container rounded + dark so it reads as a clean rounded thumbnail.
   localVideoContainer: {
     position: 'absolute',
     top: 100,
     right: Spacing.lg,
-    width: 100,
-    height: 150,
-    borderRadius: 16,
+    width: 112,
+    height: 156,
+    borderRadius: 20,
     overflow: 'hidden',
-    borderWidth: 2,
-    borderColor: Colors.white,
+    backgroundColor: Colors.black,
     shadowColor: Colors.black,
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
+    shadowOpacity: 0.35,
+    shadowRadius: 10,
     elevation: 8,
   },
   localVideo: {
     flex: 1,
     width: '100%',
     height: '100%',
-    // Round the video itself (not just the frame) so it fits inside the curved
-    // border even on Android where overflow clipping of the native surface can
-    // fail and leave square corners.
-    borderRadius: 14,
+    borderRadius: 18,
     overflow: 'hidden',
   },
   indicator: {
