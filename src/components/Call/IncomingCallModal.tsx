@@ -1,8 +1,8 @@
 import React, { useEffect } from 'react';
 import { View, StyleSheet, Text, Image, Animated, Easing, Platform, BackHandler, TouchableOpacity } from 'react-native';
-import { Phone, Video, X, Check } from 'lucide-react-native';
+import { Phone, PhoneOff, Video } from 'lucide-react-native';
 import { useCall } from '../../context/CallContext';
-import { Colors, Spacing } from '../../theme';
+import { Colors, Spacing, responsiveSize } from '../../theme';
 
 interface IncomingCallModalProps {
   visible: boolean;
@@ -17,8 +17,7 @@ export const IncomingCallModal: React.FC<IncomingCallModalProps> = ({
 }) => {
   const { state } = useCall();
   const [opacity] = React.useState(new Animated.Value(0));
-  const [scale] = React.useState(new Animated.Value(0.9));
-  const [ringOpacity] = React.useState(new Animated.Value(0));
+  const [translateY] = React.useState(new Animated.Value(80));
 
   useEffect(() => {
     if (visible) {
@@ -29,29 +28,13 @@ export const IncomingCallModal: React.FC<IncomingCallModalProps> = ({
           easing: Easing.out(Easing.cubic),
           useNativeDriver: true,
         }),
-        Animated.timing(scale, {
-          toValue: 1,
-          duration: 300,
+        // Bottom controls slide up from below the screen (WhatsApp-style).
+        Animated.timing(translateY, {
+          toValue: 0,
+          duration: 380,
           easing: Easing.out(Easing.cubic),
           useNativeDriver: true,
         }),
-        Animated.loop(
-          Animated.sequence([
-            Animated.timing(ringOpacity, {
-              toValue: 1,
-              duration: 1000,
-              easing: Easing.inOut(Easing.quad),
-              useNativeDriver: true,
-            }),
-            Animated.timing(ringOpacity, {
-              toValue: 0,
-              duration: 1000,
-              easing: Easing.inOut(Easing.quad),
-              useNativeDriver: true,
-            }),
-          ]),
-          { iterations: -1 }
-        ),
       ]).start();
 
       // Prevent back button from dismissing
@@ -64,12 +47,13 @@ export const IncomingCallModal: React.FC<IncomingCallModalProps> = ({
         easing: Easing.in(Easing.cubic),
         useNativeDriver: true,
       }).start();
+      translateY.setValue(80);
     }
   }, [visible]);
 
   if (!visible) return null;
 
-  const callTypeIcon = state.callType === 'video' ? <Video size={28} color={Colors.white} /> : <Phone size={28} color={Colors.white} />;
+  const callTypeIcon = state.callType === 'video' ? <Video size={26} color={Colors.white} /> : <Phone size={26} color={Colors.white} />;
   const callTypeText = state.callType === 'video' ? 'Video Call' : 'Audio Call';
 
   return (
@@ -80,12 +64,8 @@ export const IncomingCallModal: React.FC<IncomingCallModalProps> = ({
       ]}
       pointerEvents={visible ? 'auto' : 'none'}
     >
-      <Animated.View
-        style={[
-          styles.modal,
-          { transform: [{ scale }] },
-        ]}
-      >
+      {/* Upper area: call type, avatar and caller name */}
+      <View style={styles.content}>
         {/* Call type indicator */}
         <View style={styles.callTypeBadge}>
           {callTypeIcon}
@@ -111,48 +91,40 @@ export const IncomingCallModal: React.FC<IncomingCallModalProps> = ({
         {/* Caller name */}
         <Text style={styles.callerName}>{state.remoteUser?.name || 'Incoming Call'}</Text>
         <Text style={styles.incomingText}>Incoming call...</Text>
+      </View>
 
-        {/* Action buttons */}
+      {/* Bottom controls — slide up from the bottom (WhatsApp-style) */}
+      <Animated.View
+        style={[
+          styles.bottomSection,
+          { transform: [{ translateY }] },
+        ]}
+      >
         <View style={styles.buttonsContainer}>
-          <Animated.View
-            style={[
-              styles.actionButton,
-              { opacity: ringOpacity },
-            ]}
-          >
+          <View style={styles.actionButton}>
             <TouchableOpacity
               style={styles.rejectButtonInner}
               onPress={onReject}
               activeOpacity={0.8}
             >
-              <X size={28} color={Colors.white} />
+              <PhoneOff size={responsiveSize(30)} color={Colors.white} />
             </TouchableOpacity>
             <Text style={styles.buttonLabel}>Decline</Text>
-          </Animated.View>
+          </View>
 
-          <Animated.View
-            style={[
-              styles.actionButton,
-              { opacity: ringOpacity },
-            ]}
-          >
+          <View style={styles.actionButton}>
             <TouchableOpacity
               style={[styles.acceptButtonInner, !state.peerReady && styles.acceptButtonDisabled]}
               onPress={onAccept}
               disabled={!state.peerReady}
               activeOpacity={0.8}
             >
-              <Check size={28} color={Colors.white} />
+              <Phone size={responsiveSize(30)} color={Colors.white} />
             </TouchableOpacity>
             <Text style={styles.buttonLabel}>
               {state.peerReady ? 'Accept' : 'Preparing…'}
             </Text>
-          </Animated.View>
-        </View>
-
-        {/* Swipe hint */}
-        <View style={styles.swipeHint}>
-          <Text style={styles.swipeText}>Slide to answer</Text>
+          </View>
         </View>
       </Animated.View>
     </Animated.View>
@@ -166,19 +138,21 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.9)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: '#000000',
     zIndex: 1000,
   },
-  modal: {
+  // Upper content is centered; bottom controls are pinned to the bottom.
+  content: {
+    flex: 1,
+    justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: Spacing.xl,
+    paddingTop: Spacing.xxl,
   },
   callTypeBadge: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+    width: responsiveSize(64),
+    height: responsiveSize(64),
+    borderRadius: responsiveSize(32),
     backgroundColor: Colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
@@ -190,19 +164,19 @@ const styles = StyleSheet.create({
     elevation: 10,
   },
   callTypeText: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '500',
     color: Colors.textSecondary,
-    marginBottom: Spacing.xl,
+    marginBottom: Spacing.lg,
   },
   avatarContainer: {
     marginBottom: Spacing.lg,
   },
   avatar: {
-    width: 140,
-    height: 140,
-    borderRadius: 70,
-    borderWidth: 4,
+    width: responsiveSize(132),
+    height: responsiveSize(132),
+    borderRadius: responsiveSize(66),
+    borderWidth: 3,
     borderColor: Colors.white,
     shadowColor: Colors.black,
     shadowOffset: { width: 0, height: 8 },
@@ -216,12 +190,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   avatarText: {
-    fontSize: 56,
+    fontSize: responsiveSize(52),
     fontWeight: '600',
     color: Colors.white,
   },
   callerName: {
-    fontSize: 28,
+    fontSize: responsiveSize(28),
     fontWeight: '600',
     color: Colors.white,
     marginBottom: Spacing.xs,
@@ -229,38 +203,44 @@ const styles = StyleSheet.create({
   incomingText: {
     fontSize: 16,
     color: Colors.textSecondary,
-    marginBottom: Spacing.xxl,
+  },
+  // WhatsApp-style bottom action area (slides up on show).
+  bottomSection: {
+    alignItems: 'center',
+    paddingTop: responsiveSize(24),
+    paddingBottom: responsiveSize(44),
+    paddingHorizontal: Spacing.xl,
   },
   buttonsContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: Spacing.xxl,
+    gap: responsiveSize(52),
   },
   actionButton: {
     alignItems: 'center',
   },
   rejectButtonInner: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: Colors.danger,
+    width: responsiveSize(76),
+    height: responsiveSize(76),
+    borderRadius: responsiveSize(38),
+    backgroundColor: '#FF3B30',
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: Colors.danger,
+    shadowColor: '#FF3B30',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.4,
     shadowRadius: 8,
     elevation: 6,
   },
   acceptButtonInner: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: Colors.success,
+    width: responsiveSize(76),
+    height: responsiveSize(76),
+    borderRadius: responsiveSize(38),
+    backgroundColor: '#25D366',
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: Colors.success,
+    shadowColor: '#25D366',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.4,
     shadowRadius: 8,
@@ -274,16 +254,5 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: Colors.white,
-  },
-  swipeHint: {
-    marginTop: Spacing.xxl,
-    paddingHorizontal: Spacing.xl,
-    paddingVertical: Spacing.sm,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-  },
-  swipeText: {
-    fontSize: 13,
-    color: Colors.textSecondary,
   },
 });
