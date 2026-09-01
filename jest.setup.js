@@ -27,6 +27,7 @@ jest.mock('@react-native-async-storage/async-storage', () => ({
 // react-native-vector-icons relies on native fonts — render as a plain Text.
 jest.mock('react-native-vector-icons/Ionicons', () => 'Ionicons');
 jest.mock('react-native-vector-icons/MaterialCommunityIcons', () => 'MaterialCommunityIcons');
+jest.mock('react-native-vector-icons/MaterialIcons', () => 'MaterialIcons');
 
 // react-native-worklets requires a native module — stub it out for tests.
 jest.mock('react-native-worklets', () => {

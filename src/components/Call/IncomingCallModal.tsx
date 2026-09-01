@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { View, StyleSheet, Text, Image, Animated, Easing, Platform, BackHandler, TouchableOpacity } from 'react-native';
-import { Phone, PhoneOff, Video } from 'lucide-react-native';
+import { Phone, Video } from 'lucide-react-native';
+import MaterialIcon from 'react-native-vector-icons/MaterialIcons';
 import { useCall } from '../../context/CallContext';
 import { Colors, Spacing, responsiveSize } from '../../theme';
 
@@ -107,7 +108,7 @@ export const IncomingCallModal: React.FC<IncomingCallModalProps> = ({
               onPress={onReject}
               activeOpacity={0.8}
             >
-              <PhoneOff size={responsiveSize(30)} color={Colors.white} />
+              <MaterialIcon name="call-end" size={responsiveSize(30)} color={Colors.white} />
             </TouchableOpacity>
             <Text style={styles.buttonLabel}>Decline</Text>
           </View>

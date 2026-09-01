@@ -1,6 +1,8 @@
 import React from 'react';
 import { View, StyleSheet, TouchableOpacity, Text } from 'react-native';
-import { Mic, MicOff, Video, VideoOff, Phone, Volume2, RotateCcw } from 'lucide-react-native';
+import { Mic, MicOff, Video, VideoOff, Volume2 } from 'lucide-react-native';
+import Ionicon from 'react-native-vector-icons/Ionicons';
+import MaterialIcon from 'react-native-vector-icons/MaterialIcons';
 import { useCall } from '../../context/CallContext';
 import { Colors } from '../../theme/colors';
 import { responsiveSize } from '../../theme';
@@ -43,9 +45,15 @@ export const CallControls: React.FC<CallControlsProps> = ({ onEndCall }) => {
         </View>
       )}
 
-      <View style={styles.controlsRow}>
+      {/* WhatsApp-style grouped card for all call controls */}
+      <View style={styles.controlsCard}>
         {state.callType === 'video' &&
-          renderToggle('flip', <RotateCcw size={iconSize} color={Colors.white} />, false, switchCamera)}
+          renderToggle(
+            'flip',
+            <Ionicon name="camera-reverse-outline" size={iconSize} color={Colors.white} />,
+            false,
+            switchCamera
+          )}
 
         {renderToggle(
           'mute',
@@ -77,9 +85,9 @@ export const CallControls: React.FC<CallControlsProps> = ({ onEndCall }) => {
             toggleVideo
           )}
 
-        {/* End call — red, same size, centered with the toggles */}
+        {/* End call — red, Material call_end (WhatsApp-style handset) */}
         <TouchableOpacity style={styles.endCallButton} onPress={onEndCall} activeOpacity={0.8}>
-          <Phone size={iconSize} color={Colors.white} />
+          <MaterialIcon name="call-end" size={iconSize} color={Colors.white} />
         </TouchableOpacity>
       </View>
     </View>
@@ -104,11 +112,23 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '500',
   },
-  controlsRow: {
+  // WhatsApp-style: all controls grouped inside a single rounded card.
+  controlsCard: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: responsiveSize(10),
+    gap: responsiveSize(12),
+    paddingVertical: responsiveSize(16),
+    paddingHorizontal: responsiveSize(12),
+    borderRadius: responsiveSize(30),
+    backgroundColor: 'rgba(18, 22, 40, 0.9)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+    shadowColor: Colors.black,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.4,
+    shadowRadius: 16,
+    elevation: 12,
   },
   // Buttons flex to fit any screen width (flex:1 + aspectRatio keeps them round)
   // and cap out on large screens so they don't get oversized.

@@ -211,7 +211,7 @@ const ChatHeaderMenu: React.FC<ChatHeaderMenuProps> = ({
   return (
     <>
       <TouchableOpacity
-        style={[styles.headerMenuButton, disabled && styles.headerMenuButtonDisabled]}
+        style={[disabled && styles.headerMenuButtonDisabled]}
         onPress={() => setOpen(true)}
         disabled={disabled}
         activeOpacity={0.7}
@@ -1557,15 +1557,15 @@ const styles = StyleSheet.create({
   headerTitleStatusOffline: {
     color: Colors.textTertiary,
   },
-  headerMenuButton: {
-    width: 36,
-    height: 36,
-    borderRadius: Radius.round,
-    backgroundColor: Colors.primarySoft,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: Spacing.xs,
-  },
+  // headerMenuButton: {
+  //   width: 36,
+  //   height: 36,
+  //   borderRadius: Radius.round,
+  //   backgroundColor: Colors.primarySoft,
+  //   justifyContent: 'center',
+  //   alignItems: 'center',
+  //   marginRight: Spacing.xs,
+  // },
   headerMenuButtonDisabled: {
     opacity: 0.45,
   },
