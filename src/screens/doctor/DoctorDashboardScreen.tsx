@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -8,7 +8,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useIsFocused } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   AppointmentRequestCard,
@@ -69,26 +69,36 @@ const DoctorDashboardScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
       });
   }, [recent, searchQuery]);
 
-  const refresh = useCallback(async () => {
-    setLoading(true);
+  const refresh = useCallback(async (showSpinner = true) => {
+    if (showSpinner) setLoading(true);
     try {
       const convs = await sessionService.getConversations();
       setConversations(convs);
     } catch {
       setConversations([]);
     } finally {
-      setLoading(false);
+      if (showSpinner) setLoading(false);
     }
   }, []);
 
   useFocusEffect(
     useCallback(() => {
-      refresh();
+      refresh(true);
     }, [refresh])
   );
 
-  // Live real-time refresh whenever backend data changes over the socket.
-  useAutoRefresh(refresh);
+  // Live real-time refresh whenever backend data changes over the socket
+  // (silent — no full-screen spinner flash on every event).
+  useAutoRefresh(() => refresh(false));
+
+  // Poll fallback so the dashboard always shows the latest data even if a
+  // socket event is missed — updates appear without switching tabs.
+  const isFocused = useIsFocused();
+  useEffect(() => {
+    if (!isFocused) return;
+    const interval = setInterval(() => refresh(false), 10000);
+    return () => clearInterval(interval);
+  }, [isFocused, refresh]);
 
   const handleRequestAction = async (id: string, status: 'approved' | 'rejected') => {
     try {

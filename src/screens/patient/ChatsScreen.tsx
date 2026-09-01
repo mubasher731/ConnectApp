@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -6,7 +6,7 @@ import {
   TouchableOpacity,
   StyleSheet,
 } from 'react-native';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useIsFocused } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAutoRefresh } from '../../hooks/useAutoRefresh';
 import { AppointmentCard, EmptyState } from '../../components';
@@ -32,14 +32,14 @@ const ChatsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     return chats.filter((c) => c.status === 'rejected');
   }, [chats, filter]);
 
-  const loadChats = useCallback(async () => {
-    setLoading(true);
+  const loadChats = useCallback(async (showSpinner = true) => {
+    if (showSpinner) setLoading(true);
     try {
       setChats(await chatService.getChats());
     } catch {
       setChats([]);
     } finally {
-      setLoading(false);
+      if (showSpinner) setLoading(false);
     }
   }, []);
 
@@ -47,12 +47,22 @@ const ChatsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   // the list always shows the complete, fresh conversations.
   useFocusEffect(
     useCallback(() => {
-      loadChats();
+      loadChats(true);
     }, [loadChats])
   );
 
-  // Live real-time refresh whenever backend data changes over the socket.
-  useAutoRefresh(loadChats);
+  // Live real-time refresh whenever backend data changes over the socket
+  // (silent — avoids the refresh spinner flashing on every event).
+  useAutoRefresh(() => loadChats(false));
+
+  // Poll fallback so the list always shows the latest data even if a socket
+  // event is missed — no need to switch tabs to see new updates.
+  const isFocused = useIsFocused();
+  useEffect(() => {
+    if (!isFocused) return;
+    const interval = setInterval(() => loadChats(false), 10000);
+    return () => clearInterval(interval);
+  }, [isFocused, loadChats]);
 
   const navigateToChat = useCallback(
     (chat: Chat) =>
