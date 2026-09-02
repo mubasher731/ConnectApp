@@ -9,9 +9,20 @@ import {
   registerGlobals,
 } from 'react-native-webrtc';
 
-import { RTC_CONFIG, CALL_CONFIG } from '../config/webrtc';
+import { FALLBACK_ICE_CONFIG, CALL_CONFIG } from '../config/webrtc';
 
 registerGlobals();
+
+type IceServer = {
+  urls: string | string[];
+  username?: string;
+  credential?: string;
+};
+
+type RtcConfig = {
+  iceServers: IceServer[];
+  iceCandidatePoolSize?: number;
+};
 
 /**
  * react-native-webrtc doesn't re-export these "Init" types from its index (they
@@ -63,9 +74,26 @@ export class WebRTCService {
   private iceCandidatesQueue: RTCIceCandidateInit[] = [];
   /** Current camera (toggled by switchCamera; getSettings() is unreliable). */
   private facingMode: 'user' | 'environment' = 'user';
+  private currentIceConfig: RtcConfig = FALLBACK_ICE_CONFIG as RtcConfig;
 
   setEvents(events: Partial<WebRTCEvents>) {
     this.events = { ...this.events, ...events };
+  }
+
+  /**
+   * Set the ICE configuration used for the next peer connection. Production
+   * TURN credentials are issued by the backend and must be applied here before
+   * calling createPeerConnection. Passing null/empty falls back to a STUN-only
+   * configuration (suitable for local development).
+   */
+  setIceConfig(config: Partial<RtcConfig> | null | undefined) {
+    const iceServers = Array.isArray(config?.iceServers)
+      ? (config!.iceServers as IceServer[])
+      : [];
+    this.currentIceConfig = {
+      iceServers,
+      iceCandidatePoolSize: config?.iceCandidatePoolSize,
+    } as RtcConfig;
   }
 
   getLocalStream() {
@@ -92,7 +120,7 @@ export class WebRTCService {
     this.isInitiator = isInitiator;
     this.callType = callType;
 
-    this.peerConnection = new RTCPeerConnection(RTC_CONFIG);
+    this.peerConnection = new RTCPeerConnection(this.currentIceConfig);
 
     // react-native-webrtc types these handlers as a generic Event without the
     // real fields, so type the events loosely — the runtime events do carry

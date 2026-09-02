@@ -5,6 +5,7 @@ import { navigationRef, navigate, goBack } from '../navigation/navigationRef';
 import { useAuth } from './AuthContext';
 import { webRTCService, WebRTCEvents } from '../services/WebRTCService';
 import { sessionService } from '../services/sessionService';
+import { getIceConfig as fetchIceConfig } from '../services/iceService';
 import { MediaStream } from 'react-native-webrtc';
 import InCallManager from 'react-native-incall-manager';
 
@@ -163,9 +164,17 @@ export const CallProvider: React.FC<CallProviderProps> = ({ children }) => {
     targetId: number | null;
     myId: number;
     myName: string;
-    sessionId: number | null;
+    consultationId: number | null;
+    callId: string | null;
     callType: 'audio' | 'video';
-  }>({ targetId: null, myId: 0, myName: '', sessionId: null, callType: 'video' });
+  }>({
+    targetId: null,
+    myId: 0,
+    myName: '',
+    consultationId: null,
+    callId: null,
+    callType: 'video',
+  });
 
   // Tracks whether InCallManager was started so we never call stop() on a
   // manager that was never started — native audio routing breaks on the 2nd+
@@ -356,6 +365,8 @@ export const CallProvider: React.FC<CallProviderProps> = ({ children }) => {
           socket.emit('call:ice-candidate', {
             to: p.targetId,
             from: sender,
+            consultationId: p.consultationId,
+            callId: p.callId,
             candidate,
           });
         } else {
@@ -373,14 +384,14 @@ export const CallProvider: React.FC<CallProviderProps> = ({ children }) => {
         const p = callParamsRef.current;
         const sender = p.myId || myId;
         if (p.targetId && socket) {
-          console.log('[Call] Emitting call:offer →', p.targetId, p.callType, 'session', p.sessionId);
+          console.log('[Call] Emitting call:offer →', p.targetId, p.callType, 'consultation', p.consultationId);
           socket.emit('call:offer', {
             to: p.targetId,
             from: sender,
             fromName: p.myName || user?.name || '',
-            offer,
-            sessionId: p.sessionId,
+            consultationId: p.consultationId,
             callType: p.callType,
+            offer,
           });
         } else {
           console.warn('[Call] Offer NOT emitted — missing target/socket', {
@@ -397,6 +408,8 @@ export const CallProvider: React.FC<CallProviderProps> = ({ children }) => {
           socket.emit('call:answer', {
             to: p.targetId,
             from: sender,
+            consultationId: p.consultationId,
+            callId: p.callId,
             answer,
           });
         } else {
@@ -418,25 +431,31 @@ export const CallProvider: React.FC<CallProviderProps> = ({ children }) => {
 
   // Handle incoming call
   const handleIncomingCall = useCallback(
-    (data: { from: number; fromName?: string; offer: any; sessionId: number; callType: string }) => {
+    (data: { from: number; fromName?: string; offer: any; consultationId?: number; sessionId?: number; callId?: string; callType: string }) => {
       if (state.status !== 'idle') {
-        socket?.emit('call:busy', { to: data.from, from: user?.id ?? 0 });
+        socket?.emit('call:busy', {
+          to: data.from,
+          from: user?.id ?? 0,
+          consultationId: data.consultationId ?? data.sessionId,
+        });
         return;
       }
 
       const myId = user?.id ?? 0;
+      const consultationId = data.consultationId ?? data.sessionId ?? null;
       // Capture the call context so accept/answer emits route correctly.
       callParamsRef.current = {
         targetId: data.from,
         myId,
         myName: user?.name ?? '',
-        sessionId: data.sessionId,
+        consultationId,
+        callId: data.callId ?? null,
         callType: data.callType as 'audio' | 'video',
       };
 
       dispatch({ type: 'SET_REMOTE_USER', user: { userId: data.from, name: data.fromName ?? '', avatar: undefined } });
       dispatch({ type: 'SET_CALL_TYPE', callType: data.callType as 'audio' | 'video' });
-      dispatch({ type: 'SET_SESSION_ID', sessionId: data.sessionId });
+      dispatch({ type: 'SET_SESSION_ID', sessionId: consultationId ?? 0 });
       dispatch({ type: 'SET_STATUS', status: 'incoming' });
       goToCallScreen();
 
@@ -447,7 +466,7 @@ export const CallProvider: React.FC<CallProviderProps> = ({ children }) => {
         if (data.fromName && data.fromName.trim()) return data.fromName;
         try {
           const convs = await sessionService.getConversations();
-          const conv = convs.find((c) => String(c.id) === String(data.sessionId));
+          const conv = convs.find((c) => String(c.id) === String(consultationId));
           if (conv) {
             const iAmPatient = conv.patient_id === myId;
             const name = iAmPatient ? conv.doctor_name : conv.patient_name;
@@ -472,23 +491,28 @@ export const CallProvider: React.FC<CallProviderProps> = ({ children }) => {
         if (isMounted.current) rejectCall();
       }, 30000);
 
-      // Set up WebRTC with the offer — await so the local stream/tracks are
-      // added BEFORE the remote offer is applied (avoids a native race/crash).
-      webRTCService
-        .createPeerConnection(data.from, false, data.callType as 'audio' | 'video')
-        .then(() => webRTCService.setRemoteOffer(data.offer))
-        .then(() => {
-          // Peer connection + remote offer are ready — the callee can now safely
-          // accept (createAnswer() would no-op on a null peer connection, leaving
-          // the caller on "Calling..." until the 30s auto-reject).
+      // Fetch ICE config + set up the peer connection in parallel: ICE config
+      // is needed before RTCPeerConnection construction; remote offer is applied
+      // after the local media is added to avoid a native race/crash.
+      const setupPromise = (async () => {
+        try {
+          if (consultationId != null) {
+            const config = await fetchIceConfig(consultationId);
+            webRTCService.setIceConfig({ iceServers: config.iceServers });
+          }
+          await webRTCService.createPeerConnection(
+            data.from,
+            false,
+            data.callType as 'audio' | 'video'
+          );
+          await webRTCService.setRemoteOffer(data.offer);
           if (isMounted.current) dispatch({ type: 'SET_PEER_READY', ready: true });
-        })
-        .catch((error) => {
+        } catch (error) {
           console.error('[CallContext] WebRTC incoming setup failed:', error);
-          // onError already ended the call (cleanup + RESET); just clear the
-          // readiness flag so the UI doesn't offer Accept on a dead call.
           if (isMounted.current) dispatch({ type: 'SET_PEER_READY', ready: false });
-        });
+        }
+      })();
+      void setupPromise;
     },
     [state.status, user?.id, user?.name]
   );
@@ -563,7 +587,7 @@ export const CallProvider: React.FC<CallProviderProps> = ({ children }) => {
 
   // Actions
   const initiateCall = useCallback(
-    (userId: number, name: string, callType: 'audio' | 'video', sessionId: number) => {
+    (userId: number, name: string, callType: 'audio' | 'video', consultationId: number) => {
       if (state.status !== 'idle' || startingCallRef.current) return;
       startingCallRef.current = true;
 
@@ -574,31 +598,33 @@ export const CallProvider: React.FC<CallProviderProps> = ({ children }) => {
         targetId: userId,
         myId: user?.id ?? 0,
         myName: user?.name ?? '',
-        sessionId,
+        consultationId,
+        callId: null,
         callType,
       };
 
       dispatch({ type: 'SET_REMOTE_USER', user: { userId, name, avatar: undefined } });
       dispatch({ type: 'SET_CALL_TYPE', callType });
-      dispatch({ type: 'SET_SESSION_ID', sessionId });
+      dispatch({ type: 'SET_SESSION_ID', sessionId: consultationId });
       dispatch({ type: 'SET_STATUS', status: 'outgoing' });
       goToCallScreen();
 
-      // Awaited so the offer is only sent after local media is attached, and
-      // failures are handled instead of leaving a dangling peer connection.
-      webRTCService
-        .createPeerConnection(userId, true, callType)
-        .then(() => {
-          // Peer connection is set up (offer created) — allow future calls.
+      // Fetch ICE config + set up the peer connection so the offer is only
+      // sent after local media is attached and the right relay is selected.
+      (async () => {
+        try {
+          if (consultationId != null) {
+            const config = await fetchIceConfig(consultationId);
+            webRTCService.setIceConfig({ iceServers: config.iceServers });
+          }
+          await webRTCService.createPeerConnection(userId, true, callType);
           startingCallRef.current = false;
           if (isMounted.current) dispatch({ type: 'SET_PEER_READY', ready: true });
-        })
-        .catch((error) => {
+        } catch (error) {
           console.error('[CallContext] initiateCall failed:', error);
-          // onError already ended the call (cleanup + RESET + leaveCallScreen);
-          // just release the guard so future calls aren't blocked.
           startingCallRef.current = false;
-        });
+        }
+      })();
       // Offer will be sent via onOfferCreated event
     },
     [state.status, user?.id, user?.name]
