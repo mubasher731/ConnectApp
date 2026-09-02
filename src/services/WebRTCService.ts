@@ -13,6 +13,22 @@ import { RTC_CONFIG, CALL_CONFIG } from '../config/webrtc';
 
 registerGlobals();
 
+/**
+ * react-native-webrtc doesn't re-export these "Init" types from its index (they
+ * only live inside its sub-modules), so declare the exact shapes we use here to
+ * satisfy TypeScript — purely a typing fix, no runtime change.
+ */
+type RTCSessionDescriptionInit = {
+  sdp: string;
+  type: string | null;
+};
+
+interface RTCIceCandidateInit {
+  candidate?: string;
+  sdpMLineIndex?: number | null;
+  sdpMid?: string | null;
+}
+
 type CallType = 'audio' | 'video';
 type RTCPeerConnectionState = 'new' | 'connecting' | 'connected' | 'disconnected' | 'failed' | 'closed';
 
@@ -78,16 +94,20 @@ export class WebRTCService {
 
     this.peerConnection = new RTCPeerConnection(RTC_CONFIG);
 
-    this.peerConnection.onicecandidate = (event) => {
+    // react-native-webrtc types these handlers as a generic Event without the
+    // real fields, so type the events loosely — the runtime events do carry
+    // candidate / streams.
+    this.peerConnection.onicecandidate = (event: any) => {
       if (event.candidate) {
         this.events.onIceCandidate?.(event.candidate);
       }
     };
 
-    this.peerConnection.ontrack = (event) => {
+    this.peerConnection.ontrack = (event: any) => {
       if (event.streams && event.streams[0]) {
-        this.remoteStream = event.streams[0];
-        this.events.onRemoteStream?.(this.remoteStream);
+        const remote = event.streams[0] as MediaStream;
+        this.remoteStream = remote;
+        this.events.onRemoteStream?.(remote);
       }
     };
 
