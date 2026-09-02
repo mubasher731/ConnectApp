@@ -47,6 +47,23 @@ const mediaFullUrl = (u?: string | null): string | null => {
   return u.startsWith('http') ? u : `${getApiBaseUrl()}${u}`;
 };
 
+/**
+ * Resolve a media URL for NATIVE playback. A voice note that is still
+ * uploading (optimistic id `local-…`) has its on-device recorder file as
+ * mediaUrl — play it directly. Every saved/received note carries a backend
+ * media URL, so non-http paths get the API base URL prefixed. Never treat a
+ * backend path like `/docs/uploads/...` as a local file.
+ */
+const mediaPlaybackUrl = (
+  u?: string | null,
+  isLocalFile?: boolean
+): string | null => {
+  if (!u) return null;
+  if (isLocalFile) return u;
+  if (u.startsWith('http://') || u.startsWith('https://')) return u;
+  return `${getApiBaseUrl()}${u}`;
+};
+
 const formatDay = (ts: string) => {
   const d = dayjs(ts);
   if (!d.isValid()) return ts;
@@ -284,6 +301,11 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
   const [playingVoiceId, setPlayingVoiceId] = useState<string | null>(null);
   const [voicePosition, setVoicePosition] = useState(0);
   const [voiceDuration, setVoiceDuration] = useState(0);
+  // Voice note currently buffering/preparing (shows a spinner on its play btn).
+  const [voiceLoadingId, setVoiceLoadingId] = useState<string | null>(null);
+  // A note that was paused mid-way, so the next tap resumes (not restarts).
+  const [pausedVoiceId, setPausedVoiceId] = useState<string | null>(null);
+  const [pausedPos, setPausedPos] = useState(0);
   const [attachOpen, setAttachOpen] = useState(false);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState(false);
@@ -295,6 +317,10 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
   });
   const playingVoiceIdRef = useRef<string | null>(null);
   const voiceDurationsRef = useRef<Record<string, number>>({});
+  // Serializes native player ops so rapid taps can't cancel a loading download.
+  const voiceBusyRef = useRef(false);
+  // Mirrors voicePosition so async handlers read the exact position at pause.
+  const voicePositionRef = useRef(0);
   const extensionFiredForEnd = useRef<number | null>(null);
   const listRef = useRef<FlatList>(null);
   const typingTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -572,6 +598,7 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
       // The native library reports duration/position in MILLISECONDS.
       const posSecs = meta.currentPosition / 1000;
       const durSecs = meta.duration / 1000;
+      voicePositionRef.current = posSecs;
       setVoicePosition(posSecs);
       setVoiceDuration(durSecs);
       const id = playingVoiceIdRef.current;
@@ -579,8 +606,11 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
     });
     Sound.addPlaybackEndListener(() => {
       setPlayingVoiceId(null);
-      playingVoiceIdRef.current = null;
+      setPausedVoiceId(null);
+      setPausedPos(0);
       setVoicePosition(0);
+      voicePositionRef.current = 0;
+      playingVoiceIdRef.current = null;
     });
     return () => {
       Sound.removePlayBackListener();
@@ -1052,43 +1082,71 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
     }
   };
 
-  // Voice notes play inline via the native Sound player; file attachments
-  // open in the system browser. Tapping the active note pauses it.
+  // Voice notes play inline via the native Sound player; file attachments open
+  // in the system browser. Tapping the active note pauses it, tapping a paused
+  // note resumes it from the same position, and taps that arrive while a note
+  // is still buffering are ignored so extra presses can't cancel/restart the
+  // download (which is what made remote notes need several taps to start).
   const onMediaChipPress = async (item: Message) => {
-    const uri = mediaFullUrl(item.mediaUrl);
-    if (!uri) return;
-
     if (item.type !== 'voice') {
-      Linking.openURL(uri).catch(() => {});
+      const openUri = mediaFullUrl(item.mediaUrl);
+      if (openUri) Linking.openURL(openUri).catch(() => {});
       return;
     }
 
+    // Ignore voice taps that land while another native playback op is in
+    // flight so extra presses can't cancel/restart a buffering download.
+    if (voiceBusyRef.current) return;
+
+    // A note still uploading (optimistic `local-…` id) points at the on-device
+    // recorder file — play that directly. Every other note has a backend media
+    // URL, so non-http paths get the API base URL prefixed.
+    const uri = mediaPlaybackUrl(
+      item.mediaUrl,
+      String(item.id).startsWith('local-')
+    );
+    if (!uri) return;
     const id = String(item.id);
 
-    // Toggle: tapping the currently-playing note pauses it.
-    if (playingVoiceId === id) {
-      setPlayingVoiceId(null);
-      playingVoiceIdRef.current = null;
-      setVoicePosition(0);
-      try {
-        await Sound.pausePlayer();
-      } catch {
-        // ignore
-      }
-      return;
-    }
-
+    voiceBusyRef.current = true;
     try {
-      // Stop any note that's playing before starting a new one.
-      if (playingVoiceIdRef.current) await Sound.stopPlayer();
+      // Toggle: tapping the currently-playing note pauses it in place so the
+      // next tap can resume from the same spot instead of restarting at 0:00.
+      if (playingVoiceId === id) {
+        await Sound.pausePlayer();
+        setPausedVoiceId(id);
+        setPausedPos(voicePositionRef.current);
+        setPlayingVoiceId(null);
+        playingVoiceIdRef.current = null;
+        return;
+      }
+
+      // Resume a paused note (its native player is still alive & paused).
+      if (pausedVoiceId === id) {
+        await Sound.resumePlayer();
+        setPausedVoiceId(null);
+        playingVoiceIdRef.current = id;
+        setPlayingVoiceId(id);
+        return;
+      }
+
+      // Start a new note — stop anything already playing/paused first.
+      setVoiceLoadingId(id); // visual feedback while the player prepares
       setVoicePosition(0);
+      setPausedPos(0);
+      if (playingVoiceIdRef.current || pausedVoiceId) await Sound.stopPlayer();
+      setPausedVoiceId(null);
       await Sound.startPlayer(uri);
       playingVoiceIdRef.current = id;
       setPlayingVoiceId(id);
     } catch {
       setPlayingVoiceId(null);
+      setPausedVoiceId(null);
       playingVoiceIdRef.current = null;
       console.warn('[chat] Voice playback failed:', uri);
+    } finally {
+      setVoiceLoadingId(null);
+      voiceBusyRef.current = false;
     }
   };
 
@@ -1098,20 +1156,32 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
   };
 
   // WhatsApp-style duration label. While playing it counts DOWN from the total
-  // (0:30 → 0:29 → … → 0:00); otherwise it shows the exact recorded duration.
+  // (0:30 → 0:29 → … → 0:00); a paused note shows where it stopped; otherwise
+  // it shows the exact recorded duration.
   const voiceDurationLabel = (item: Message): string => {
-    const playing = playingVoiceId === String(item.id);
-    if (playing) {
+    const id = String(item.id);
+    if (playingVoiceId === id) {
       const total = item.durationSecs ?? voiceDuration;
       return formatVoiceTime(Math.max(0, total - voicePosition));
     }
-    const dur = item.durationSecs ?? voiceDurationsRef.current[String(item.id)];
+    if (pausedVoiceId === id) {
+      return formatVoiceTime(Math.max(0, pausedPos));
+    }
+    const dur = item.durationSecs ?? voiceDurationsRef.current[id];
     return dur ? formatVoiceTime(dur) : 'Voice';
   };
 
   const voiceProgressPct = (item: Message): number => {
-    if (playingVoiceId !== String(item.id) || voiceDuration <= 0) return 0;
-    return Math.min(100, (voicePosition / voiceDuration) * 100);
+    const id = String(item.id);
+    const dur = item.durationSecs ?? voiceDurationsRef.current[id] ?? voiceDuration;
+    if (dur <= 0) return 0;
+    if (playingVoiceId === id) {
+      return Math.min(100, (voicePosition / dur) * 100);
+    }
+    if (pausedVoiceId === id) {
+      return Math.min(100, (pausedPos / dur) * 100);
+    }
+    return 0;
   };
 
   const renderItem = ({ item, index }: { item: Message; index: number }) => {
@@ -1182,21 +1252,32 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
                   />
                 </TouchableOpacity>
               ) : item.mediaUrl && item.type === 'voice' ? (
-                <View style={styles.voiceBubble}>
-                  <TouchableOpacity
+                // Whole voice row is tappable (bigger target than the 34×34
+                // circle alone) — tap anywhere on the note to play/pause.
+                <TouchableOpacity
+                  style={styles.voiceBubble}
+                  onPress={() => onMediaChipPress(item)}
+                  activeOpacity={0.65}
+                >
+                  <View
                     style={[
                       styles.voicePlayPause,
                       item.sentByMe ? styles.voicePlaySent : styles.voicePlayReceived,
                     ]}
-                    onPress={() => onMediaChipPress(item)}
-                    activeOpacity={0.7}
                   >
-                    <AppIcon
-                      name={playingVoiceId === String(item.id) ? 'pause' : 'play'}
-                      size={18}
-                      color={item.sentByMe ? Colors.white : Colors.primary}
-                    />
-                  </TouchableOpacity>
+                    {voiceLoadingId === String(item.id) ? (
+                      <ActivityIndicator
+                        size="small"
+                        color={item.sentByMe ? Colors.white : Colors.primary}
+                      />
+                    ) : (
+                      <AppIcon
+                        name={playingVoiceId === String(item.id) ? 'pause' : 'play'}
+                        size={18}
+                        color={item.sentByMe ? Colors.white : Colors.primary}
+                      />
+                    )}
+                  </View>
                   <View style={styles.voiceWave}>
                     <View
                       style={[
@@ -1221,7 +1302,7 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
                   >
                     {voiceDurationLabel(item)}
                   </Text>
-                </View>
+                </TouchableOpacity>
               ) : item.mediaUrl ? (
                 <TouchableOpacity
                   style={styles.mediaChip}
