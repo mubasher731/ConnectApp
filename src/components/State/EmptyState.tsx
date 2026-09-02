@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import AppIcon from '../Icon/AppIcon';
-import { Colors, Spacing } from '../../theme';
+import { Colors, Spacing, wp, ms, fs } from '../../theme';
 
 interface EmptyStateProps {
   icon: string;
@@ -30,25 +30,25 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.xxl,
   },
   iconCircle: {
-    width: 72,
-    height: 72,
-    borderRadius: 24,
+    width: wp(72),
+    height: wp(72),
+    borderRadius: ms(24),
     backgroundColor: Colors.primarySoft,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: Spacing.lg,
   },
   title: {
-    fontSize: 18,
+    fontSize: fs(18),
     fontWeight: '700',
     color: Colors.text,
     marginBottom: Spacing.sm,
   },
   message: {
-    fontSize: 14,
+    fontSize: fs(14),
     color: Colors.textSecondary,
     textAlign: 'center',
-    lineHeight: 21,
+    lineHeight: fs(21),
     marginBottom: Spacing.xl,
   },
 });

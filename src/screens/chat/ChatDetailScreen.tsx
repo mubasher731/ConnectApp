@@ -31,7 +31,7 @@ import { useSessionConfig } from '../../context/SessionConfigContext';
 import { CHAT_EMOJIS } from '../../context/appData';
 import { chatService, sessionService } from '../../services';
 import { Conversation, Message } from '../../types';
-import { Colors, Radius, Shadows, Spacing, responsiveSize } from '../../theme';
+import { Colors, Radius, Shadows, Spacing, responsiveSize, wp, ms, fs } from '../../theme';
 
 interface ChatDetailScreenProps {
   route: any;
@@ -1612,7 +1612,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   loadMoreIndicator: {
-    paddingVertical: 12,
+    paddingVertical: ms(12),
   },
   headerTitleRow: {
     flexDirection: 'row',
@@ -1631,7 +1631,7 @@ const styles = StyleSheet.create({
     flexShrink: 1,
   },
   headerTitleStatus: {
-    fontSize: 12,
+    fontSize: fs(12),
     color: Colors.success,
     fontWeight: '500',
   },
@@ -1658,7 +1658,7 @@ const styles = StyleSheet.create({
     paddingRight: Spacing.md,
   },
   menuCard: {
-    minWidth: 220,
+    minWidth: wp(220),
     backgroundColor: Colors.card,
     borderRadius: Radius.md,
     borderWidth: 1,
@@ -1678,7 +1678,7 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.md,
   },
   menuItemText: {
-    fontSize: 15,
+    fontSize: fs(15),
     fontWeight: '600',
     color: Colors.text,
   },
@@ -1695,12 +1695,12 @@ const styles = StyleSheet.create({
     marginVertical: Spacing.lg,
   },
   dateSeparatorText: {
-    fontSize: 12,
+    fontSize: fs(12),
     fontWeight: '600',
     color: Colors.textSecondary,
     backgroundColor: Colors.surface,
     paddingHorizontal: Spacing.lg,
-    paddingVertical: 6,
+    paddingVertical: ms(6),
     borderRadius: Radius.round,
     overflow: 'hidden',
   },
@@ -1717,7 +1717,7 @@ const styles = StyleSheet.create({
     opacity: 0.4,
   },
   sessionDividerText: {
-    fontSize: 12,
+    fontSize: fs(12),
     fontWeight: '600',
     color: Colors.textSecondary,
   },
@@ -1744,7 +1744,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.errorSoft,
   },
   countdownText: {
-    fontSize: 13,
+    fontSize: fs(13),
     fontWeight: '700',
     color: Colors.success,
     marginLeft: Spacing.sm,
@@ -1756,7 +1756,7 @@ const styles = StyleSheet.create({
     color: Colors.error,
   },
   noticeText: {
-    fontSize: 13,
+    fontSize: fs(13),
     fontWeight: '600',
     color: Colors.warning,
     marginLeft: Spacing.sm,
@@ -1781,7 +1781,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-start',
   },
   avatarSlot: {
-    width: 30,
+    width: wp(30),
     marginRight: Spacing.sm,
     alignItems: 'center',
   },
@@ -1796,19 +1796,19 @@ const styles = StyleSheet.create({
   },
   sentBubble: {
     backgroundColor: Colors.chatBubbleSent,
-    borderBottomRightRadius: 6,
+    borderBottomRightRadius: ms(6),
   },
   receivedBubble: {
     backgroundColor: Colors.chatBubbleReceived,
-    borderBottomLeftRadius: 6,
+    borderBottomLeftRadius: ms(6),
   },
   messageText: {
-    fontSize: 15,
-    lineHeight: 21,
+    fontSize: fs(15),
+    lineHeight: fs(21),
   },
   mediaImage: {
-    width: 200,
-    height: 170,
+    width: wp(200),
+    height: wp(170),
     borderRadius: Radius.sm,
     marginBottom: Spacing.xs,
   },
@@ -1822,7 +1822,7 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.xs,
   },
   mediaChipText: {
-    fontSize: 13,
+    fontSize: fs(13),
     fontWeight: '600',
     color: Colors.text,
     marginLeft: Spacing.sm,
@@ -1830,13 +1830,13 @@ const styles = StyleSheet.create({
   voiceBubble: {
     flexDirection: 'row',
     alignItems: 'center',
-    minWidth: 190,
+    minWidth: wp(190),
     paddingVertical: Spacing.xs,
   },
   voicePlayPause: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
+    width: wp(34),
+    height: wp(34),
+    borderRadius: wp(17),
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: Spacing.sm,
@@ -1872,10 +1872,10 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.primary,
   },
   voiceDuration: {
-    fontSize: 12,
+    fontSize: fs(12),
     fontWeight: '600',
     marginLeft: Spacing.sm,
-    minWidth: 36,
+    minWidth: wp(36),
     textAlign: 'right',
   },
   voiceDurationSent: {
@@ -1894,10 +1894,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'flex-end',
-    marginTop: 2,
+    marginTop: ms(2),
   },
   bubbleTime: {
-    fontSize: 11,
+    fontSize: fs(11),
     fontWeight: '400',
   },
   sentTimeText: {
@@ -1907,7 +1907,7 @@ const styles = StyleSheet.create({
     color: Colors.textTertiary,
   },
   checkIcon: {
-    marginLeft: 3,
+    marginLeft: ms(3),
   },
   typingRow: {
     flexDirection: 'row',
@@ -1920,15 +1920,15 @@ const styles = StyleSheet.create({
     borderRadius: Radius.lg,
     borderBottomLeftRadius: 6,
     paddingHorizontal: Spacing.lg,
-    paddingVertical: 14,
+    paddingVertical: ms(14),
     ...Shadows.card,
   },
   typingDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+    width: wp(8),
+    height: wp(8),
+    borderRadius: wp(4),
     backgroundColor: Colors.primary,
-    marginHorizontal: 3,
+    marginHorizontal: ms(3),
   },
   systemMessageRow: {
     alignItems: 'center',
@@ -1940,10 +1940,10 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.surface,
     borderRadius: Radius.round,
     paddingHorizontal: Spacing.md,
-    paddingVertical: 6,
+    paddingVertical: ms(6),
   },
   systemText: {
-    fontSize: 12,
+    fontSize: fs(12),
     fontWeight: '600',
     color: Colors.textSecondary,
     marginLeft: Spacing.xs,
@@ -1964,21 +1964,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.xs,
   },
   emojiText: {
-    fontSize: 24,
+    fontSize: fs(24),
   },
   inputRow: {
     flexDirection: 'row',
     alignItems: 'flex-end',
   },
   roundButton: {
-    width: 40,
-    height: 40,
+    width: wp(40),
+    height: wp(40),
     borderRadius: Radius.round,
     backgroundColor: Colors.primarySoft,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: Spacing.sm,
-    marginBottom: 2,
+    marginBottom: ms(2),
   },
   sendButton: {
     backgroundColor: Colors.inputBackground, // #151A33 voice/send button
@@ -1993,27 +1993,27 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: Colors.inputBackground, // #151A33 input field
-    borderRadius: 22,
+    borderRadius: ms(22),
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.10)',
     paddingLeft: Spacing.lg,
     paddingRight: Spacing.xs,
-    minHeight: 44,
+    minHeight: wp(44),
   },
   textInput: {
     flex: 1,
-    fontSize: 15,
+    fontSize: fs(15),
     color: Colors.text,
     maxHeight: 100,
-    paddingVertical: 10,
+    paddingVertical: ms(10),
   },
   inputActions: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   inputAction: {
-    width: 34,
-    height: 34,
+    width: wp(34),
+    height: wp(34),
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -2038,7 +2038,7 @@ const styles = StyleSheet.create({
   },
   recordingText: {
     flex: 1,
-    fontSize: 15,
+    fontSize: fs(15),
     color: Colors.error,
     textAlign: 'center',
     fontWeight: '600',
@@ -2061,7 +2061,7 @@ const styles = StyleSheet.create({
     borderBottomColor: Colors.border,
   },
   attachItemText: {
-    fontSize: 15,
+    fontSize: fs(15),
     fontWeight: '600',
     color: Colors.text,
     marginLeft: Spacing.md,
@@ -2081,9 +2081,9 @@ const styles = StyleSheet.create({
     top: 56,
     left: Spacing.md,
     zIndex: 10,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: wp(40),
+    height: wp(40),
+    borderRadius: wp(20),
     backgroundColor: 'rgba(255,255,255,0.18)',
     alignItems: 'center',
     justifyContent: 'center',
@@ -2093,9 +2093,9 @@ const styles = StyleSheet.create({
     top: 56,
     right: Spacing.md,
     zIndex: 10,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: wp(40),
+    height: wp(40),
+    borderRadius: wp(20),
     backgroundColor: 'rgba(255,255,255,0.18)',
     alignItems: 'center',
     justifyContent: 'center',

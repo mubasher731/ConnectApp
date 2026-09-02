@@ -5,7 +5,7 @@ import {
   StyleSheet,
 } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
-import { Colors, Spacing } from '../theme';
+import { Colors, Spacing, fs } from '../theme';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AuthHeader from './Header/AuthHeader';
 import BrandLogo from './Icon/BrandLogo';
@@ -75,9 +75,9 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.xl,
   },
   subtitle: {
-    fontSize: 15,
+    fontSize: fs(15),
     color: Colors.textSecondary,
-    lineHeight: 22,
+    lineHeight: fs(22),
     textAlign: 'center',
     marginBottom: Spacing.xxl,
     paddingHorizontal: Spacing.md,

@@ -1,14 +1,26 @@
 import { Colors } from './colors';
 import { PixelRatio } from 'react-native';
-import { widthPercentageToDP as wp } from 'react-native-responsive-screen';
+import { designScale } from '../utils/responsive';
 
 /**
- * The design was authored around a 375px-wide phone. Keep that design intact
- * while scaling it down for compact phones and up for wider handsets.
+ * Responsive theme tokens.
+ *
+ * `Spacing`, `Radius` and `responsiveSize` scale from a 375px-wide design
+ * canvas (see `src/utils/responsive.ts`). Every token/value is already
+ * proportional to the screen width, so components that use them are responsive
+ * for free.
+ *
+ * Also re-exports the full responsive API (`wp`, `hp`, `ms`, `fs`, …) so
+ * screens/components can reach them via `import { ... } from '../../theme'`.
  */
-const widthScale = Math.min(1.18, Math.max(0.8, wp('100%') / 375));
+export * from '../utils/responsive';
+export { Colors } from './colors';
 
-export const responsiveSize = (size: number, scale = widthScale): number =>
+/**
+ * Full width scale of a raw design pixel (kept for backwards compatibility —
+ * prefer `wp`/`ms` from the responsive util).
+ */
+export const responsiveSize = (size: number, scale = designScale): number =>
   PixelRatio.roundToNearestPixel(size * scale);
 
 /** Spacing scale (8-pt grid) */
@@ -56,5 +68,3 @@ export const Shadows = {
     elevation: 5,
   } as const,
 } as const;
-
-export { Colors };

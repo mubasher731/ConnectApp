@@ -3,7 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import AppIcon from '../Icon/AppIcon';
 import Avatar from '../Icon/Avatar';
 import { BookingDoctor } from '../../types';
-import { Colors, Radius, Shadows, Spacing } from '../../theme';
+import { Colors, Radius, Shadows, Spacing, ms, fs } from '../../theme';
 
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
@@ -77,36 +77,36 @@ const styles = StyleSheet.create({
     marginLeft: Spacing.md,
   },
   name: {
-    fontSize: 18,
+    fontSize: fs(18),
     fontWeight: '700',
     color: Colors.text,
   },
   specialty: {
-    fontSize: 13,
+    fontSize: fs(13),
     color: Colors.textSecondary,
-    marginTop: 2,
+    marginTop: ms(2),
   },
   availabilityRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 6,
-    gap: 4,
+    marginTop: ms(6),
+    gap: ms(4),
   },
   availability: {
-    fontSize: 12,
+    fontSize: fs(12),
     color: Colors.textTertiary,
     flex: 1,
   },
   bookButton: {
     backgroundColor: Colors.primary,
     borderRadius: Radius.md,
-    paddingVertical: Spacing.sm + 2,
+    paddingVertical: Spacing.sm + ms(2),
     alignItems: 'center',
     ...Shadows.primary,
   },
   bookText: {
     color: Colors.white,
-    fontSize: 14,
+    fontSize: fs(14),
     fontWeight: '700',
   },
 });

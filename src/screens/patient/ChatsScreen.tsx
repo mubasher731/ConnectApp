@@ -13,7 +13,7 @@ import { AppointmentCard, EmptyState } from '../../components';
 import { CHAT_FILTERS, ChatFilterKey } from '../../context/appData';
 import { chatService } from '../../services';
 import { Chat } from '../../types';
-import { Colors, Radius, Spacing, responsiveSize } from '../../theme';
+import { Colors, Radius, Spacing, responsiveSize, ms } from '../../theme';
 
 const ChatsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const [chats, setChats] = useState<Chat[]>([]);
@@ -143,7 +143,7 @@ const styles = StyleSheet.create({
   headerCount: {
     fontSize: responsiveSize(14),
     color: Colors.textSecondary,
-    marginTop: 2,
+    marginTop: ms(2),
   },
   filterRow: {
     flexDirection: 'row',
@@ -154,7 +154,7 @@ const styles = StyleSheet.create({
   },
   filterChip: {
     paddingHorizontal: Spacing.md,
-    paddingVertical: 7,
+    paddingVertical: ms(7),
     borderRadius: Radius.round,
     backgroundColor: Colors.inputBackground,
   },
@@ -172,7 +172,7 @@ const styles = StyleSheet.create({
   listContainer: {
     paddingHorizontal: Spacing.lg,
     paddingTop: Spacing.xs,
-    paddingBottom: 110,
+    paddingBottom: ms(110),
     flexGrow: 1,
     backgroundColor: Colors.surface,
   },

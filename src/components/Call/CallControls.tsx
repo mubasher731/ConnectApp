@@ -5,7 +5,7 @@ import Ionicon from 'react-native-vector-icons/Ionicons';
 import MaterialIcon from 'react-native-vector-icons/MaterialIcons';
 import { useCall } from '../../context/CallContext';
 import { Colors } from '../../theme/colors';
-import { responsiveSize } from '../../theme';
+import { responsiveSize, ms, fs } from '../../theme';
 
 interface CallControlsProps {
   onEndCall: () => void;
@@ -109,7 +109,7 @@ const styles = StyleSheet.create({
   },
   mutedBadgeText: {
     color: Colors.white,
-    fontSize: 13,
+    fontSize: fs(13),
     fontWeight: '500',
   },
   // WhatsApp-style: all controls grouped inside a single rounded card.
@@ -134,7 +134,7 @@ const styles = StyleSheet.create({
   // and cap out on large screens so they don't get oversized.
   toggleButton: {
     flex: 1,
-    maxWidth: 62,
+    maxWidth: ms(62),
     aspectRatio: 1,
     borderRadius: 999,
     backgroundColor: 'rgba(255, 255, 255, 0.14)',
@@ -146,7 +146,7 @@ const styles = StyleSheet.create({
   },
   endCallButton: {
     flex: 1,
-    maxWidth: 62,
+    maxWidth: ms(62),
     aspectRatio: 1,
     borderRadius: 999,
     backgroundColor: '#EF4444',

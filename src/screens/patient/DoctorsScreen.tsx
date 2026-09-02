@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { BookAppointmentModal, DoctorCard, EmptyState } from '../../components';
 import { sessionService } from '../../services';
 import { BookingDoctor } from '../../types';
-import { Colors, Spacing } from '../../theme';
+import { Colors, Spacing, fs, ms } from '../../theme';
 
 const DoctorsScreen: React.FC<{ navigation: any }> = () => {
   const [doctors, setDoctors] = useState<BookingDoctor[]>([]);
@@ -108,15 +108,15 @@ const styles = StyleSheet.create({
     paddingBottom: Spacing.md,
   },
   headerTitle: {
-    fontSize: 24,
+    fontSize: fs(24),
     fontWeight: '800',
     color: Colors.text,
     letterSpacing: -0.5,
   },
   headerSub: {
-    fontSize: 16,
+    fontSize: fs(16),
     color: Colors.textSecondary,
-    marginTop: 2,
+    marginTop: ms(2),
   },
   listContainer: {
     paddingHorizontal: Spacing.xl,

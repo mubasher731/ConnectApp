@@ -6,7 +6,7 @@ import Avatar from '../Icon/Avatar';
 import DoctorPill from '../Doctor/DoctorPill';
 import { CONVERSATION_STATE_META } from '../../context/appData';
 import { Conversation } from '../../types';
-import { Colors, Radius, Shadows, Spacing } from '../../theme';
+import { Colors, Radius, Shadows, Spacing, ms, fs } from '../../theme';
 
 interface AppointmentRequestCardProps {
   /** A pending conversation (state === 'pending'). */
@@ -107,14 +107,14 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   patientName: {
-    fontSize: 15,
+    fontSize: fs(15),
     fontWeight: '700',
     color: Colors.text,
   },
   patientSub: {
-    fontSize: 12,
+    fontSize: fs(12),
     color: Colors.textTertiary,
-    marginTop: 2,
+    marginTop: ms(2),
   },
   messageRow: {
     flexDirection: 'row',
@@ -122,7 +122,7 @@ const styles = StyleSheet.create({
   },
   message: {
     flex: 1,
-    fontSize: 13,
+    fontSize: fs(13),
     color: Colors.textSecondary,
     marginLeft: Spacing.sm,
   },
@@ -138,7 +138,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: Spacing.sm + 2,
+    paddingVertical: Spacing.sm + ms(2),
     borderRadius: Radius.md,
     marginRight: Spacing.sm,
   },
@@ -151,7 +151,7 @@ const styles = StyleSheet.create({
   },
   actionText: {
     color: Colors.white,
-    fontSize: 14,
+    fontSize: fs(14),
     fontWeight: '700',
     marginLeft: Spacing.xs,
   },

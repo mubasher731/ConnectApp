@@ -6,7 +6,7 @@ import Avatar from '../Icon/Avatar';
 import DoctorPill from '../Doctor/DoctorPill';
 import { CONVERSATION_STATE_META } from '../../context/appData';
 import { Conversation } from '../../types';
-import { Colors, Radius, Shadows, Spacing } from '../../theme';
+import { Colors, Radius, Shadows, Spacing, fs } from '../../theme';
 
 interface DoctorAppointmentCardProps {
   conversation: Conversation;
@@ -86,7 +86,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   patientName: {
-    fontSize: 15,
+    fontSize: fs(15),
     fontWeight: '700',
     color: Colors.text,
   },
@@ -101,12 +101,12 @@ const styles = StyleSheet.create({
     marginRight: Spacing.lg,
   },
   metaText: {
-    fontSize: 13,
+    fontSize: fs(13),
     color: Colors.textSecondary,
     marginLeft: Spacing.sm,
   },
   reason: {
-    fontSize: 13,
+    fontSize: fs(13),
     color: Colors.textSecondary,
     paddingTop: Spacing.sm,
     borderTopWidth: StyleSheet.hairlineWidth,

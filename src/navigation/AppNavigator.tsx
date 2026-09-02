@@ -8,7 +8,7 @@ import { heightPercentageToDP as hp } from 'react-native-responsive-screen';
 import { AppIcon } from '../components';
 import { useAuth } from '../context/AuthContext';
 import { useCall } from '../context/CallContext';
-import { Colors } from '../theme/colors';
+import { Colors, ms, fs } from '../theme';
 import { navigationRef, navigate } from './navigationRef';
 
 import SplashScreen from '../screens/splash/SplashScreen';
@@ -252,24 +252,24 @@ const AppNavigator: React.FC = () => {
 const styles = StyleSheet.create({
   headerTitle: {
     fontWeight: '700',
-    fontSize: 17,
+    fontSize: fs(17),
   },
   doctorsHeaderTitle: {
     fontWeight: '800',
-    fontSize: 26,
+    fontSize: fs(26),
     letterSpacing: -0.5,
   },
   tabLabel: {
-    fontSize: 11,
+    fontSize: fs(11),
     fontWeight: '600',
-    marginTop: 2,
+    marginTop: ms(2),
   },
   tabBar: {
     backgroundColor: Colors.card, // #151A33 dark tab bar
     borderTopWidth: 0,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    paddingTop: 6,
+    borderTopLeftRadius: ms(24),
+    borderTopRightRadius: ms(24),
+    paddingTop: ms(6),
     shadowColor: Colors.shadow,
     shadowOffset: { width: 0, height: -4 },
     shadowOpacity: 0.4,
@@ -291,9 +291,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: Colors.primary,
     borderRadius: 999,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    gap: 8,
+    paddingHorizontal: ms(16),
+    paddingVertical: ms(10),
+    gap: ms(8),
     shadowColor: Colors.shadow,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.35,
@@ -303,7 +303,7 @@ const styles = StyleSheet.create({
   backToCallText: {
     color: Colors.white,
     fontWeight: '700',
-    fontSize: 14,
+    fontSize: fs(14),
   },
 });
 

@@ -5,7 +5,7 @@ import { Clock, Wifi, WifiOff, AlertCircle } from 'lucide-react-native';
 import { useCall } from '../../context/CallContext';
 import { CallControls } from './CallControls';
 import { IncomingCallModal } from './IncomingCallModal';
-import { Colors, Spacing } from '../../theme';
+import { Colors, Spacing, wp, ms, fs } from '../../theme';
 
 export const CallScreen: React.FC = () => {
   const { state, endCall, acceptCall, rejectCall, localStream, remoteStream } = useCall();
@@ -213,21 +213,21 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   remoteAvatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: wp(40),
+    height: wp(40),
+    borderRadius: wp(20),
     backgroundColor: Colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: Spacing.lg,
   },
   remoteAvatarImage: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: wp(40),
+    height: wp(40),
+    borderRadius: wp(20),
   },
   remoteAvatarText: {
-    fontSize: 16,
+    fontSize: fs(16),
     fontWeight: '600',
     color: Colors.white,
   },
@@ -235,7 +235,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   remoteName: {
-    fontSize: 17,
+    fontSize: fs(17),
     fontWeight: '600',
     color: Colors.text,
   },
@@ -243,10 +243,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.xs,
-    marginTop: 2,
+    marginTop: ms(2),
   },
   statusText: {
-    fontSize: 13,
+    fontSize: fs(13),
     color: Colors.textSecondary,
   },
   statusActive: {
@@ -276,7 +276,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.background,
   },
   connectingText: {
-    fontSize: 16,
+    fontSize: fs(16),
     color: Colors.textSecondary,
   },
   audioOnlyOverlay: {
@@ -285,26 +285,26 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.background,
   },
   audioAvatar: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
+    width: wp(120),
+    height: wp(120),
+    borderRadius: wp(60),
     backgroundColor: Colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: Spacing.lg,
   },
   audioAvatarImage: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
+    width: wp(120),
+    height: wp(120),
+    borderRadius: wp(60),
   },
   audioAvatarText: {
-    fontSize: 48,
+    fontSize: fs(48),
     fontWeight: '600',
     color: Colors.white,
   },
   audioOnlyText: {
-    fontSize: 18,
+    fontSize: fs(18),
     fontWeight: '500',
     color: Colors.textSecondary,
   },
@@ -315,9 +315,9 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 100,
     right: Spacing.lg,
-    width: 112,
-    height: 156,
-    borderRadius: 20,
+    width: wp(112),
+    height: wp(156),
+    borderRadius: ms(20),
     overflow: 'hidden',
     backgroundColor: Colors.black,
     shadowColor: Colors.black,
@@ -330,7 +330,7 @@ const styles = StyleSheet.create({
     flex: 1,
     width: '100%',
     height: '100%',
-    borderRadius: 18,
+    borderRadius: ms(18),
     overflow: 'hidden',
   },
   indicator: {
@@ -341,11 +341,11 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.7)',
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.xs,
-    borderRadius: 20,
+    borderRadius: ms(20),
     alignItems: 'center',
   },
   indicatorText: {
-    fontSize: 12,
+    fontSize: fs(12),
     color: Colors.white,
     fontWeight: '500',
   },

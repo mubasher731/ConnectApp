@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { SessionStatus } from '../../types';
-import { Colors, Radius, Spacing } from '../../theme';
+import { Colors, Radius, Spacing, ms, fs } from '../../theme';
 
 const STATUS_META: Record<
   SessionStatus,
@@ -35,10 +35,10 @@ const styles = StyleSheet.create({
   badge: {
     borderRadius: Radius.round,
     paddingHorizontal: Spacing.sm,
-    paddingVertical: 3,
+    paddingVertical: ms(3),
   },
   label: {
-    fontSize: 11,
+    fontSize: fs(11),
     fontWeight: '700',
   },
 });

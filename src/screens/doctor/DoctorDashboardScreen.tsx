@@ -23,7 +23,7 @@ import { DASHBOARD_STATS } from '../../context/appData';
 import { useAutoRefresh } from '../../hooks/useAutoRefresh';
 import { sessionService } from '../../services';
 import { Conversation } from '../../types';
-import { Colors, Radius, Spacing, responsiveSize } from '../../theme';
+import { Colors, Radius, Spacing, responsiveSize, wp, ms, fs } from '../../theme';
 
 const DoctorDashboardScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const { user } = useAuth();
@@ -146,7 +146,7 @@ const DoctorDashboardScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
             >
               <AppIcon name="notifications-outline" size={20} color={Colors.text} />
             </TouchableOpacity>
-            <Avatar name={user?.name || '?'} size={38} online />
+            <Avatar name={user?.name || '?'} size={wp(38)} online />
           </View>
         </View>
 
@@ -248,7 +248,7 @@ const styles = StyleSheet.create({
   },
   content: {
     paddingHorizontal: Spacing.xl,
-    paddingBottom: 110,
+    paddingBottom: ms(110),
   },
   center: {
     paddingVertical: Spacing.xxl,
@@ -266,8 +266,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   iconButton: {
-    width: 40,
-    height: 40,
+    width: wp(40),
+    height: wp(40),
     borderRadius: Radius.round,
     backgroundColor: Colors.inputBackground,
     alignItems: 'center',
@@ -284,7 +284,7 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: Colors.text,
     letterSpacing: -0.3,
-    marginTop: 2,
+    marginTop: ms(2),
   },
   statsGrid: {
     flexDirection: 'row',
@@ -298,12 +298,12 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.inputBackground,
     borderRadius: Radius.md,
     paddingHorizontal: Spacing.lg,
-    height: 48,
+    height: wp(48),
     marginBottom: Spacing.lg,
   },
   searchInput: {
     flex: 1,
-    fontSize: 15,
+    fontSize: fs(15),
     color: Colors.text,
     marginLeft: Spacing.md,
     paddingVertical: 0,
@@ -321,7 +321,7 @@ const styles = StyleSheet.create({
     letterSpacing: -0.2,
   },
   seeAll: {
-    fontSize: 14,
+    fontSize: fs(14),
     fontWeight: '600',
     color: Colors.primary,
   },
@@ -331,7 +331,7 @@ const styles = StyleSheet.create({
     gap: Spacing.sm,
   },
   emptyText: {
-    fontSize: 14,
+    fontSize: fs(14),
     color: Colors.textTertiary,
     textAlign: 'center',
   },

@@ -6,8 +6,8 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
-  heightPercentageToDP as hp,
-  widthPercentageToDP as wp,
+  heightPercentageToDP as hpPct,
+  widthPercentageToDP as wpPct,
 } from 'react-native-responsive-screen';
 import Animated, {
   useSharedValue,
@@ -16,14 +16,14 @@ import Animated, {
   withDelay,
   withTiming,
 } from 'react-native-reanimated';
-import { Colors } from '../../theme/colors';
+import { Colors, wp, ms, fs } from '../../theme';
 
 const SplashScreen: React.FC = () => {
   const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
-  const glowSize = Math.min(Math.max(width * 0.78, wp('70%')), hp('42%'));
-  const bubbleSize = Math.min(84, Math.max(64, wp('20%')));
-  const titleSize = Math.min(44, Math.max(32, wp('10.5%')));
+  const glowSize = Math.min(Math.max(width * 0.78, wpPct('70%')), hpPct('42%'));
+  const bubbleSize = Math.min(84, Math.max(64, wpPct('20%')));
+  const titleSize = Math.min(44, Math.max(32, wpPct('10.5%')));
   const connectOffset = useSharedValue(-width / 2);
   const appOffset = useSharedValue(width / 2);
   const bubbleScale = useSharedValue(0);
@@ -80,7 +80,7 @@ const SplashScreen: React.FC = () => {
         ]}
       />
 
-      <View style={[styles.logoContainer, { marginTop: -Math.min(hp('8%'), 60) }]}>
+      <View style={[styles.logoContainer, { marginTop: -Math.min(hpPct('8%'), 60) }]}>
         {/* Chat Bubble Icon */}
         <Animated.View style={[styles.bubbleContainer, bubbleStyle]}>
           <View style={[styles.chatBubble, { width: bubbleSize, height: bubbleSize, borderRadius: bubbleSize / 3 }]}>
@@ -104,7 +104,7 @@ const SplashScreen: React.FC = () => {
         </Animated.Text>
       </View>
 
-      <Animated.Text style={[styles.footer, { bottom: Math.max(insets.bottom + 16, hp('4%')) }, textStyle]}>
+      <Animated.Text style={[styles.footer, { bottom: Math.max(insets.bottom + 16, hpPct('4%')) }, textStyle]}>
         Healthcare Communication
       </Animated.Text>
     </SafeAreaView>
@@ -131,7 +131,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   bubbleContainer: {
-    marginBottom: 28,
+    marginBottom: ms(28),
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -146,18 +146,18 @@ const styles = StyleSheet.create({
     elevation: 12,
   },
   bubbleDot: {
-    width: 14,
-    height: 14,
-    borderRadius: 7,
+    width: wp(14),
+    height: wp(14),
+    borderRadius: wp(7),
     backgroundColor: Colors.white,
-    marginBottom: 4,
+    marginBottom: ms(4),
   },
   bubbleDotSmall: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
+    width: wp(10),
+    height: wp(10),
+    borderRadius: wp(5),
     alignSelf: 'flex-end',
-    marginRight: 12,
+    marginRight: ms(12),
     marginTop: -2,
   },
   titleRow: {
@@ -173,18 +173,18 @@ const styles = StyleSheet.create({
   },
   titleApp: {
     color: Colors.splashIconSoft,
-    marginLeft: 6,
+    marginLeft: ms(6),
   },
   tagline: {
-    fontSize: 16,
+    fontSize: fs(16),
     color: Colors.splashTextSecondary,
-    marginTop: 12,
+    marginTop: ms(12),
     fontWeight: '400',
     letterSpacing: 0.4,
   },
   footer: {
     position: 'absolute',
-    fontSize: 13,
+    fontSize: fs(13),
     color: Colors.splashTextTertiary,
     letterSpacing: 1,
     textTransform: 'uppercase',

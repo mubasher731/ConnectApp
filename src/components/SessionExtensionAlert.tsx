@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, Modal, StyleSheet } from 'react-native';
 import AppIcon from './Icon/AppIcon';
-import { Colors, Radius, Shadows, Spacing, responsiveSize } from '../theme';
+import { Colors, Radius, Shadows, Spacing, wp, fs } from '../theme';
 
 interface SessionExtensionAlertProps {
   visible: boolean;
@@ -65,7 +65,7 @@ const styles = StyleSheet.create({
   },
   card: {
     width: '100%',
-    maxWidth: 380,
+    maxWidth: wp(380),
     backgroundColor: Colors.background,
     borderRadius: Radius.xl,
     padding: Spacing.xl,
@@ -73,8 +73,8 @@ const styles = StyleSheet.create({
     ...Shadows.raised,
   },
   iconWrap: {
-    width: 84,
-    height: 84,
+    width: wp(84),
+    height: wp(84),
     borderRadius: Radius.round,
     backgroundColor: Colors.warningSoft,
     alignItems: 'center',
@@ -82,17 +82,17 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.lg,
   },
   title: {
-    fontSize: responsiveSize(20),
+    fontSize: fs(20),
     fontWeight: '800',
     color: Colors.text,
     textAlign: 'center',
   },
   message: {
-    fontSize: responsiveSize(15),
+    fontSize: fs(15),
     color: Colors.textSecondary,
     textAlign: 'center',
     marginTop: Spacing.sm,
-    lineHeight: 21,
+    lineHeight: fs(21),
   },
   actions: {
     flexDirection: 'row',
@@ -112,7 +112,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.inputBackground,
   },
   cancelText: {
-    fontSize: 15,
+    fontSize: fs(15),
     fontWeight: '700',
     color: Colors.textSecondary,
   },
@@ -121,7 +121,7 @@ const styles = StyleSheet.create({
     ...Shadows.primary,
   },
   extendText: {
-    fontSize: 15,
+    fontSize: fs(15),
     fontWeight: '700',
     color: Colors.white,
     marginLeft: Spacing.xs,

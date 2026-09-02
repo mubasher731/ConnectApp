@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { Colors, Spacing } from '../../theme';
+import { Colors, Spacing, wp, ms, fs } from '../../theme';
 
 interface BrandLogoProps {
   /** Display size of the logo mark. */
@@ -13,8 +13,8 @@ interface BrandLogoProps {
  */
 const BrandLogo: React.FC<BrandLogoProps> = ({ size = 'medium' }) => {
   const isLarge = size === 'large';
-  const markSize = isLarge ? 72 : 64;
-  const fontSize = isLarge ? 26 : 22;
+  const markSize = wp(isLarge ? 72 : 64);
+  const fontSize = fs(isLarge ? 26 : 22);
 
   return (
     <View style={styles.container}>
@@ -55,18 +55,18 @@ const styles = StyleSheet.create({
     elevation: 6,
   },
   dot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
+    width: wp(12),
+    height: wp(12),
+    borderRadius: wp(6),
     backgroundColor: Colors.white,
-    marginBottom: 3,
+    marginBottom: ms(3),
   },
   dotSmall: {
-    width: 9,
-    height: 9,
-    borderRadius: 4.5,
+    width: wp(9),
+    height: wp(9),
+    borderRadius: wp(4.5),
     alignSelf: 'flex-end',
-    marginRight: 11,
+    marginRight: ms(11),
     marginTop: -1,
   },
   wordmark: {
