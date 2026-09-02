@@ -31,7 +31,7 @@ import { useSessionConfig } from '../../context/SessionConfigContext';
 import { CHAT_EMOJIS } from '../../context/appData';
 import { chatService, sessionService } from '../../services';
 import { Conversation, Message } from '../../types';
-import { Colors, Radius, Shadows, Spacing, responsiveSize } from '../../theme';
+import { Colors, Radius, Shadows, Spacing, responsiveSize, wp, ms, fs } from '../../theme';
 
 interface ChatDetailScreenProps {
   route: any;
@@ -45,6 +45,23 @@ const formatTime = (ts: string) =>
 const mediaFullUrl = (u?: string | null): string | null => {
   if (!u) return null;
   return u.startsWith('http') ? u : `${getApiBaseUrl()}${u}`;
+};
+
+/**
+ * Resolve a media URL for NATIVE playback. A voice note that is still
+ * uploading (optimistic id `local-…`) has its on-device recorder file as
+ * mediaUrl — play it directly. Every saved/received note carries a backend
+ * media URL, so non-http paths get the API base URL prefixed. Never treat a
+ * backend path like `/docs/uploads/...` as a local file.
+ */
+const mediaPlaybackUrl = (
+  u?: string | null,
+  isLocalFile?: boolean
+): string | null => {
+  if (!u) return null;
+  if (isLocalFile) return u;
+  if (u.startsWith('http://') || u.startsWith('https://')) return u;
+  return `${getApiBaseUrl()}${u}`;
 };
 
 const formatDay = (ts: string) => {
@@ -284,6 +301,11 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
   const [playingVoiceId, setPlayingVoiceId] = useState<string | null>(null);
   const [voicePosition, setVoicePosition] = useState(0);
   const [voiceDuration, setVoiceDuration] = useState(0);
+  // Voice note currently buffering/preparing (shows a spinner on its play btn).
+  const [voiceLoadingId, setVoiceLoadingId] = useState<string | null>(null);
+  // A note that was paused mid-way, so the next tap resumes (not restarts).
+  const [pausedVoiceId, setPausedVoiceId] = useState<string | null>(null);
+  const [pausedPos, setPausedPos] = useState(0);
   const [attachOpen, setAttachOpen] = useState(false);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState(false);
@@ -295,6 +317,10 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
   });
   const playingVoiceIdRef = useRef<string | null>(null);
   const voiceDurationsRef = useRef<Record<string, number>>({});
+  // Serializes native player ops so rapid taps can't cancel a loading download.
+  const voiceBusyRef = useRef(false);
+  // Mirrors voicePosition so async handlers read the exact position at pause.
+  const voicePositionRef = useRef(0);
   const extensionFiredForEnd = useRef<number | null>(null);
   const listRef = useRef<FlatList>(null);
   const typingTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -572,6 +598,7 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
       // The native library reports duration/position in MILLISECONDS.
       const posSecs = meta.currentPosition / 1000;
       const durSecs = meta.duration / 1000;
+      voicePositionRef.current = posSecs;
       setVoicePosition(posSecs);
       setVoiceDuration(durSecs);
       const id = playingVoiceIdRef.current;
@@ -579,8 +606,11 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
     });
     Sound.addPlaybackEndListener(() => {
       setPlayingVoiceId(null);
-      playingVoiceIdRef.current = null;
+      setPausedVoiceId(null);
+      setPausedPos(0);
       setVoicePosition(0);
+      voicePositionRef.current = 0;
+      playingVoiceIdRef.current = null;
     });
     return () => {
       Sound.removePlayBackListener();
@@ -1052,43 +1082,71 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
     }
   };
 
-  // Voice notes play inline via the native Sound player; file attachments
-  // open in the system browser. Tapping the active note pauses it.
+  // Voice notes play inline via the native Sound player; file attachments open
+  // in the system browser. Tapping the active note pauses it, tapping a paused
+  // note resumes it from the same position, and taps that arrive while a note
+  // is still buffering are ignored so extra presses can't cancel/restart the
+  // download (which is what made remote notes need several taps to start).
   const onMediaChipPress = async (item: Message) => {
-    const uri = mediaFullUrl(item.mediaUrl);
-    if (!uri) return;
-
     if (item.type !== 'voice') {
-      Linking.openURL(uri).catch(() => {});
+      const openUri = mediaFullUrl(item.mediaUrl);
+      if (openUri) Linking.openURL(openUri).catch(() => {});
       return;
     }
 
+    // Ignore voice taps that land while another native playback op is in
+    // flight so extra presses can't cancel/restart a buffering download.
+    if (voiceBusyRef.current) return;
+
+    // A note still uploading (optimistic `local-…` id) points at the on-device
+    // recorder file — play that directly. Every other note has a backend media
+    // URL, so non-http paths get the API base URL prefixed.
+    const uri = mediaPlaybackUrl(
+      item.mediaUrl,
+      String(item.id).startsWith('local-')
+    );
+    if (!uri) return;
     const id = String(item.id);
 
-    // Toggle: tapping the currently-playing note pauses it.
-    if (playingVoiceId === id) {
-      setPlayingVoiceId(null);
-      playingVoiceIdRef.current = null;
-      setVoicePosition(0);
-      try {
-        await Sound.pausePlayer();
-      } catch {
-        // ignore
-      }
-      return;
-    }
-
+    voiceBusyRef.current = true;
     try {
-      // Stop any note that's playing before starting a new one.
-      if (playingVoiceIdRef.current) await Sound.stopPlayer();
+      // Toggle: tapping the currently-playing note pauses it in place so the
+      // next tap can resume from the same spot instead of restarting at 0:00.
+      if (playingVoiceId === id) {
+        await Sound.pausePlayer();
+        setPausedVoiceId(id);
+        setPausedPos(voicePositionRef.current);
+        setPlayingVoiceId(null);
+        playingVoiceIdRef.current = null;
+        return;
+      }
+
+      // Resume a paused note (its native player is still alive & paused).
+      if (pausedVoiceId === id) {
+        await Sound.resumePlayer();
+        setPausedVoiceId(null);
+        playingVoiceIdRef.current = id;
+        setPlayingVoiceId(id);
+        return;
+      }
+
+      // Start a new note — stop anything already playing/paused first.
+      setVoiceLoadingId(id); // visual feedback while the player prepares
       setVoicePosition(0);
+      setPausedPos(0);
+      if (playingVoiceIdRef.current || pausedVoiceId) await Sound.stopPlayer();
+      setPausedVoiceId(null);
       await Sound.startPlayer(uri);
       playingVoiceIdRef.current = id;
       setPlayingVoiceId(id);
     } catch {
       setPlayingVoiceId(null);
+      setPausedVoiceId(null);
       playingVoiceIdRef.current = null;
       console.warn('[chat] Voice playback failed:', uri);
+    } finally {
+      setVoiceLoadingId(null);
+      voiceBusyRef.current = false;
     }
   };
 
@@ -1098,20 +1156,32 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
   };
 
   // WhatsApp-style duration label. While playing it counts DOWN from the total
-  // (0:30 → 0:29 → … → 0:00); otherwise it shows the exact recorded duration.
+  // (0:30 → 0:29 → … → 0:00); a paused note shows where it stopped; otherwise
+  // it shows the exact recorded duration.
   const voiceDurationLabel = (item: Message): string => {
-    const playing = playingVoiceId === String(item.id);
-    if (playing) {
+    const id = String(item.id);
+    if (playingVoiceId === id) {
       const total = item.durationSecs ?? voiceDuration;
       return formatVoiceTime(Math.max(0, total - voicePosition));
     }
-    const dur = item.durationSecs ?? voiceDurationsRef.current[String(item.id)];
+    if (pausedVoiceId === id) {
+      return formatVoiceTime(Math.max(0, pausedPos));
+    }
+    const dur = item.durationSecs ?? voiceDurationsRef.current[id];
     return dur ? formatVoiceTime(dur) : 'Voice';
   };
 
   const voiceProgressPct = (item: Message): number => {
-    if (playingVoiceId !== String(item.id) || voiceDuration <= 0) return 0;
-    return Math.min(100, (voicePosition / voiceDuration) * 100);
+    const id = String(item.id);
+    const dur = item.durationSecs ?? voiceDurationsRef.current[id] ?? voiceDuration;
+    if (dur <= 0) return 0;
+    if (playingVoiceId === id) {
+      return Math.min(100, (voicePosition / dur) * 100);
+    }
+    if (pausedVoiceId === id) {
+      return Math.min(100, (pausedPos / dur) * 100);
+    }
+    return 0;
   };
 
   const renderItem = ({ item, index }: { item: Message; index: number }) => {
@@ -1182,21 +1252,32 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
                   />
                 </TouchableOpacity>
               ) : item.mediaUrl && item.type === 'voice' ? (
-                <View style={styles.voiceBubble}>
-                  <TouchableOpacity
+                // Whole voice row is tappable (bigger target than the 34×34
+                // circle alone) — tap anywhere on the note to play/pause.
+                <TouchableOpacity
+                  style={styles.voiceBubble}
+                  onPress={() => onMediaChipPress(item)}
+                  activeOpacity={0.65}
+                >
+                  <View
                     style={[
                       styles.voicePlayPause,
                       item.sentByMe ? styles.voicePlaySent : styles.voicePlayReceived,
                     ]}
-                    onPress={() => onMediaChipPress(item)}
-                    activeOpacity={0.7}
                   >
-                    <AppIcon
-                      name={playingVoiceId === String(item.id) ? 'pause' : 'play'}
-                      size={18}
-                      color={item.sentByMe ? Colors.white : Colors.primary}
-                    />
-                  </TouchableOpacity>
+                    {voiceLoadingId === String(item.id) ? (
+                      <ActivityIndicator
+                        size="small"
+                        color={item.sentByMe ? Colors.white : Colors.primary}
+                      />
+                    ) : (
+                      <AppIcon
+                        name={playingVoiceId === String(item.id) ? 'pause' : 'play'}
+                        size={18}
+                        color={item.sentByMe ? Colors.white : Colors.primary}
+                      />
+                    )}
+                  </View>
                   <View style={styles.voiceWave}>
                     <View
                       style={[
@@ -1221,7 +1302,7 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
                   >
                     {voiceDurationLabel(item)}
                   </Text>
-                </View>
+                </TouchableOpacity>
               ) : item.mediaUrl ? (
                 <TouchableOpacity
                   style={styles.mediaChip}
@@ -1531,7 +1612,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   loadMoreIndicator: {
-    paddingVertical: 12,
+    paddingVertical: ms(12),
   },
   headerTitleRow: {
     flexDirection: 'row',
@@ -1550,7 +1631,7 @@ const styles = StyleSheet.create({
     flexShrink: 1,
   },
   headerTitleStatus: {
-    fontSize: 12,
+    fontSize: fs(12),
     color: Colors.success,
     fontWeight: '500',
   },
@@ -1577,7 +1658,7 @@ const styles = StyleSheet.create({
     paddingRight: Spacing.md,
   },
   menuCard: {
-    minWidth: 220,
+    minWidth: wp(220),
     backgroundColor: Colors.card,
     borderRadius: Radius.md,
     borderWidth: 1,
@@ -1597,7 +1678,7 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.md,
   },
   menuItemText: {
-    fontSize: 15,
+    fontSize: fs(15),
     fontWeight: '600',
     color: Colors.text,
   },
@@ -1614,12 +1695,12 @@ const styles = StyleSheet.create({
     marginVertical: Spacing.lg,
   },
   dateSeparatorText: {
-    fontSize: 12,
+    fontSize: fs(12),
     fontWeight: '600',
     color: Colors.textSecondary,
     backgroundColor: Colors.surface,
     paddingHorizontal: Spacing.lg,
-    paddingVertical: 6,
+    paddingVertical: ms(6),
     borderRadius: Radius.round,
     overflow: 'hidden',
   },
@@ -1636,7 +1717,7 @@ const styles = StyleSheet.create({
     opacity: 0.4,
   },
   sessionDividerText: {
-    fontSize: 12,
+    fontSize: fs(12),
     fontWeight: '600',
     color: Colors.textSecondary,
   },
@@ -1663,7 +1744,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.errorSoft,
   },
   countdownText: {
-    fontSize: 13,
+    fontSize: fs(13),
     fontWeight: '700',
     color: Colors.success,
     marginLeft: Spacing.sm,
@@ -1675,7 +1756,7 @@ const styles = StyleSheet.create({
     color: Colors.error,
   },
   noticeText: {
-    fontSize: 13,
+    fontSize: fs(13),
     fontWeight: '600',
     color: Colors.warning,
     marginLeft: Spacing.sm,
@@ -1700,7 +1781,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-start',
   },
   avatarSlot: {
-    width: 30,
+    width: wp(30),
     marginRight: Spacing.sm,
     alignItems: 'center',
   },
@@ -1715,19 +1796,19 @@ const styles = StyleSheet.create({
   },
   sentBubble: {
     backgroundColor: Colors.chatBubbleSent,
-    borderBottomRightRadius: 6,
+    borderBottomRightRadius: ms(6),
   },
   receivedBubble: {
     backgroundColor: Colors.chatBubbleReceived,
-    borderBottomLeftRadius: 6,
+    borderBottomLeftRadius: ms(6),
   },
   messageText: {
-    fontSize: 15,
-    lineHeight: 21,
+    fontSize: fs(15),
+    lineHeight: fs(21),
   },
   mediaImage: {
-    width: 200,
-    height: 170,
+    width: wp(200),
+    height: wp(170),
     borderRadius: Radius.sm,
     marginBottom: Spacing.xs,
   },
@@ -1741,7 +1822,7 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.xs,
   },
   mediaChipText: {
-    fontSize: 13,
+    fontSize: fs(13),
     fontWeight: '600',
     color: Colors.text,
     marginLeft: Spacing.sm,
@@ -1749,13 +1830,13 @@ const styles = StyleSheet.create({
   voiceBubble: {
     flexDirection: 'row',
     alignItems: 'center',
-    minWidth: 190,
+    minWidth: wp(190),
     paddingVertical: Spacing.xs,
   },
   voicePlayPause: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
+    width: wp(34),
+    height: wp(34),
+    borderRadius: wp(17),
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: Spacing.sm,
@@ -1791,10 +1872,10 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.primary,
   },
   voiceDuration: {
-    fontSize: 12,
+    fontSize: fs(12),
     fontWeight: '600',
     marginLeft: Spacing.sm,
-    minWidth: 36,
+    minWidth: wp(36),
     textAlign: 'right',
   },
   voiceDurationSent: {
@@ -1813,10 +1894,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'flex-end',
-    marginTop: 2,
+    marginTop: ms(2),
   },
   bubbleTime: {
-    fontSize: 11,
+    fontSize: fs(11),
     fontWeight: '400',
   },
   sentTimeText: {
@@ -1826,7 +1907,7 @@ const styles = StyleSheet.create({
     color: Colors.textTertiary,
   },
   checkIcon: {
-    marginLeft: 3,
+    marginLeft: ms(3),
   },
   typingRow: {
     flexDirection: 'row',
@@ -1839,15 +1920,15 @@ const styles = StyleSheet.create({
     borderRadius: Radius.lg,
     borderBottomLeftRadius: 6,
     paddingHorizontal: Spacing.lg,
-    paddingVertical: 14,
+    paddingVertical: ms(14),
     ...Shadows.card,
   },
   typingDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+    width: wp(8),
+    height: wp(8),
+    borderRadius: wp(4),
     backgroundColor: Colors.primary,
-    marginHorizontal: 3,
+    marginHorizontal: ms(3),
   },
   systemMessageRow: {
     alignItems: 'center',
@@ -1859,10 +1940,10 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.surface,
     borderRadius: Radius.round,
     paddingHorizontal: Spacing.md,
-    paddingVertical: 6,
+    paddingVertical: ms(6),
   },
   systemText: {
-    fontSize: 12,
+    fontSize: fs(12),
     fontWeight: '600',
     color: Colors.textSecondary,
     marginLeft: Spacing.xs,
@@ -1883,21 +1964,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.xs,
   },
   emojiText: {
-    fontSize: 24,
+    fontSize: fs(24),
   },
   inputRow: {
     flexDirection: 'row',
     alignItems: 'flex-end',
   },
   roundButton: {
-    width: 40,
-    height: 40,
+    width: wp(40),
+    height: wp(40),
     borderRadius: Radius.round,
     backgroundColor: Colors.primarySoft,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: Spacing.sm,
-    marginBottom: 2,
+    marginBottom: ms(2),
   },
   sendButton: {
     backgroundColor: Colors.inputBackground, // #151A33 voice/send button
@@ -1912,27 +1993,27 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: Colors.inputBackground, // #151A33 input field
-    borderRadius: 22,
+    borderRadius: ms(22),
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.10)',
     paddingLeft: Spacing.lg,
     paddingRight: Spacing.xs,
-    minHeight: 44,
+    minHeight: wp(44),
   },
   textInput: {
     flex: 1,
-    fontSize: 15,
+    fontSize: fs(15),
     color: Colors.text,
     maxHeight: 100,
-    paddingVertical: 10,
+    paddingVertical: ms(10),
   },
   inputActions: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   inputAction: {
-    width: 34,
-    height: 34,
+    width: wp(34),
+    height: wp(34),
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1957,7 +2038,7 @@ const styles = StyleSheet.create({
   },
   recordingText: {
     flex: 1,
-    fontSize: 15,
+    fontSize: fs(15),
     color: Colors.error,
     textAlign: 'center',
     fontWeight: '600',
@@ -1980,7 +2061,7 @@ const styles = StyleSheet.create({
     borderBottomColor: Colors.border,
   },
   attachItemText: {
-    fontSize: 15,
+    fontSize: fs(15),
     fontWeight: '600',
     color: Colors.text,
     marginLeft: Spacing.md,
@@ -2000,9 +2081,9 @@ const styles = StyleSheet.create({
     top: 56,
     left: Spacing.md,
     zIndex: 10,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: wp(40),
+    height: wp(40),
+    borderRadius: wp(20),
     backgroundColor: 'rgba(255,255,255,0.18)',
     alignItems: 'center',
     justifyContent: 'center',
@@ -2012,9 +2093,9 @@ const styles = StyleSheet.create({
     top: 56,
     right: Spacing.md,
     zIndex: 10,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: wp(40),
+    height: wp(40),
+    borderRadius: wp(20),
     backgroundColor: 'rgba(255,255,255,0.18)',
     alignItems: 'center',
     justifyContent: 'center',

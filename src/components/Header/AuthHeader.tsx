@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import AppIcon from '../Icon/AppIcon';
-import { Colors, Spacing } from '../../theme';
+import { Colors, Spacing, wp, ms, fs } from '../../theme';
 
 interface AuthHeaderProps {
   title: string;
@@ -44,25 +44,25 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',
-    minHeight: 52,
+    minHeight: wp(52),
     paddingHorizontal: Spacing.md,
   },
   sideSlot: {
-    width: 44,
-    height: 44,
+    width: wp(44),
+    height: wp(44),
     alignItems: 'flex-start',
     justifyContent: 'center',
   },
   backButton: {
-    width: 44,
-    height: 44,
+    width: wp(44),
+    height: wp(44),
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 22,
+    borderRadius: ms(22),
   },
   title: {
     flex: 1,
-    fontSize: 17,
+    fontSize: fs(17),
     fontWeight: '700',
     color: Colors.text,
     textAlign: 'center',

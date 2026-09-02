@@ -20,7 +20,7 @@ import {
   formatSlotDisplay,
 } from '../../utils/slots';
 import { useSessionConfig } from '../../context/SessionConfigContext';
-import { Colors, Radius, Shadows, Spacing } from '../../theme';
+import { Colors, Radius, Shadows, Spacing, wp, ms, fs, hp } from '../../theme';
 
 interface BookAppointmentModalProps {
   visible: boolean;
@@ -496,7 +496,7 @@ const styles = StyleSheet.create({
   },
   sheet: {
     width: '100%',
-    maxWidth: 420,
+    maxWidth: wp(420),
     maxHeight: '92%',
     backgroundColor: Colors.card,
     borderRadius: Radius.xl,
@@ -517,17 +517,17 @@ const styles = StyleSheet.create({
     marginLeft: Spacing.md,
   },
   doctorName: {
-    fontSize: 18,
+    fontSize: fs(18),
     fontWeight: '700',
     color: Colors.text,
   },
   doctorSpecialty: {
-    fontSize: 13,
+    fontSize: fs(13),
     color: Colors.textSecondary,
     marginTop: 1,
   },
   label: {
-    fontSize: 14,
+    fontSize: fs(14),
     fontWeight: '700',
     color: Colors.text,
     marginBottom: Spacing.sm,
@@ -548,7 +548,7 @@ const styles = StyleSheet.create({
   },
   slotDropdownText: {
     flex: 1,
-    fontSize: 15,
+    fontSize: fs(15),
     fontWeight: '600',
     color: Colors.text,
     marginHorizontal: Spacing.sm,
@@ -564,7 +564,7 @@ const styles = StyleSheet.create({
     borderColor: Colors.border,
     overflow: 'hidden',
     marginBottom: Spacing.md,
-    maxHeight: 280,
+    maxHeight: hp(280),
   },
   slotRow: {
     flexDirection: 'row',
@@ -582,7 +582,7 @@ const styles = StyleSheet.create({
   },
   slotRowText: {
     flex: 1,
-    fontSize: 14,
+    fontSize: fs(14),
     fontWeight: '600',
     color: Colors.text,
     marginLeft: Spacing.sm,
@@ -595,42 +595,42 @@ const styles = StyleSheet.create({
     color: Colors.textTertiary,
   },
   slotRowTag: {
-    fontSize: 11,
+    fontSize: fs(11),
     fontWeight: '800',
     color: Colors.textTertiary,
     backgroundColor: Colors.inputBackground,
     paddingHorizontal: Spacing.sm,
-    paddingVertical: 2,
+    paddingVertical: ms(2),
     borderRadius: Radius.round,
     overflow: 'hidden',
   },
   slotRowTagBooked: {
-    fontSize: 11,
+    fontSize: fs(11),
     fontWeight: '800',
     color: Colors.error,
     backgroundColor: Colors.errorSoft,
     paddingHorizontal: Spacing.sm,
-    paddingVertical: 2,
+    paddingVertical: ms(2),
     borderRadius: Radius.round,
     overflow: 'hidden',
   },
   slotRowTagFree: {
-    fontSize: 11,
+    fontSize: fs(11),
     fontWeight: '700',
     color: Colors.success,
     backgroundColor: 'rgba(16,185,129,0.12)',
     paddingHorizontal: Spacing.sm,
-    paddingVertical: 2,
+    paddingVertical: ms(2),
     borderRadius: Radius.round,
     overflow: 'hidden',
   },
   slotRowTagSelected: {
-    fontSize: 11,
+    fontSize: fs(11),
     fontWeight: '700',
     color: Colors.primary,
     backgroundColor: 'rgba(124,134,255,0.16)',
     paddingHorizontal: Spacing.sm,
-    paddingVertical: 2,
+    paddingVertical: ms(2),
     borderRadius: Radius.round,
     overflow: 'hidden',
   },
@@ -652,15 +652,15 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.sm,
   },
   calendarNav: {
-    width: 36,
-    height: 36,
+    width: wp(36),
+    height: wp(36),
     borderRadius: Radius.round,
     backgroundColor: Colors.inputBackground,
     alignItems: 'center',
     justifyContent: 'center',
   },
   calendarMonthLabel: {
-    fontSize: 15,
+    fontSize: fs(15),
     fontWeight: '700',
     color: Colors.text,
     textTransform: 'capitalize',
@@ -674,7 +674,7 @@ const styles = StyleSheet.create({
     // under their weekday label.
     width: '14.2857%',
     textAlign: 'center',
-    fontSize: 12,
+    fontSize: fs(12),
     fontWeight: '600',
     color: Colors.textTertiary,
   },
@@ -686,22 +686,22 @@ const styles = StyleSheet.create({
     // Fixed width (1/7th) keeps every day aligned to its weekday column —
     // including the last (partial) row, which flexGrow would stretch out.
     width: '14.2857%',
-    height: 42,
+    height: wp(42),
     alignItems: 'center',
     justifyContent: 'center',
   },
   calendarDaySelected: {
     // Compact circular highlight, perfectly centered inside the cell.
-    width: 30,
-    height: 30,
-    borderRadius: 15,
+    width: wp(30),
+    height: wp(30),
+    borderRadius: wp(15),
     backgroundColor: Colors.primary,
   },
   calendarDayDisabled: {
     opacity: 0.3,
   },
   calendarDayText: {
-    fontSize: 14,
+    fontSize: fs(14),
     fontWeight: '600',
     color: Colors.text,
   },
@@ -713,7 +713,7 @@ const styles = StyleSheet.create({
     color: Colors.textTertiary,
   },
   noSlots: {
-    fontSize: 14,
+    fontSize: fs(14),
     color: Colors.textTertiary,
     textAlign: 'center',
     paddingVertical: Spacing.lg,
@@ -726,43 +726,43 @@ const styles = StyleSheet.create({
     gap: Spacing.sm,
   },
   slotLoadingText: {
-    fontSize: 13,
+    fontSize: fs(13),
     color: Colors.textSecondary,
     fontWeight: '500',
   },
   statusRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 2,
+    marginTop: ms(2),
     marginBottom: Spacing.md,
   },
   statusChecking: {
-    fontSize: 14,
+    fontSize: fs(14),
     fontWeight: '600',
     color: Colors.textSecondary,
     marginLeft: Spacing.sm,
   },
   statusAvailable: {
-    fontSize: 14,
+    fontSize: fs(14),
     fontWeight: '700',
     color: Colors.success,
     marginLeft: Spacing.sm,
   },
   statusBooked: {
-    fontSize: 14,
+    fontSize: fs(14),
     fontWeight: '700',
     color: Colors.error,
     marginLeft: Spacing.sm,
   },
   messageInput: {
-    minHeight: 90,
+    minHeight: wp(90),
     borderRadius: Radius.md,
     backgroundColor: Colors.inputBackground,
     borderWidth: 1,
     borderColor: Colors.border,
     paddingHorizontal: Spacing.lg,
     paddingVertical: Spacing.md,
-    fontSize: 14,
+    fontSize: fs(14),
     color: Colors.text,
     marginBottom: Spacing.lg,
   },
@@ -771,7 +771,7 @@ const styles = StyleSheet.create({
   },
   actionBtn: {
     flex: 1,
-    minHeight: 48,
+    minHeight: wp(48),
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: Spacing.md,
@@ -784,7 +784,7 @@ const styles = StyleSheet.create({
     marginRight: Spacing.sm,
   },
   cancelText: {
-    fontSize: 15,
+    fontSize: fs(15),
     fontWeight: '700',
     color: Colors.textSecondary,
   },
@@ -797,7 +797,7 @@ const styles = StyleSheet.create({
     opacity: 0.4,
   },
   sendText: {
-    fontSize: 15,
+    fontSize: fs(15),
     fontWeight: '700',
     color: Colors.white,
   },

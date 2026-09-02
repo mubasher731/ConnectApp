@@ -9,7 +9,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { CallCard, EmptyState, ListItemSeparator } from '../../components';
 import { callService } from '../../services/dataService';
 import { CallLog } from '../../types';
-import { Colors, Spacing, responsiveSize } from '../../theme';
+import { Colors, Spacing, responsiveSize, ms } from '../../theme';
 
 const CallsScreen: React.FC = () => {
   const [calls, setCalls] = useState<CallLog[]>([]);
@@ -84,11 +84,11 @@ const styles = StyleSheet.create({
   headerCount: {
     fontSize: responsiveSize(14),
     color: Colors.textSecondary,
-    marginTop: 2,
+    marginTop: ms(2),
   },
   listContainer: {
     paddingHorizontal: Spacing.lg,
-    paddingBottom: 110,
+    paddingBottom: ms(110),
     flexGrow: 1,
   },
 });

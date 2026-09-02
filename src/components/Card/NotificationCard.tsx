@@ -5,7 +5,7 @@ import relativeTime from 'dayjs/plugin/relativeTime';
 import AppIcon from '../Icon/AppIcon';
 import { NOTIFICATION_KIND_META } from '../../context/appData';
 import { AppNotification } from '../../types';
-import { Colors, Radius, Shadows, Spacing, responsiveSize } from '../../theme';
+import { Colors, Radius, Shadows, Spacing, wp, fs } from '../../theme';
 
 dayjs.extend(relativeTime);
 
@@ -57,8 +57,8 @@ const styles = StyleSheet.create({
     ...Shadows.card,
   },
   iconContainer: {
-    width: 42,
-    height: 42,
+    width: wp(42),
+    height: wp(42),
     borderRadius: Radius.md,
     alignItems: 'center',
     justifyContent: 'center',
@@ -74,7 +74,7 @@ const styles = StyleSheet.create({
   },
   title: {
     flex: 1,
-    fontSize: responsiveSize(15),
+    fontSize: fs(15),
     fontWeight: '600',
     color: Colors.text,
     marginRight: Spacing.sm,
@@ -83,19 +83,19 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   unreadDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+    width: wp(8),
+    height: wp(8),
+    borderRadius: wp(4),
     backgroundColor: Colors.primary,
   },
   body: {
-    fontSize: responsiveSize(14),
+    fontSize: fs(14),
     color: Colors.textSecondary,
-    lineHeight: 20,
+    lineHeight: fs(20),
     marginBottom: Spacing.sm,
   },
   time: {
-    fontSize: responsiveSize(12),
+    fontSize: fs(12),
     color: Colors.textTertiary,
   },
 });

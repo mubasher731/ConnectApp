@@ -17,7 +17,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppIcon, Avatar, PrimaryButton, useAlert } from '../../components';
 import { useAuth } from '../../context/AuthContext';
 import { validators } from '../../utils/validation';
-import { Colors, Radius, Shadows, Spacing, responsiveSize } from '../../theme';
+import { Colors, Radius, Shadows, Spacing, responsiveSize, wp, ms, fs } from '../../theme';
 import { useTabBarClearance } from '../../utils/useResponsive';
 
 const ProfileScreen: React.FC = () => {
@@ -104,7 +104,7 @@ const ProfileScreen: React.FC = () => {
         {/* Profile Header */}
         <View style={styles.profileHeader}>
           <View style={styles.avatarContainer}>
-            <Avatar name={displayName} size={88} />
+            <Avatar name={displayName} size={wp(88)} />
             <TouchableOpacity style={styles.editAvatarButton} activeOpacity={0.8} onPress={pickAvatar}>
               <AppIcon name="camera" size={16} color={Colors.white} />
             </TouchableOpacity>
@@ -266,13 +266,13 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: -2,
     right: -4,
-    width: 32,
-    height: 32,
+    width: wp(32),
+    height: wp(32),
     borderRadius: Radius.round,
     backgroundColor: Colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 2,
+    borderWidth: ms(2),
     borderColor: Colors.white,
     ...Shadows.primary,
   },
@@ -289,18 +289,18 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.primarySoft,
     borderRadius: Radius.round,
     paddingHorizontal: Spacing.md,
-    paddingVertical: 6,
+    paddingVertical: ms(6),
     marginBottom: Spacing.lg,
   },
   roleText: {
-    fontSize: 13,
+    fontSize: fs(13),
     fontWeight: '600',
     color: Colors.primary,
-    marginLeft: 6,
+    marginLeft: ms(6),
   },
   editButton: {
     paddingHorizontal: Spacing.xxl,
-    minHeight: 46,
+    minHeight: wp(46),
   },
   accountCard: {
     marginHorizontal: Spacing.xl,
@@ -318,7 +318,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   accountText: {
-    fontSize: 14,
+    fontSize: fs(14),
     color: Colors.textSecondary,
     marginLeft: Spacing.md,
   },
@@ -333,13 +333,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.xl,
   },
   appInfoText: {
-    fontSize: 14,
+    fontSize: fs(14),
     fontWeight: '600',
     color: Colors.textSecondary,
-    marginBottom: 2,
+    marginBottom: ms(2),
   },
   appInfoSubtext: {
-    fontSize: 12,
+    fontSize: fs(12),
     color: Colors.textTertiary,
   },
   logoutButton: {
@@ -353,7 +353,7 @@ const styles = StyleSheet.create({
     ...Shadows.raised,
   },
   logoutText: {
-    fontSize: 16,
+    fontSize: fs(16),
     fontWeight: '700',
     color: Colors.white,
     marginLeft: Spacing.sm,
@@ -386,29 +386,29 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   modalLabel: {
-    fontSize: 13,
+    fontSize: fs(13),
     fontWeight: '600',
     color: Colors.text,
     marginBottom: Spacing.xs,
-    marginLeft: 2,
+    marginLeft: ms(2),
   },
   modalInput: {
     backgroundColor: Colors.inputBackground,
     borderRadius: Radius.md,
     borderWidth: 1.5,
     borderColor: Colors.border,
-    paddingVertical: 14,
+    paddingVertical: ms(14),
     paddingHorizontal: Spacing.lg,
-    fontSize: 15,
+    fontSize: fs(15),
     color: Colors.text,
     marginBottom: Spacing.md,
   },
   modalError: {
-    fontSize: 12,
+    fontSize: fs(12),
     color: Colors.error,
     marginTop: -Spacing.sm,
     marginBottom: Spacing.sm,
-    marginLeft: 2,
+    marginLeft: ms(2),
   },
   modalButtons: {
     flexDirection: 'row',
@@ -416,20 +416,20 @@ const styles = StyleSheet.create({
   },
   modalCancelButton: {
     flex: 1,
-    paddingVertical: 14,
+    paddingVertical: ms(14),
     borderRadius: Radius.md,
     backgroundColor: Colors.inputBackground,
     alignItems: 'center',
     marginRight: Spacing.sm,
   },
   modalCancelText: {
-    fontSize: 15,
+    fontSize: fs(15),
     fontWeight: '600',
     color: Colors.textSecondary,
   },
   modalSaveButton: {
     flex: 1,
-    paddingVertical: 14,
+    paddingVertical: ms(14),
     borderRadius: Radius.md,
     backgroundColor: Colors.primary,
     alignItems: 'center',
@@ -439,7 +439,7 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   modalSaveText: {
-    fontSize: 15,
+    fontSize: fs(15),
     fontWeight: '700',
     color: Colors.white,
   },

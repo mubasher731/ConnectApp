@@ -3,7 +3,7 @@ import { View, StyleSheet, Text, Image, Animated, Easing, Platform, BackHandler,
 import { Phone, Video } from 'lucide-react-native';
 import MaterialIcon from 'react-native-vector-icons/MaterialIcons';
 import { useCall } from '../../context/CallContext';
-import { Colors, Spacing, responsiveSize } from '../../theme';
+import { Colors, Spacing, responsiveSize, ms, fs } from '../../theme';
 
 interface IncomingCallModalProps {
   visible: boolean;
@@ -165,7 +165,7 @@ const styles = StyleSheet.create({
     elevation: 10,
   },
   callTypeText: {
-    fontSize: 16,
+    fontSize: fs(16),
     fontWeight: '500',
     color: Colors.textSecondary,
     marginBottom: Spacing.lg,
@@ -177,7 +177,7 @@ const styles = StyleSheet.create({
     width: responsiveSize(132),
     height: responsiveSize(132),
     borderRadius: responsiveSize(66),
-    borderWidth: 3,
+    borderWidth: ms(3),
     borderColor: Colors.white,
     shadowColor: Colors.black,
     shadowOffset: { width: 0, height: 8 },
@@ -191,18 +191,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   avatarText: {
-    fontSize: responsiveSize(52),
+    fontSize: fs(52),
     fontWeight: '600',
     color: Colors.white,
   },
   callerName: {
-    fontSize: responsiveSize(28),
+    fontSize: fs(28),
     fontWeight: '600',
     color: Colors.white,
     marginBottom: Spacing.xs,
   },
   incomingText: {
-    fontSize: 16,
+    fontSize: fs(16),
     color: Colors.textSecondary,
   },
   // WhatsApp-style bottom action area (slides up on show).
@@ -252,7 +252,7 @@ const styles = StyleSheet.create({
   },
   buttonLabel: {
     marginTop: Spacing.sm,
-    fontSize: 14,
+    fontSize: fs(14),
     fontWeight: '600',
     color: Colors.white,
   },

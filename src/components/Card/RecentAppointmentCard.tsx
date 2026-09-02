@@ -6,7 +6,7 @@ import DoctorPill from '../Doctor/DoctorPill';
 import AppIcon from '../Icon/AppIcon';
 import { CONVERSATION_STATE_META } from '../../context/appData';
 import { Conversation } from '../../types';
-import { Colors, Radius, Shadows, Spacing } from '../../theme';
+import { Colors, Radius, Shadows, Spacing, ms, fs } from '../../theme';
 
 interface RecentAppointmentCardProps {
   conversation: Conversation;
@@ -86,14 +86,14 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   patientName: {
-    fontSize: 15,
+    fontSize: fs(15),
     fontWeight: '700',
     color: Colors.text,
   },
   patientSub: {
-    fontSize: 12,
+    fontSize: fs(12),
     color: Colors.textTertiary,
-    marginTop: 2,
+    marginTop: ms(2),
   },
   reasonRow: {
     flexDirection: 'row',
@@ -105,7 +105,7 @@ const styles = StyleSheet.create({
   },
   reason: {
     flex: 1,
-    fontSize: 12,
+    fontSize: fs(12),
     color: Colors.textSecondary,
     marginLeft: Spacing.sm,
   },

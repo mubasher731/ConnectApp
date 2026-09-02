@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { Radius, Spacing } from '../../theme';
+import { Radius, Spacing, ms, fs } from '../../theme';
 
 interface DoctorPillProps {
   label: string;
@@ -19,10 +19,10 @@ const styles = StyleSheet.create({
   pill: {
     borderRadius: Radius.round,
     paddingHorizontal: Spacing.sm,
-    paddingVertical: 4,
+    paddingVertical: ms(4),
   },
   text: {
-    fontSize: 11,
+    fontSize: fs(11),
     fontWeight: '700',
   },
 });

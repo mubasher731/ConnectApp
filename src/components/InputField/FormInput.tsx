@@ -8,7 +8,7 @@ import {
   TextInputProps,
 } from 'react-native';
 import AppIcon from '../Icon/AppIcon';
-import { Colors, Radius, Spacing } from '../../theme';
+import { Colors, Radius, Spacing, wp, ms, fs } from '../../theme';
 
 interface FormInputProps extends TextInputProps {
   label: string;
@@ -85,7 +85,7 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.lg,
   },
   label: {
-    fontSize: 14,
+    fontSize: fs(14),
     fontWeight: '600',
     color: Colors.text,
     marginBottom: Spacing.sm,
@@ -97,7 +97,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.inputBackground,
     borderRadius: Radius.md,
     paddingHorizontal: Spacing.lg,
-    minHeight: 54,
+    minHeight: wp(54),
     borderWidth: 1.5,
     borderColor: 'transparent',
   },
@@ -112,7 +112,7 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     marginLeft: Spacing.md,
-    fontSize: 16,
+    fontSize: fs(16),
     color: Colors.text,
     paddingVertical: 0,
   },
@@ -122,13 +122,13 @@ const styles = StyleSheet.create({
   errorRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 6,
+    marginTop: ms(6),
     marginLeft: Spacing.xs,
   },
   errorText: {
-    fontSize: 12,
+    fontSize: fs(12),
     color: Colors.error,
-    marginLeft: 4,
+    marginLeft: ms(4),
     fontWeight: '500',
   },
 });

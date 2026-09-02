@@ -8,7 +8,7 @@ import {
   StyleSheet,
 } from 'react-native';
 import type { ReactNode } from 'react';
-import { Colors, Radius, Shadows, Spacing, responsiveSize } from '../../theme';
+import { Colors, Radius, Shadows, Spacing, wp, fs } from '../../theme';
 
 export type AlertActionStyle = 'default' | 'cancel' | 'destructive';
 
@@ -103,7 +103,7 @@ const styles = StyleSheet.create({
   },
   card: {
     width: '100%',
-    maxWidth: 380,
+    maxWidth: wp(380),
     backgroundColor: Colors.card,
     borderRadius: Radius.xl,
     padding: Spacing.xl,
@@ -116,15 +116,15 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.md,
   },
   title: {
-    fontSize: responsiveSize(20),
+    fontSize: fs(20),
     fontWeight: '800',
     color: Colors.text,
     textAlign: 'center',
     letterSpacing: -0.3,
   },
   message: {
-    fontSize: responsiveSize(15),
-    lineHeight: 22,
+    fontSize: fs(15),
+    lineHeight: fs(22),
     color: Colors.textSecondary,
     textAlign: 'center',
     marginTop: Spacing.sm,
@@ -154,7 +154,7 @@ const styles = StyleSheet.create({
     ...Shadows.raised,
   },
   actionText: {
-    fontSize: 15,
+    fontSize: fs(15),
     fontWeight: '700',
     color: Colors.white,
   },

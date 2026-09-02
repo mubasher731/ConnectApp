@@ -6,7 +6,7 @@ import AppIcon from '../Icon/AppIcon';
 import Avatar from '../Icon/Avatar';
 import { CALL_DIRECTION_META } from '../../context/appData';
 import { CallLog } from '../../types';
-import { Colors, Radius, Shadows, Spacing, responsiveSize } from '../../theme';
+import { Colors, Radius, Shadows, Spacing, wp, ms, fs } from '../../theme';
 
 dayjs.extend(relativeTime);
 
@@ -68,7 +68,7 @@ const styles = StyleSheet.create({
     marginLeft: Spacing.md,
   },
   name: {
-    fontSize: responsiveSize(16),
+    fontSize: fs(16),
     fontWeight: '600',
     color: Colors.text,
     marginBottom: Spacing.xs,
@@ -76,20 +76,20 @@ const styles = StyleSheet.create({
   details: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 2,
+    marginBottom: ms(2),
   },
   directionText: {
-    fontSize: responsiveSize(13),
+    fontSize: fs(13),
     fontWeight: '500',
-    marginLeft: 4,
+    marginLeft: ms(4),
     marginRight: Spacing.sm,
   },
   duration: {
-    fontSize: responsiveSize(13),
+    fontSize: fs(13),
     color: Colors.textSecondary,
   },
   time: {
-    fontSize: responsiveSize(12),
+    fontSize: fs(12),
     color: Colors.textTertiary,
     marginTop: 1,
   },
@@ -97,8 +97,8 @@ const styles = StyleSheet.create({
     marginLeft: Spacing.sm,
   },
   callButton: {
-    width: 42,
-    height: 42,
+    width: wp(42),
+    height: wp(42),
     borderRadius: Radius.round,
     backgroundColor: Colors.primarySoft,
     alignItems: 'center',

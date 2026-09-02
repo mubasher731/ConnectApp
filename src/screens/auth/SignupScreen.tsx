@@ -8,7 +8,7 @@ import {
 import { AuthScreenLayout, FormInput, PrimaryButton, useAlert } from '../../components';
 import { useAuth } from '../../context/AuthContext';
 import { validators, FieldErrors } from '../../utils/validation';
-import { Colors, Spacing } from '../../theme';
+import { Colors, Spacing, fs } from '../../theme';
 
 interface SignupScreenProps {
   navigation: any;
@@ -159,11 +159,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   footerText: {
-    fontSize: 14,
+    fontSize: fs(14),
     color: Colors.textSecondary,
   },
   footerLink: {
-    fontSize: 14,
+    fontSize: fs(14),
     fontWeight: '700',
     color: Colors.primary,
   },

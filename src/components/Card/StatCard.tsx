@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import AppIcon from '../Icon/AppIcon';
 import { StatConfig } from '../../context/appData';
-import { Colors, Radius, Shadows, Spacing, responsiveSize } from '../../theme';
+import { Colors, Radius, Shadows, Spacing, wp, ms, fs } from '../../theme';
 
 interface StatCardProps {
   config: StatConfig;
@@ -32,22 +32,22 @@ const styles = StyleSheet.create({
     ...Shadows.card,
   },
   icon: {
-    width: 38,
-    height: 38,
+    width: wp(38),
+    height: wp(38),
     borderRadius: Radius.md,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: Spacing.sm,
   },
   value: {
-    fontSize: responsiveSize(26),
+    fontSize: fs(26),
     fontWeight: '800',
     color: Colors.text,
   },
   label: {
-    fontSize: responsiveSize(13),
+    fontSize: fs(13),
     color: Colors.textSecondary,
-    marginTop: 2,
+    marginTop: ms(2),
   },
 });
 

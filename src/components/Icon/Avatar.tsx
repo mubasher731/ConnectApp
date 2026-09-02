@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, ViewStyle } from 'react-native';
-import { Colors } from '../../theme';
+import { Colors, wp } from '../../theme';
 
 type AvatarShape = 'circle' | 'squircle';
 
@@ -31,18 +31,21 @@ const Avatar: React.FC<AvatarProps> = ({
     .slice(0, 2)
     .toUpperCase();
 
-  const dotSize = Math.max(12, size * 0.26);
-  const borderRadius = shape === 'circle' ? size / 2 : size * 0.36;
+  // Scale the design-pixel size prop at the point of use so the avatar stays
+  // proportional on every screen; the public `size` prop remains a plain number.
+  const avatarSize = wp(size);
+  const dotSize = Math.max(12, avatarSize * 0.26);
+  const borderRadius = shape === 'circle' ? avatarSize / 2 : avatarSize * 0.36;
 
   return (
-    <View style={[styles.wrapper, { width: size, height: size }, style]}>
+    <View style={[styles.wrapper, { width: avatarSize, height: avatarSize }, style]}>
       <View
         style={[
           styles.avatar,
-          { width: size, height: size, borderRadius },
+          { width: avatarSize, height: avatarSize, borderRadius },
         ]}
       >
-        {avatarUrl ? null : <Text style={[styles.initials, { fontSize: size * 0.34 }]}>{initials}</Text>}
+        {avatarUrl ? null : <Text style={[styles.initials, { fontSize: avatarSize * 0.34 }]}>{initials}</Text>}
       </View>
       {online && (
         <View

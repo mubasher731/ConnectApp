@@ -3,7 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import AppIcon from '../Icon/AppIcon';
 import Avatar from '../Icon/Avatar';
 import { User } from '../../types';
-import { Colors, Radius, Shadows, Spacing, responsiveSize } from '../../theme';
+import { Colors, Radius, Shadows, Spacing, wp, ms, fs } from '../../theme';
 
 interface UserDirectoryCardProps {
   user: User;
@@ -65,24 +65,24 @@ const styles = StyleSheet.create({
     marginLeft: Spacing.md,
   },
   name: {
-    fontSize: responsiveSize(16),
+    fontSize: fs(16),
     fontWeight: '600',
     color: Colors.text,
-    marginBottom: 2,
+    marginBottom: ms(2),
   },
   email: {
-    fontSize: responsiveSize(13),
+    fontSize: fs(13),
     color: Colors.textSecondary,
   },
   roleBadge: {
     backgroundColor: Colors.primarySoft,
     borderRadius: Radius.round,
     paddingHorizontal: Spacing.md,
-    paddingVertical: 6,
+    paddingVertical: ms(6),
     marginBottom: Spacing.sm,
   },
   roleText: {
-    fontSize: responsiveSize(12),
+    fontSize: fs(12),
     fontWeight: '600',
     color: Colors.primary,
   },
@@ -91,8 +91,8 @@ const styles = StyleSheet.create({
     marginLeft: Spacing.sm,
   },
   consultButton: {
-    width: 38,
-    height: 38,
+    width: wp(38),
+    height: wp(38),
     borderRadius: Radius.round,
     backgroundColor: Colors.primary,
     alignItems: 'center',
@@ -100,7 +100,7 @@ const styles = StyleSheet.create({
     ...Shadows.primary,
   },
   consultButtonText: {
-    fontSize: 16,
+    fontSize: fs(16),
     fontWeight: '700',
     color: Colors.white,
   },

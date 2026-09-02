@@ -14,7 +14,7 @@ import { useAuth } from '../../context/AuthContext';
 import { chatService, sessionService } from '../../services/dataService';
 import { useAutoRefresh } from '../../hooks/useAutoRefresh';
 import { Chat } from '../../types';
-import { Colors, Radius, Shadows, Spacing, responsiveSize } from '../../theme';
+import { Colors, Radius, Shadows, Spacing, responsiveSize, wp, ms, fs } from '../../theme';
 
 const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const { user } = useAuth();
@@ -84,7 +84,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
             {unreadCount > 0 && <View style={styles.notificationDot} />}
           </TouchableOpacity>
           <TouchableOpacity onPress={() => navigation.navigate('Profile')}>
-            <Avatar name={displayName || '?'} size={34} online />
+            <Avatar name={displayName || '?'} size={wp(34)} online />
           </TouchableOpacity>
         </View>
       </View>
@@ -185,8 +185,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   notificationButton: {
-    width: 44,
-    height: 44,
+    width: wp(44),
+    height: wp(44),
     borderRadius: Radius.round,
     backgroundColor: Colors.inputBackground,
     alignItems: 'center',
@@ -197,9 +197,9 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 10,
     right: 10,
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+    width: wp(8),
+    height: wp(8),
+    borderRadius: ms(4),
     backgroundColor: Colors.error,
     borderWidth: 1.5,
     borderColor: Colors.white,
@@ -214,7 +214,7 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: Colors.text,
     letterSpacing: -0.3,
-    marginTop: 2,
+    marginTop: ms(2),
   },
   bookingBanner: {
     flexDirection: 'row',
@@ -230,8 +230,8 @@ const styles = StyleSheet.create({
     ...Shadows.primary,
   },
   bookingBannerIcon: {
-    width: 48,
-    height: 48,
+    width: wp(48),
+    height: wp(48),
     borderRadius: Radius.round,
     backgroundColor: 'rgba(255,255,255,0.18)',
     alignItems: 'center',
@@ -250,12 +250,12 @@ const styles = StyleSheet.create({
   bookingBannerSub: {
     fontSize: responsiveSize(12),
     color: 'rgba(255,255,255,0.85)',
-    marginTop: 3,
-    lineHeight: 17,
+    marginTop: ms(3),
+    lineHeight: fs(17),
   },
   bookingBannerArrow: {
-    width: 32,
-    height: 32,
+    width: wp(32),
+    height: wp(32),
     borderRadius: Radius.round,
     backgroundColor: 'rgba(255,255,255,0.18)',
     alignItems: 'center',
@@ -268,9 +268,9 @@ const styles = StyleSheet.create({
     gap: Spacing.sm,
   },
   sectionSubtitle: {
-    fontSize: 12,
+    fontSize: fs(12),
     color: Colors.textTertiary,
-    marginTop: 2,
+    marginTop: ms(2),
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -285,8 +285,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   reloadButton: {
-    width: 32,
-    height: 32,
+    width: wp(32),
+    height: wp(32),
     borderRadius: Radius.round,
     backgroundColor: Colors.primarySoft,
     alignItems: 'center',
@@ -307,7 +307,7 @@ const styles = StyleSheet.create({
   chatList: {
     paddingHorizontal: Spacing.xl,
     paddingTop: Spacing.sm,
-    paddingBottom: 150,
+    paddingBottom: ms(150),
     backgroundColor: Colors.surface,
   },
 });

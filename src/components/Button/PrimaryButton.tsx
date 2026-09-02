@@ -6,7 +6,7 @@ import {
   StyleSheet,
   ViewStyle,
 } from 'react-native';
-import { Colors, Radius, Shadows, responsiveSize } from '../../theme';
+import { Colors, Radius, Shadows, wp, ms, fs } from '../../theme';
 
 interface PrimaryButtonProps {
   title: string;
@@ -58,8 +58,8 @@ const PrimaryButton: React.FC<PrimaryButtonProps> = ({
 
 const styles = StyleSheet.create({
   base: {
-    minHeight: 54,
-    paddingVertical: 12,
+    minHeight: wp(54),
+    paddingVertical: ms(12),
     borderRadius: Radius.md,
     alignItems: 'center',
     justifyContent: 'center',
@@ -76,7 +76,7 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   title: {
-    fontSize: responsiveSize(16),
+    fontSize: fs(16),
     fontWeight: '700',
     letterSpacing: 0.2,
   },
