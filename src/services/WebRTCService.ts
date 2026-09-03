@@ -75,6 +75,8 @@ export class WebRTCService {
   /** Current camera (toggled by switchCamera; getSettings() is unreliable). */
   private facingMode: 'user' | 'environment' = 'user';
   private currentIceConfig: RtcConfig = FALLBACK_ICE_CONFIG as RtcConfig;
+  /** True while an ICE restart is in flight (avoids spamming restartIce). */
+  private iceRestarting = false;
 
   setEvents(events: Partial<WebRTCEvents>) {
     this.events = { ...this.events, ...events };
@@ -140,10 +142,30 @@ export class WebRTCService {
     };
 
     this.peerConnection.onconnectionstatechange = () => {
-      const state = this.peerConnection?.connectionState || 'disconnected';
+      const state = this.peerConnection?.connectionState || 'closed';
       this.events.onConnectionStateChange?.(state);
 
-      if (state === 'disconnected' || state === 'failed' || state === 'closed') {
+      // 'disconnected' is usually TRANSIENT (a brief network/NAT stall). WebRTC
+      // can recover on its own and only flips to 'failed' once it gives up, so
+      // we do NOT end the call here — the UI shows "Reconnecting…" while we try
+      // an ICE restart. The call is only ended on 'failed'/'closed' (or by the
+      // reconnection grace timer in CallContext).
+      if (state === 'disconnected') {
+        if (!this.iceRestarting) {
+          this.iceRestarting = true;
+          console.warn('[WebRTC] Connection state: disconnected — attempting ICE restart');
+          this.restartIce().finally(() => {
+            this.iceRestarting = false;
+          });
+        }
+        return;
+      }
+
+      if (state === 'connected') {
+        this.iceRestarting = false;
+      }
+
+      if (state === 'failed' || state === 'closed') {
         // Guard against re-entry: cleanup() closes the peer connection, which
         // fires 'closed' → this handler again. Once the PC is null, skip —
         // otherwise onCallEnded would fire twice (double RESET/stop/leave).
@@ -157,6 +179,34 @@ export class WebRTCService {
     this.peerConnection.oniceconnectionstatechange = () => {
       const state = this.peerConnection?.iceConnectionState || 'new';
       console.log('[WebRTC] ICE connection state:', state);
+
+      // Diagnostic: when we reach 'connected', log which candidate type the
+      // call is riding on (host = same LAN, srflx = through a NAT, relay =
+      // TURN). This shows whether a missing TURN relay is why the call drops
+      // mid-conversation.
+      if (state === 'connected' && this.peerConnection) {
+        this.peerConnection
+          .getStats()
+          .then((stats: any) => {
+            try {
+              stats?.forEach?.((report: any) => {
+                if (report?.type === 'candidate-pair' && report?.state === 'succeeded') {
+                  console.log('[WebRTC] Active candidate pair:', {
+                    state: report.state,
+                    nominated: report.nominated,
+                    writable: report.writable,
+                  });
+                }
+                if (report?.type === 'remote-candidate' && report?.candidateType) {
+                  console.log('[WebRTC] Remote candidate type:', report.candidateType);
+                }
+              });
+            } catch {
+              // diagnostics only — never break the call
+            }
+          })
+          .catch(() => {});
+      }
     };
 
     try {

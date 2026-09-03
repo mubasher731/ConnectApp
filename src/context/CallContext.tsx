@@ -150,6 +150,19 @@ interface CallProviderProps {
 let socket: Socket | null = null;
 let durationInterval: ReturnType<typeof setInterval> | null = null;
 let ringTimeout: ReturnType<typeof setTimeout> | null = null;
+let reconnectEndTimer: ReturnType<typeof setTimeout> | null = null;
+
+/**
+ * Cancel the media-recovery grace timer. Called whenever a call starts, ends,
+ * recovers, or any cleanup path runs so a stale timer can never end a call
+ * that already finished (or a brand-new one).
+ */
+const disarmReconnectEndTimer = (): void => {
+  if (reconnectEndTimer) {
+    clearTimeout(reconnectEndTimer);
+    reconnectEndTimer = null;
+  }
+};
 
 /** Navigate to the in-call screen (global, from anywhere in the app). */
 const goToCallScreen = (): void => navigate('Call');
@@ -398,6 +411,58 @@ export const CallProvider: React.FC<CallProviderProps> = ({ children }) => {
       },
       onConnectionStateChange: (connectionState) => {
         dispatch({ type: 'SET_CONNECTION_STATE', state: connectionState });
+
+        // A transient 'disconnected' is expected during media recovery — keep
+        // the call alive in "Reconnecting…" while the WebRTC service attempts
+        // an ICE restart. Only end if it fails/closes (the service fires
+        // onCallEnded) or the grace timer below expires without recovery.
+        const current = stateRef.current;
+        if (connectionState === 'disconnected') {
+          if (current.status === 'active' || current.status === 'reconnecting') {
+            if (current.status !== 'reconnecting') {
+              dispatch({ type: 'SET_STATUS', status: 'reconnecting' });
+            }
+            disarmReconnectEndTimer();
+            // Retry ICE restart a few times over ~16s so a recoverable drop
+            // actually comes back. Only end if it truly never recovers.
+            let attempts = 0;
+            const retry = () => {
+              if (!isMounted.current) return;
+              const s = stateRef.current;
+              // Recovered, or the call ended some other way — stop retrying.
+              if (
+                s.connectionState === 'connected' ||
+                (s.status !== 'reconnecting' && s.status !== 'active')
+              ) {
+                disarmReconnectEndTimer();
+                return;
+              }
+              if (attempts >= 3) {
+                disarmReconnectEndTimer();
+                console.warn('[CallContext] Connection did not recover — ending call');
+                handlersRef.current.onCallEnded();
+                return;
+              }
+              attempts += 1;
+              webRTCService.restartIce().catch(() => {});
+              reconnectEndTimer = setTimeout(retry, 4000);
+            };
+            reconnectEndTimer = setTimeout(retry, 4000);
+          }
+          return;
+        }
+
+        if (connectionState === 'connected') {
+          disarmReconnectEndTimer();
+          if (stateRef.current.status === 'reconnecting') {
+            dispatch({ type: 'SET_STATUS', status: 'active' });
+          }
+          return;
+        }
+
+        if (connectionState === 'failed' || connectionState === 'closed') {
+          disarmReconnectEndTimer();
+        }
       },
       onOfferCreated: (offer) => {
         const p = callParamsRef.current;
@@ -460,6 +525,7 @@ export const CallProvider: React.FC<CallProviderProps> = ({ children }) => {
         return;
       }
 
+      disarmReconnectEndTimer();
       const myId = user?.id ?? 0;
       const consultationId = data.consultationId ?? data.sessionId ?? null;
       // Capture the call context so accept/answer emits route correctly.
@@ -558,6 +624,7 @@ export const CallProvider: React.FC<CallProviderProps> = ({ children }) => {
   );
 
   const handleCallEnded = useCallback(() => {
+    disarmReconnectEndTimer();
     if (ringTimeout) {
       clearTimeout(ringTimeout);
       ringTimeout = null;
@@ -574,6 +641,7 @@ export const CallProvider: React.FC<CallProviderProps> = ({ children }) => {
   }, []);
 
   const handleCallRejected = useCallback(() => {
+    disarmReconnectEndTimer();
     if (ringTimeout) {
       clearTimeout(ringTimeout);
       ringTimeout = null;
@@ -590,6 +658,7 @@ export const CallProvider: React.FC<CallProviderProps> = ({ children }) => {
   }, []);
 
   const handleCallBusy = useCallback(() => {
+    disarmReconnectEndTimer();
     startingCallRef.current = false;
     callParamsRef.current.targetId = null;
     webRTCService.cleanup();
@@ -605,6 +674,7 @@ export const CallProvider: React.FC<CallProviderProps> = ({ children }) => {
   const initiateCall = useCallback(
     (userId: number, name: string, callType: 'audio' | 'video', consultationId: number) => {
       if (state.status !== 'idle' || startingCallRef.current) return;
+      disarmReconnectEndTimer();
       startingCallRef.current = true;
 
       // Capture the call context up front so the offer emit never reads stale
@@ -649,6 +719,7 @@ export const CallProvider: React.FC<CallProviderProps> = ({ children }) => {
     // "Calling..." until the 30s auto-reject.
     if (state.status !== 'incoming' || !state.peerReady) return;
 
+    disarmReconnectEndTimer();
     if (ringTimeout) {
       clearTimeout(ringTimeout);
       ringTimeout = null;
@@ -669,6 +740,7 @@ export const CallProvider: React.FC<CallProviderProps> = ({ children }) => {
 
   const rejectCall = useCallback(() => {
     if (state.status !== 'incoming' && state.status !== 'outgoing') return;
+    disarmReconnectEndTimer();
 
     if (ringTimeout) {
       clearTimeout(ringTimeout);
@@ -687,11 +759,18 @@ export const CallProvider: React.FC<CallProviderProps> = ({ children }) => {
   }, [state.status, state.remoteUser?.userId, user?.id]);
 
   const endCall = useCallback(() => {
-    // Either participant may end the call at any time (active, outgoing, or
-    // while the callee is still ringing). While ringing, ending = rejecting.
-    if (state.status !== 'active' && state.status !== 'outgoing' && state.status !== 'incoming') {
+    // Either participant may end the call at any time (active, outgoing,
+    // reconnecting, or while the callee is still ringing). While ringing,
+    // ending = rejecting.
+    if (
+      state.status !== 'active' &&
+      state.status !== 'outgoing' &&
+      state.status !== 'incoming' &&
+      state.status !== 'reconnecting'
+    ) {
       return;
     }
+    disarmReconnectEndTimer();
 
     if (state.remoteUser?.userId && socket) {
       socket.emit(state.status === 'incoming' ? 'call:reject' : 'call:end', {
