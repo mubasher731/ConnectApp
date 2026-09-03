@@ -9,6 +9,25 @@ import { getIceConfig as fetchIceConfig } from '../services/iceService';
 import { MediaStream } from 'react-native-webrtc';
 import InCallManager from 'react-native-incall-manager';
 
+/**
+ * Best-effort ICE/TURN config for a call. The live backend does not expose
+ * `POST /calls/ice-credentials` (it 404s with "Url Not exists"), so fetching
+ * credentials must never block or abort the call: on any failure — or when the
+ * backend returns no servers — we keep the WebRTC service's STUN fallback and
+ * let the call proceed with host + STUN candidates.
+ */
+async function configureIceForCall(consultationId: number | string | null | undefined): Promise<void> {
+  if (consultationId == null) return;
+  try {
+    const config = await fetchIceConfig(consultationId);
+    if (Array.isArray(config.iceServers) && config.iceServers.length > 0) {
+      webRTCService.setIceConfig({ iceServers: config.iceServers });
+    }
+  } catch (error) {
+    console.warn('[CallContext] ICE config unavailable — using STUN fallback:', error);
+  }
+}
+
 type RTCPeerConnectionState = 'new' | 'connecting' | 'connected' | 'disconnected' | 'failed' | 'closed';
 type CallStatus = 'idle' | 'outgoing' | 'incoming' | 'active' | 'reconnecting';
 
@@ -496,10 +515,7 @@ export const CallProvider: React.FC<CallProviderProps> = ({ children }) => {
       // after the local media is added to avoid a native race/crash.
       const setupPromise = (async () => {
         try {
-          if (consultationId != null) {
-            const config = await fetchIceConfig(consultationId);
-            webRTCService.setIceConfig({ iceServers: config.iceServers });
-          }
+          await configureIceForCall(consultationId);
           await webRTCService.createPeerConnection(
             data.from,
             false,
@@ -613,10 +629,7 @@ export const CallProvider: React.FC<CallProviderProps> = ({ children }) => {
       // sent after local media is attached and the right relay is selected.
       (async () => {
         try {
-          if (consultationId != null) {
-            const config = await fetchIceConfig(consultationId);
-            webRTCService.setIceConfig({ iceServers: config.iceServers });
-          }
+          await configureIceForCall(consultationId);
           await webRTCService.createPeerConnection(userId, true, callType);
           startingCallRef.current = false;
           if (isMounted.current) dispatch({ type: 'SET_PEER_READY', ready: true });

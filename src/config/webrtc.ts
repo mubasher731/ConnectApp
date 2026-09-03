@@ -12,7 +12,16 @@
  */
 
 export const FALLBACK_ICE_CONFIG = {
-  iceServers: [],
+  // Credential-free public STUN servers. Used when the backend doesn't expose
+  // a TURN/ICE endpoint (POST /api/calls/ice-credentials returns 404 during
+  // development) so calls can still establish over most networks via host +
+  // server-reflexive candidates. Real TURN credentials from the backend, when
+  // available, override this at call setup time.
+  iceServers: [
+    {
+      urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'],
+    },
+  ],
 };
 
 export const RTC_CONFIG = FALLBACK_ICE_CONFIG;
