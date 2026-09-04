@@ -1,4 +1,13 @@
-import React, { createContext, useContext, useReducer, useEffect, useCallback, useState, ReactNode, useRef } from 'react';
+import React, {
+  createContext,
+  useContext,
+  useReducer,
+  useEffect,
+  useCallback,
+  useState,
+  ReactNode,
+  useRef,
+} from 'react';
 import { Socket } from 'socket.io-client';
 import { socketService } from '../api/socket';
 import { navigationRef, navigate, goBack } from '../navigation/navigationRef';
@@ -16,7 +25,9 @@ import InCallManager from 'react-native-incall-manager';
  * backend returns no servers — we keep the WebRTC service's STUN fallback and
  * let the call proceed with host + STUN candidates.
  */
-async function configureIceForCall(consultationId: number | string | null | undefined): Promise<void> {
+async function configureIceForCall(
+  consultationId: number | string | null | undefined,
+): Promise<void> {
   if (consultationId == null) return;
   try {
     const config = await fetchIceConfig(consultationId);
@@ -24,11 +35,20 @@ async function configureIceForCall(consultationId: number | string | null | unde
       webRTCService.setIceConfig({ iceServers: config.iceServers });
     }
   } catch (error) {
-    console.warn('[CallContext] ICE config unavailable — using STUN fallback:', error);
+    console.warn(
+      '[CallContext] ICE config unavailable — using STUN fallback:',
+      error,
+    );
   }
 }
 
-type RTCPeerConnectionState = 'new' | 'connecting' | 'connected' | 'disconnected' | 'failed' | 'closed';
+type RTCPeerConnectionState =
+  | 'new'
+  | 'connecting'
+  | 'connected'
+  | 'disconnected'
+  | 'failed'
+  | 'closed';
 type CallStatus = 'idle' | 'outgoing' | 'incoming' | 'active' | 'reconnecting';
 
 interface CallState {
@@ -111,7 +131,12 @@ interface CallContextType {
   state: CallState;
   localStream: MediaStream | null;
   remoteStream: MediaStream | null;
-  initiateCall: (userId: number, name: string, callType: 'audio' | 'video', sessionId: number) => void;
+  initiateCall: (
+    userId: number,
+    name: string,
+    callType: 'audio' | 'video',
+    sessionId: number,
+  ) => void;
   acceptCall: () => void;
   rejectCall: () => void;
   endCall: () => void;
@@ -170,7 +195,10 @@ const goToCallScreen = (): void => navigate('Call');
 /** Leave the in-call screen only when it is the current route. */
 const leaveCallScreen = (): void => {
   if (!navigationRef.isReady()) return;
-  if (navigationRef.getCurrentRoute()?.name === 'Call' && navigationRef.canGoBack()) {
+  if (
+    navigationRef.getCurrentRoute()?.name === 'Call' &&
+    navigationRef.canGoBack()
+  ) {
     goBack();
   }
 };
@@ -381,20 +409,20 @@ export const CallProvider: React.FC<CallProviderProps> = ({ children }) => {
   useEffect(() => {
     const myId = user?.id ?? 0;
     const events: WebRTCEvents = {
-      onLocalStream: (stream) => {
-        setStreams((prev) => ({ ...prev, local: stream }));
+      onLocalStream: stream => {
+        setStreams(prev => ({ ...prev, local: stream }));
       },
-      onRemoteStream: (stream) => {
-        setStreams((prev) => ({ ...prev, remote: stream }));
+      onRemoteStream: stream => {
+        setStreams(prev => ({ ...prev, remote: stream }));
       },
       onCallEnded: () => {
         handlersRef.current.onCallEnded();
       },
-      onError: (error) => {
+      onError: error => {
         console.error('[CallContext] WebRTC error:', error);
         handlersRef.current.onCallEnded();
       },
-      onIceCandidate: (candidate) => {
+      onIceCandidate: candidate => {
         const p = callParamsRef.current;
         const sender = p.myId || myId;
         if (p.targetId && socket) {
@@ -413,7 +441,7 @@ export const CallProvider: React.FC<CallProviderProps> = ({ children }) => {
           });
         }
       },
-      onConnectionStateChange: (connectionState) => {
+      onConnectionStateChange: connectionState => {
         dispatch({ type: 'SET_CONNECTION_STATE', state: connectionState });
 
         // A transient 'disconnected' is expected during media recovery — keep
@@ -422,7 +450,10 @@ export const CallProvider: React.FC<CallProviderProps> = ({ children }) => {
         // onCallEnded) or the grace timer below expires without recovery.
         const current = stateRef.current;
         if (connectionState === 'disconnected') {
-          if (current.status === 'active' || current.status === 'reconnecting') {
+          if (
+            current.status === 'active' ||
+            current.status === 'reconnecting'
+          ) {
             if (current.status !== 'reconnecting') {
               dispatch({ type: 'SET_STATUS', status: 'reconnecting' });
             }
@@ -443,7 +474,9 @@ export const CallProvider: React.FC<CallProviderProps> = ({ children }) => {
               }
               if (attempts >= 3) {
                 disarmReconnectEndTimer();
-                console.warn('[CallContext] Connection did not recover — ending call');
+                console.warn(
+                  '[CallContext] Connection did not recover — ending call',
+                );
                 handlersRef.current.onCallEnded();
                 return;
               }
@@ -468,11 +501,17 @@ export const CallProvider: React.FC<CallProviderProps> = ({ children }) => {
           disarmReconnectEndTimer();
         }
       },
-      onOfferCreated: (offer) => {
+      onOfferCreated: offer => {
         const p = callParamsRef.current;
         const sender = p.myId || myId;
         if (p.targetId && socket) {
-          console.log('[Call] Emitting call:offer →', p.targetId, p.callType, 'consultation', p.consultationId);
+          console.log(
+            '[Call] Emitting call:offer →',
+            p.targetId,
+            p.callType,
+            'consultation',
+            p.consultationId,
+          );
           socket.emit('call:offer', {
             to: p.targetId,
             from: sender,
@@ -489,7 +528,7 @@ export const CallProvider: React.FC<CallProviderProps> = ({ children }) => {
           });
         }
       },
-      onAnswerCreated: (answer) => {
+      onAnswerCreated: answer => {
         const p = callParamsRef.current;
         const sender = p.myId || myId;
         if (p.targetId && socket) {
@@ -515,11 +554,26 @@ export const CallProvider: React.FC<CallProviderProps> = ({ children }) => {
     return () => {
       webRTCService.setEvents({});
     };
-  }, [state.remoteUser?.userId, state.sessionId, state.callType, socket, user?.id, user?.name]);
+  }, [
+    state.remoteUser?.userId,
+    state.sessionId,
+    state.callType,
+    socket,
+    user?.id,
+    user?.name,
+  ]);
 
   // Handle incoming call
   const handleIncomingCall = useCallback(
-    (data: { from: number; fromName?: string; offer: any; consultationId?: number; sessionId?: number; callId?: string; callType: string }) => {
+    (data: {
+      from: number;
+      fromName?: string;
+      offer: any;
+      consultationId?: number;
+      sessionId?: number;
+      callId?: string;
+      callType: string;
+    }) => {
       if (state.status !== 'idle') {
         socket?.emit('call:busy', {
           to: data.from,
@@ -542,8 +596,18 @@ export const CallProvider: React.FC<CallProviderProps> = ({ children }) => {
         callType: data.callType as 'audio' | 'video',
       };
 
-      dispatch({ type: 'SET_REMOTE_USER', user: { userId: data.from, name: data.fromName ?? '', avatar: undefined } });
-      dispatch({ type: 'SET_CALL_TYPE', callType: data.callType as 'audio' | 'video' });
+      dispatch({
+        type: 'SET_REMOTE_USER',
+        user: {
+          userId: data.from,
+          name: data.fromName ?? '',
+          avatar: undefined,
+        },
+      });
+      dispatch({
+        type: 'SET_CALL_TYPE',
+        callType: data.callType as 'audio' | 'video',
+      });
       dispatch({ type: 'SET_SESSION_ID', sessionId: consultationId ?? 0 });
       dispatch({ type: 'SET_STATUS', status: 'incoming' });
       goToCallScreen();
@@ -555,7 +619,7 @@ export const CallProvider: React.FC<CallProviderProps> = ({ children }) => {
         if (data.fromName && data.fromName.trim()) return data.fromName;
         try {
           const convs = await sessionService.getConversations();
-          const conv = convs.find((c) => String(c.id) === String(consultationId));
+          const conv = convs.find(c => String(c.id) === String(consultationId));
           if (conv) {
             const iAmPatient = conv.patient_id === myId;
             const name = iAmPatient ? conv.doctor_name : conv.patient_name;
@@ -566,7 +630,7 @@ export const CallProvider: React.FC<CallProviderProps> = ({ children }) => {
         }
         return data.fromName ?? '';
       };
-      resolveCallerName().then((name) => {
+      resolveCallerName().then(name => {
         if (isMounted.current && name) {
           dispatch({
             type: 'SET_REMOTE_USER',
@@ -589,23 +653,28 @@ export const CallProvider: React.FC<CallProviderProps> = ({ children }) => {
           await webRTCService.createPeerConnection(
             data.from,
             false,
-            data.callType as 'audio' | 'video'
+            data.callType as 'audio' | 'video',
           );
           await webRTCService.setRemoteOffer(data.offer);
-          if (isMounted.current) dispatch({ type: 'SET_PEER_READY', ready: true });
+          if (isMounted.current)
+            dispatch({ type: 'SET_PEER_READY', ready: true });
         } catch (error) {
           console.error('[CallContext] WebRTC incoming setup failed:', error);
-          if (isMounted.current) dispatch({ type: 'SET_PEER_READY', ready: false });
+          if (isMounted.current)
+            dispatch({ type: 'SET_PEER_READY', ready: false });
         }
       })();
       void setupPromise;
     },
-    [state.status, user?.id, user?.name]
+    [state.status, user?.id, user?.name],
   );
 
   const handleCallAnswer = useCallback(
     (data: { from: number; answer: any }) => {
-      if (state.status === 'outgoing' && state.remoteUser?.userId === data.from) {
+      if (
+        state.status === 'outgoing' &&
+        state.remoteUser?.userId === data.from
+      ) {
         webRTCService.setRemoteAnswer(data.answer);
         if (isMounted.current) {
           dispatch({ type: 'SET_STATUS', status: 'active' });
@@ -615,7 +684,7 @@ export const CallProvider: React.FC<CallProviderProps> = ({ children }) => {
         }
       }
     },
-    [state.status, state.remoteUser?.userId, state.callType]
+    [state.status, state.remoteUser?.userId, state.callType],
   );
 
   const handleIceCandidate = useCallback(
@@ -624,7 +693,7 @@ export const CallProvider: React.FC<CallProviderProps> = ({ children }) => {
         webRTCService.addIceCandidate(data.candidate);
       }
     },
-    [state.remoteUser?.userId]
+    [state.remoteUser?.userId],
   );
 
   const handleCallEnded = useCallback(() => {
@@ -678,23 +747,31 @@ export const CallProvider: React.FC<CallProviderProps> = ({ children }) => {
   // a participant or session not active — or "rate_limited"). It emits
   // `call:error` ONLY to the caller, so without this handler the caller would
   // sit on "Calling…" forever. Treat it like a failed/busy call.
-  const handleCallError = useCallback((data: { reason?: string; consultationId?: number | string }) => {
-    console.warn('[Call] Call error:', data?.reason ?? 'unknown');
-    disarmReconnectEndTimer();
-    startingCallRef.current = false;
-    callParamsRef.current.targetId = null;
-    webRTCService.cleanup();
-    stopInCallManager();
-    setStreams({ local: null, remote: null });
-    if (isMounted.current) {
-      dispatch({ type: 'RESET' });
-      leaveCallScreen();
-    }
-  }, []);
+  const handleCallError = useCallback(
+    (data: { reason?: string; consultationId?: number | string }) => {
+      console.warn('[Call] Call error:', data?.reason ?? 'unknown');
+      disarmReconnectEndTimer();
+      startingCallRef.current = false;
+      callParamsRef.current.targetId = null;
+      webRTCService.cleanup();
+      stopInCallManager();
+      setStreams({ local: null, remote: null });
+      if (isMounted.current) {
+        dispatch({ type: 'RESET' });
+        leaveCallScreen();
+      }
+    },
+    [],
+  );
 
   // Actions
   const initiateCall = useCallback(
-    (userId: number, name: string, callType: 'audio' | 'video', consultationId: number) => {
+    (
+      userId: number,
+      name: string,
+      callType: 'audio' | 'video',
+      consultationId: number,
+    ) => {
       if (state.status !== 'idle' || startingCallRef.current) return;
       disarmReconnectEndTimer();
       startingCallRef.current = true;
@@ -711,7 +788,10 @@ export const CallProvider: React.FC<CallProviderProps> = ({ children }) => {
         callType,
       };
 
-      dispatch({ type: 'SET_REMOTE_USER', user: { userId, name, avatar: undefined } });
+      dispatch({
+        type: 'SET_REMOTE_USER',
+        user: { userId, name, avatar: undefined },
+      });
       dispatch({ type: 'SET_CALL_TYPE', callType });
       dispatch({ type: 'SET_SESSION_ID', sessionId: consultationId });
       dispatch({ type: 'SET_STATUS', status: 'outgoing' });
@@ -724,7 +804,8 @@ export const CallProvider: React.FC<CallProviderProps> = ({ children }) => {
           await configureIceForCall(consultationId);
           await webRTCService.createPeerConnection(userId, true, callType);
           startingCallRef.current = false;
-          if (isMounted.current) dispatch({ type: 'SET_PEER_READY', ready: true });
+          if (isMounted.current)
+            dispatch({ type: 'SET_PEER_READY', ready: true });
         } catch (error) {
           console.error('[CallContext] initiateCall failed:', error);
           startingCallRef.current = false;
@@ -732,7 +813,7 @@ export const CallProvider: React.FC<CallProviderProps> = ({ children }) => {
       })();
       // Offer will be sent via onOfferCreated event
     },
-    [state.status, user?.id, user?.name]
+    [state.status, user?.id, user?.name],
   );
 
   const acceptCall = useCallback(() => {
@@ -755,7 +836,7 @@ export const CallProvider: React.FC<CallProviderProps> = ({ children }) => {
 
     // Create + send the SDP answer ONLY now, so the caller hears/sees nothing
     // until the callee actually accepts the call. Emitted via onAnswerCreated.
-    webRTCService.createAnswer().catch((error) => {
+    webRTCService.createAnswer().catch(error => {
       console.error('[CallContext] createAnswer failed:', error);
     });
   }, [state.status, state.peerReady, state.callType]);
@@ -770,7 +851,10 @@ export const CallProvider: React.FC<CallProviderProps> = ({ children }) => {
     }
 
     if (state.remoteUser?.userId && socket) {
-      socket.emit('call:reject', { to: state.remoteUser.userId, from: user?.id ?? 0 });
+      socket.emit('call:reject', {
+        to: state.remoteUser.userId,
+        from: user?.id ?? 0,
+      });
     }
 
     webRTCService.cleanup();
@@ -845,7 +929,15 @@ export const CallProvider: React.FC<CallProviderProps> = ({ children }) => {
       onCallBusy: handleCallBusy,
       onCallError: handleCallError,
     };
-  }, [handleIncomingCall, handleCallAnswer, handleIceCandidate, handleCallEnded, handleCallRejected, handleCallBusy, handleCallError]);
+  }, [
+    handleIncomingCall,
+    handleCallAnswer,
+    handleIceCandidate,
+    handleCallEnded,
+    handleCallRejected,
+    handleCallBusy,
+    handleCallError,
+  ]);
 
   const value: CallContextType = {
     state,
