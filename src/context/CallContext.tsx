@@ -240,6 +240,7 @@ export const CallProvider: React.FC<CallProviderProps> = ({ children }) => {
     onCallEnded: () => {},
     onCallRejected: () => {},
     onCallBusy: () => {},
+    onCallError: (data: any) => {},
   });
 
   // Stable socket-listener wrappers: they dispatch through handlersRef, so the
@@ -254,6 +255,7 @@ export const CallProvider: React.FC<CallProviderProps> = ({ children }) => {
     rejected: () => handlersRef.current.onCallRejected(),
     reject: () => handlersRef.current.onCallRejected(),
     busy: () => handlersRef.current.onCallBusy(),
+    error: (d: any) => handlersRef.current.onCallError(d),
     disconnect: (reason: string) => {
       console.log('[Call] Socket disconnected:', reason);
       const status = stateRef.current.status;
@@ -304,6 +306,7 @@ export const CallProvider: React.FC<CallProviderProps> = ({ children }) => {
       target.on('call:rejected', L.rejected);
       target.on('call:reject', L.reject);
       target.on('call:busy', L.busy);
+      target.on('call:error', L.error);
     };
     const unregister = (target: Socket) => {
       const L = callListeners.current;
@@ -317,6 +320,7 @@ export const CallProvider: React.FC<CallProviderProps> = ({ children }) => {
       target.off('call:rejected', L.rejected);
       target.off('call:reject', L.reject);
       target.off('call:busy', L.busy);
+      target.off('call:error', L.error);
     };
 
     const setup = async () => {
@@ -670,6 +674,24 @@ export const CallProvider: React.FC<CallProviderProps> = ({ children }) => {
     }
   }, []);
 
+  // The backend can reject an offer without a relay (e.g. "unauthorized" — not
+  // a participant or session not active — or "rate_limited"). It emits
+  // `call:error` ONLY to the caller, so without this handler the caller would
+  // sit on "Calling…" forever. Treat it like a failed/busy call.
+  const handleCallError = useCallback((data: { reason?: string; consultationId?: number | string }) => {
+    console.warn('[Call] Call error:', data?.reason ?? 'unknown');
+    disarmReconnectEndTimer();
+    startingCallRef.current = false;
+    callParamsRef.current.targetId = null;
+    webRTCService.cleanup();
+    stopInCallManager();
+    setStreams({ local: null, remote: null });
+    if (isMounted.current) {
+      dispatch({ type: 'RESET' });
+      leaveCallScreen();
+    }
+  }, []);
+
   // Actions
   const initiateCall = useCallback(
     (userId: number, name: string, callType: 'audio' | 'video', consultationId: number) => {
@@ -821,8 +843,9 @@ export const CallProvider: React.FC<CallProviderProps> = ({ children }) => {
       onCallEnded: handleCallEnded,
       onCallRejected: handleCallRejected,
       onCallBusy: handleCallBusy,
+      onCallError: handleCallError,
     };
-  }, [handleIncomingCall, handleCallAnswer, handleIceCandidate, handleCallEnded, handleCallRejected, handleCallBusy]);
+  }, [handleIncomingCall, handleCallAnswer, handleIceCandidate, handleCallEnded, handleCallRejected, handleCallBusy, handleCallError]);
 
   const value: CallContextType = {
     state,

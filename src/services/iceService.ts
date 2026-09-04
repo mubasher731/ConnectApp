@@ -12,7 +12,7 @@ export type IceConfig = {
 };
 
 export const getIceConfig = async (consultationId: number | string): Promise<IceConfig> => {
-  const { data } = await api.post('/calls/ice-credentials', { consultationId });
+  const { data } = await api.post('/api/calls/ice-credentials', { consultationId });
   const payload = data?.data ?? data ?? {};
   return {
     iceServers: Array.isArray(payload.iceServers) ? payload.iceServers : [],
