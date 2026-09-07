@@ -500,7 +500,11 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
       const { consultation_id } = unwrap(payload);
       if (consultation_id !== undefined && String(consultation_id) !== String(chatId)) return;
       setChatDisabled(true);
-      setSessionNotice('Session ended');
+      // Mark the conversation ended so the SINGLE red countdown banner shows
+      // "Session ended". Do NOT also set sessionNotice — that would render a
+      // second (yellow/info) "Session ended" notice right below the red one.
+      setConversation((prev) => (prev ? { ...prev, state: 'ended' } : prev));
+      setSessionNotice(null);
     };
     const onUserOnline = (payload: any) => {
       const { userId, online: isOnline } = unwrap(payload);
@@ -1601,17 +1605,20 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
 
             {recording ? (
               <View style={[styles.textInputWrapper, styles.recordingWrapper]}>
-                <TouchableOpacity
-                  style={styles.recordingStop}
-                  onPress={cancelVoice}
-                  activeOpacity={0.7}
-                >
-                  <AppIcon name="close" size={20} color={Colors.textSecondary} />
-                </TouchableOpacity>
                 <Text style={styles.recordingText}>
                   {String(Math.floor(recordingSecs / 60)).padStart(2, '0')}:
                   {String(recordingSecs % 60).padStart(2, '0')}
                 </Text>
+                {/* Large single-tap cancel target. Rendered AFTER the timer text
+                    so it stays on top and always receives the tap. */}
+                <TouchableOpacity
+                  style={styles.recordingStop}
+                  onPress={cancelVoice}
+                  activeOpacity={0.6}
+                  hitSlop={8}
+                >
+                  <AppIcon name="close" size={22} color={Colors.textSecondary} />
+                </TouchableOpacity>
               </View>
             ) : (
               <View style={[styles.textInputWrapper, locked && styles.inputWrapperDisabled]}>
@@ -2168,11 +2175,17 @@ const styles = StyleSheet.create({
   recordingWrapper: {
     justifyContent: 'center',
   },
+  // Big touch target (full field height, ~46px wide) so cancel works on the
+  // first tap — the old 20px absolute icon needed several tries.
   recordingStop: {
     position: 'absolute',
-    left: 10,
-    top: '50%',
-    marginTop: -10,
+    left: 0,
+    top: 0,
+    bottom: 0,
+    width: wp(46),
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'transparent',
   },
   recordingText: {
     flex: 1,
