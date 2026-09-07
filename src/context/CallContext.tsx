@@ -19,11 +19,15 @@ import { MediaStream } from 'react-native-webrtc';
 import InCallManager from 'react-native-incall-manager';
 
 /**
- * Best-effort ICE/TURN config for a call. The live backend does not expose
- * `POST /calls/ice-credentials` (it 404s with "Url Not exists"), so fetching
- * credentials must never block or abort the call: on any failure — or when the
- * backend returns no servers — we keep the WebRTC service's STUN fallback and
- * let the call proceed with host + STUN candidates.
+ * Best-effort ICE/TURN config for a call.
+ *
+ * The backend exposes `POST /api/calls/ice-credentials` (mounted at /api/calls)
+ * and returns real TURN servers when config.turn.enabled. This fetch must never
+ * block/abort the call, BUT we must also surface WHY it can fail so a silent
+ * STUN-only fallback (which dies behind CGNAT) is never mistaken for success:
+ *  - HTTP error (e.g. 403 status-gate, 401)  → logged with status
+ *  - 200 with 0 servers (TURN disabled)      → logged loudly
+ *  - 200 with servers                        → applied to the peer connection
  */
 async function configureIceForCall(
   consultationId: number | string | null | undefined,
@@ -31,13 +35,33 @@ async function configureIceForCall(
   if (consultationId == null) return;
   try {
     const config = await fetchIceConfig(consultationId);
-    if (Array.isArray(config.iceServers) && config.iceServers.length > 0) {
-      webRTCService.setIceConfig({ iceServers: config.iceServers });
+    const servers = Array.isArray(config.iceServers) ? config.iceServers : [];
+    if (servers.length > 0) {
+      webRTCService.setIceConfig({ iceServers: servers });
+      console.log(
+        '[CallContext] ICE config loaded — applying',
+        servers.length,
+        'server(s) | relay:',
+        config.relayAvailable,
+        '| mode:',
+        config.mode
+      );
+    } else {
+      console.warn(
+        '[CallContext] ICE endpoint returned 0 servers (mode:',
+        config.mode,
+        ') — using STUN-only fallback. Enable config.turn on the backend.'
+      );
     }
-  } catch (error) {
+  } catch (error: any) {
+    const status =
+      (error as { status?: number } | null)?.status ??
+      (error as { response?: { status?: number } })?.response?.status;
     console.warn(
-      '[CallContext] ICE config unavailable — using STUN fallback:',
-      error,
+      '[CallContext] ICE config unavailable (HTTP',
+      status ?? '?',
+      ') — using STUN fallback:',
+      (error as Error)?.message ?? error
     );
   }
 }

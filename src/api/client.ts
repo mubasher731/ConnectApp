@@ -79,13 +79,19 @@ api.interceptors.response.use(
 /** Normalize API errors — new format uses top-level `message` (old used `error`). */
 export function extractError(error: unknown): Error {
   const anyError = error as {
-    response?: { data?: { message?: string; error?: string } };
+    response?: { status?: number; data?: { message?: string; error?: string } };
     message?: string;
   };
-  return new Error(
+  const normalized = new Error(
     anyError?.response?.data?.message ??
       anyError?.response?.data?.error ??
       anyError?.message ??
       'Something went wrong. Please try again.'
   );
+  // Preserve the HTTP status so callers can distinguish a 403 authorization
+  // gate from a network/404 error (e.g. the ICE credentials call).
+  if (anyError?.response?.status) {
+    (normalized as Error & { status?: number }).status = anyError.response.status;
+  }
+  return normalized;
 }
