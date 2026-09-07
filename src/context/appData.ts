@@ -129,14 +129,6 @@ export const DASHBOARD_STATS: StatConfig[] = [
   },
 ];
 
-/* ------------------------------- auth -------------------------------------- */
-
-/** Demo doctor credentials (from the backend seed). */
-export const DOCTOR_DEMO_CREDENTIALS = {
-  email: 'doctor@fountain.com',
-  password: 'Doctor@123',
-};
-
 /* ------------------------------- chat -------------------------------------- */
 
 /** Emoji picker set used in the chat composer. */

@@ -4,6 +4,5 @@
  *   import { authService, chatService, sessionService } from '../services';
  */
 export { authService } from './authService';
-export { chatService, callService, notificationService } from './dataService';
+export { chatService, callService } from './dataService';
 export { sessionService } from './sessionService';
-export { userService } from './userService';

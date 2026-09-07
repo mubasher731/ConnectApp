@@ -1,6 +1,6 @@
 import { authService } from './authService';
 import { sessionService, MessageRaw } from './sessionService';
-import { AppNotification, CallDirection, CallLog, Chat, Conversation, Message, SessionStatus, User } from '../types';
+import { CallDirection, CallLog, Chat, Conversation, Message, SessionStatus, User } from '../types';
 import { api } from '../api/client';
 
 /** Derive the chat status badge from state + schedule so "Active" spans the whole session. */
@@ -235,14 +235,4 @@ const mapCallHistoryRow = (r: CallHistoryRaw): CallLog => {
         : undefined,
     startedAt: r.startedAt ?? r.endedAt ?? new Date().toISOString(),
   };
-};
-
-export const notificationService = {
-  // No notifications endpoint in the current API contract — returns empty.
-  async getNotifications(): Promise<AppNotification[]> {
-    return [];
-  },
-  async markAllRead(): Promise<void> {
-    // No-op until the backend exposes a notifications endpoint.
-  },
 };

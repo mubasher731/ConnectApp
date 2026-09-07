@@ -54,8 +54,7 @@ export interface Chat {
   startTime?: string | null;
   /** Session end time when known (actual_end). */
   endTime?: string | null;
-  /** True for AsyncStorage-backed mock sessions. */
-  isMock?: boolean;
+
 }
 
 export interface Message {

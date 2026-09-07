@@ -19,7 +19,6 @@ import HomeScreen from '../screens/patient/HomeScreen';
 import ChatsScreen from '../screens/patient/ChatsScreen';
 import ChatDetailScreen from '../screens/chat/ChatDetailScreen';
 import NotificationsScreen from '../screens/notification/NotificationsScreen';
-import DirectoryScreen from '../screens/chat/DirectoryScreen';
 import CallsScreen from '../screens/patient/CallsScreen';
 import ProfileScreen from '../screens/patient/ProfileScreen';
 import DoctorsScreen from '../screens/patient/DoctorsScreen';
@@ -211,11 +210,6 @@ const AppNavigator: React.FC = () => {
                 title: 'Doctors',
                 headerTitleStyle: styles.doctorsHeaderTitle,
               }}
-            />
-            <Stack.Screen
-              name="Directory"
-              component={DirectoryScreen}
-              options={{ title: 'Directory' }}
             />
             <Stack.Screen
               name="Call"
