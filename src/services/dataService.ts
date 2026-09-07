@@ -1,6 +1,7 @@
 import { authService } from './authService';
 import { sessionService, MessageRaw } from './sessionService';
-import { AppNotification, CallLog, Chat, Conversation, Message, SessionStatus, User } from '../types';
+import { AppNotification, CallDirection, CallLog, Chat, Conversation, Message, SessionStatus, User } from '../types';
+import { api } from '../api/client';
 
 /** Derive the chat status badge from state + schedule so "Active" spans the whole session. */
 const mapChatStatus = (c: Conversation): SessionStatus => {
@@ -154,10 +155,86 @@ export const chatService = {
 };
 
 export const callService = {
-  // No call-history endpoint in the current API contract — returns empty.
-  async getCallHistory(): Promise<CallLog[]> {
-    return [];
+  /** Call history for the current user, most recent first (WhatsApp-style). */
+  async getCallHistory(limit = 50, offset = 0): Promise<CallLog[]> {
+    try {
+      const { data } = await api.get('/api/calls/history', {
+        params: { limit, offset },
+      });
+      const records = (data?.data ?? data ?? []) as CallHistoryRaw[];
+      return records.map(mapCallHistoryRow);
+    } catch (error) {
+      console.error('Failed to fetch call history:', error);
+      return [];
+    }
   },
+};
+
+/** Raw call-history row returned by GET /api/calls/history. */
+interface CallHistoryRaw {
+  consultationId: number;
+  callId: string;
+  callStatus: string;
+  callType: string;
+  callerUserId: number;
+  receiverUserId: number;
+  startedAt: string | null;
+  answeredAt: string | null;
+  endedAt: string | null;
+  endReason: string | null;
+  doctorUserId: number;
+  patientUserId: number;
+  patientName?: string;
+  doctorName?: string;
+  /** Backend emits snake_case — keep both spellings. */
+  peer_name?: string;
+  peer_user_id?: number;
+  duration_seconds?: number | null;
+  peerName?: string;
+  peerUserId?: number;
+  durationSeconds?: number | null;
+  direction: string; // 'outgoing' | 'incoming' (server-computed for current user)
+}
+
+const formatCallDuration = (secs: number): string => {
+  const m = Math.floor(secs / 60);
+  const s = Math.round(secs % 60);
+  if (m === 0) return `${s} sec`;
+  if (s === 0) return `${m} min`;
+  return `${m} min ${s} sec`;
+};
+
+/** Map a backend call-history row → the WhatsApp-style CallLog model. */
+const mapCallHistoryRow = (r: CallHistoryRaw): CallLog => {
+  const madeByMe = r.direction === 'outgoing';
+  const answered =
+    !!r.answeredAt && !['missed', 'rejected', 'failed'].includes(r.callStatus);
+  const direction: CallDirection = answered
+    ? madeByMe
+      ? 'outgoing'
+      : 'incoming'
+    : 'missed';
+  // Backend returns snake_case keys (peer_name / peer_user_id /
+  // duration_seconds) — read both spellings defensively.
+  const peerName = r.peer_name ?? r.peerName;
+  const peerUserId = r.peer_user_id ?? r.peerUserId;
+  const durationSeconds = r.duration_seconds ?? r.durationSeconds;
+  return {
+    id: r.callId || String(r.consultationId),
+    participantId: String(peerUserId),
+    participantName: peerName || 'Unknown',
+    participantAvatar: null,
+    type: r.callType === 'video' ? 'video' : 'voice',
+    direction,
+    madeByMe,
+    consultationId: r.consultationId,
+    callStatus: r.callStatus,
+    duration:
+      durationSeconds != null && durationSeconds > 0
+        ? formatCallDuration(durationSeconds)
+        : undefined,
+    startedAt: r.startedAt ?? r.endedAt ?? new Date().toISOString(),
+  };
 };
 
 export const notificationService = {

@@ -1,10 +1,11 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   View,
   Text,
   FlatList,
   StyleSheet,
 } from 'react-native';
+import { useIsFocused } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { CallCard, EmptyState, ListItemSeparator } from '../../components';
 import { callService } from '../../services/dataService';
@@ -14,18 +15,24 @@ import { Colors, Spacing, responsiveSize, ms } from '../../theme';
 const CallsScreen: React.FC = () => {
   const [calls, setCalls] = useState<CallLog[]>([]);
   const [loading, setLoading] = useState(true);
+  const isFocused = useIsFocused();
 
-  useEffect(() => {
-    let mounted = true;
-    callService
-      .getCallHistory()
-      .then((data) => mounted && setCalls(data))
-      .catch(() => mounted && setCalls([]))
-      .finally(() => mounted && setLoading(false));
-    return () => {
-      mounted = false;
-    };
+  const load = useCallback(async (showSpinner: boolean) => {
+    if (showSpinner) setLoading(true);
+    try {
+      const data = await callService.getCallHistory();
+      setCalls(data);
+    } catch {
+      setCalls([]);
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  // Reload whenever the screen regains focus so a call that just ended shows up.
+  useEffect(() => {
+    if (isFocused) load(true);
+  }, [isFocused, load]);
 
   const renderItem = ({ item }: { item: CallLog }) => <CallCard call={item} />;
 
@@ -45,14 +52,7 @@ const CallsScreen: React.FC = () => {
         showsVerticalScrollIndicator={false}
         ItemSeparatorComponent={<ListItemSeparator height={1} />}
         refreshing={loading}
-        onRefresh={() => {
-          setLoading(true);
-          callService
-            .getCallHistory()
-            .then((data) => setCalls(data))
-            .catch(() => setCalls([]))
-            .finally(() => setLoading(false));
-        }}
+        onRefresh={() => load(true)}
         ListEmptyComponent={
           <EmptyState
             icon="call-outline"

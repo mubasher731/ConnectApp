@@ -75,6 +75,12 @@ export interface Message {
   mediaUrl?: string | null;
   /** Duration in seconds for voice messages (exact recorded length). */
   durationSecs?: number;
+  /** Only on synthetic in-chat call rows (type === 'call'). */
+  callDirection?: CallDirection;
+  /** Human duration shown on in-chat call rows (null = not answered). */
+  callDuration?: string | null;
+  /** True when the in-chat call row is a video call. */
+  callIsVideo?: boolean;
 }
 
 export type CallDirection = 'incoming' | 'outgoing' | 'missed';
@@ -89,6 +95,12 @@ export interface CallLog {
   direction: CallDirection;
   duration?: string;
   startedAt: string;
+  /** Whether the CURRENT user placed the call (drives bubble alignment in chat). */
+  madeByMe?: boolean;
+  /** Backend consultation this call belongs to. */
+  consultationId?: number;
+  /** Raw backend status: ringing | accepted | ended | rejected | missed | failed. */
+  callStatus?: string;
 }
 
 export type NotificationKind =

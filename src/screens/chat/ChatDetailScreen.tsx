@@ -1,4 +1,5 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useIsFocused } from '@react-navigation/native';
 import {
   View,
   Text,
@@ -29,8 +30,8 @@ import { useAuth } from '../../context/AuthContext';
 import { useCall } from '../../context/CallContext';
 import { useSessionConfig } from '../../context/SessionConfigContext';
 import { CHAT_EMOJIS } from '../../context/appData';
-import { chatService, sessionService } from '../../services';
-import { Conversation, Message } from '../../types';
+import { callService, chatService, sessionService } from '../../services';
+import { CallLog, Conversation, Message } from '../../types';
 import { Colors, Radius, Shadows, Spacing, responsiveSize, wp, ms, fs } from '../../theme';
 
 interface ChatDetailScreenProps {
@@ -280,6 +281,8 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
   const { state: callState, initiateCall } = useCall();
 
   const [messages, setMessages] = useState<Message[]>([]);
+  // Synthetic 'call' rows merged into the thread (WhatsApp-style history).
+  const [chatCalls, setChatCalls] = useState<Message[]>([]);
   const [inputText, setInputText] = useState('');
   const [otherTyping, setOtherTyping] = useState(false);
   const [showEmoji, setShowEmoji] = useState(false);
@@ -1184,8 +1187,59 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
     return 0;
   };
 
+  // Call-history rows for this peer, merged into the thread by timestamp so
+  // calls appear inline exactly like WhatsApp (grouping/date logic unchanged).
+  const displayMessages = useMemo(() => {
+    if (chatCalls.length === 0) return messages;
+    return [...chatCalls, ...messages].sort(
+      (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+    );
+  }, [messages, chatCalls]);
+
+  const callToChatItem = useCallback(
+    (c: CallLog): Message => {
+      const madeByMe = c.madeByMe ?? c.direction !== 'incoming';
+      return {
+        id: `call-${c.id}`,
+        sessionId: chatId ?? 0,
+        senderId: madeByMe ? user?.id ?? 0 : 0,
+        text: '',
+        type: 'call',
+        createdAt: c.startedAt,
+        sentByMe: madeByMe,
+        callDirection: c.direction,
+        callDuration: c.duration ?? null,
+        callIsVideo: c.type === 'video',
+      };
+    },
+    [chatId, user?.id]
+  );
+
+  const loadChatCalls = useCallback(async () => {
+    const peerId = callPeerId ?? peerUserIdRef.current;
+    if (!chatId || !peerId) return;
+    try {
+      const calls = await callService.getCallHistory(200);
+      const peerKey = String(peerId);
+      setChatCalls(
+        calls
+          .filter((c) => String(c.participantId) === peerKey)
+          .map(callToChatItem)
+      );
+    } catch {
+      // Keep whatever we have — a call-history failure must never break chat.
+    }
+  }, [chatId, callPeerId, callToChatItem]);
+
+  const isFocused = useIsFocused();
+  // Refresh call rows on focus (e.g. returning from the call screen) and once
+  // the peer id becomes known after the conversation loads.
+  useEffect(() => {
+    if (isFocused) loadChatCalls();
+  }, [isFocused, loadChatCalls]);
+
   const renderItem = ({ item, index }: { item: Message; index: number }) => {
-    const prev = messages[index - 1];
+    const prev = displayMessages[index - 1];
     const showDate = !prev || !dayjs(item.createdAt).isSame(dayjs(prev.createdAt), 'day');
     const isGroupStart = !prev || prev.sentByMe !== item.sentByMe || showDate;
 
@@ -1210,6 +1264,90 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
           <View style={styles.systemBubble}>
             <AppIcon name="time-outline" size={13} color={Colors.textSecondary} />
             <Text style={styles.systemText}>{item.text}</Text>
+          </View>
+        </View>
+      );
+    }
+
+    // In-chat call row (WhatsApp-style): phone/video icon + duration + time.
+    if (item.type === 'call') {
+      const missed = item.callDirection === 'missed';
+      const label = `${missed ? 'Missed ' : ''}${item.callIsVideo ? 'Video call' : 'Voice call'}`;
+      const iconName = item.callIsVideo ? 'videocam-outline' : 'call-outline';
+      return (
+        <View>
+          {showDate && (
+            <View style={styles.dateSeparator}>
+              <Text style={styles.dateSeparatorText}>{formatDay(item.createdAt)}</Text>
+            </View>
+          )}
+          <View
+            style={[
+              styles.messageRow,
+              item.sentByMe ? styles.messageRowSent : styles.messageRowReceived,
+            ]}
+          >
+            {!item.sentByMe && (
+              <View style={styles.avatarSlot}>
+                <Avatar name={effectiveName || '?'} size={30} />
+              </View>
+            )}
+            <View
+              style={[
+                styles.messageBubble,
+                item.sentByMe ? styles.sentBubble : styles.receivedBubble,
+                styles.callBubble,
+              ]}
+            >
+              <View
+                style={[
+                  styles.callIconWrap,
+                  item.sentByMe ? null : styles.callIconWrapReceived,
+                ]}
+              >
+                <AppIcon
+                  name={iconName}
+                  size={15}
+                  color={item.sentByMe ? Colors.white : Colors.primary}
+                />
+              </View>
+              <View style={styles.callInfo}>
+                <Text
+                  style={[
+                    styles.callTitle,
+                    item.sentByMe ? styles.callTextSent : styles.callTextReceived,
+                  ]}
+                  numberOfLines={1}
+                >
+                  {label}
+                </Text>
+                <View style={styles.callMetaRow}>
+                  <AppIcon
+                    name={
+                      missed ? 'close' : item.sentByMe ? 'arrow-up' : 'arrow-down'
+                    }
+                    size={10}
+                    color={
+                      missed
+                        ? Colors.error
+                        : item.sentByMe
+                          ? Colors.primaryLight
+                          : Colors.textSecondary
+                    }
+                  />
+                  <Text
+                    style={[
+                      styles.callMeta,
+                      item.sentByMe ? styles.callMetaSent : styles.callMetaReceived,
+                    ]}
+                    numberOfLines={1}
+                  >
+                    {item.callDuration ? `${item.callDuration} · ` : ''}
+                    {formatTime(item.createdAt)}
+                  </Text>
+                </View>
+              </View>
+            </View>
           </View>
         </View>
       );
@@ -1404,7 +1542,7 @@ const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ route, navigation }
 
         <FlatList
           ref={listRef}
-          data={messages}
+          data={displayMessages}
           keyExtractor={(item) => String(item.id)}
           renderItem={renderItem}
           contentContainerStyle={styles.messagesList}
@@ -2099,6 +2237,52 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.18)',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  // In-chat call history bubble (WhatsApp-style).
+  callBubble: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: ms(6),
+  },
+  callIconWrap: {
+    width: wp(32),
+    height: wp(32),
+    borderRadius: wp(16),
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: Spacing.sm,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+  },
+  callIconWrapReceived: {
+    backgroundColor: 'rgba(124,134,255,0.14)',
+  },
+  callInfo: {
+    flexShrink: 1,
+  },
+  callTitle: {
+    fontSize: fs(14),
+    fontWeight: '600',
+  },
+  callMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: ms(2),
+  },
+  callMeta: {
+    fontSize: fs(12),
+    marginLeft: ms(3),
+  },
+  callTextSent: {
+    color: Colors.white,
+  },
+  callTextReceived: {
+    color: Colors.text,
+  },
+  callMetaSent: {
+    color: 'rgba(255,255,255,0.85)',
+  },
+  callMetaReceived: {
+    color: Colors.textSecondary,
   },
 });
 
