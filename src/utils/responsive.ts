@@ -1,16 +1,21 @@
 /**
  * Responsive scaling utilities for ConnectApp.
  *
- * The UI is authored on a 375×812 design canvas (≈ iPhone 13 / most Androids).
- * These helpers scale every fixed pixel from that baseline so the app renders
- * correctly on small phones (iPhone SE), medium/large phones, and tablets, in
- * both portrait and landscape.
+ * The UI is authored on a 390×844 design canvas (≈ iPhone 14 / most modern
+ * Androids). These helpers scale every fixed pixel proportionally from that
+ * baseline:
  *
- * The installed `react-native-size-matters` package uses a hard-coded 350×680
- * guideline with no clamping, which blows up layouts on wide tablets, so we
- * keep our own clamped, orientation-aware implementation here and re-export
- * the package's helpers (`ScaledSheet`, `sizeMattersScale`, …) for anything
- * that wants the raw library behaviour.
+ *     widthFactor  = clamp(screenShortDim / 390)
+ *     heightFactor = clamp(screenLongDim  / 844)
+ *
+ * so the layout grows/shrinks smoothly on small phones (iPhone SE, 360dp
+ * Androids), large phones (Pro Max, ~430dp) and tablets — portrait & landscape.
+ *
+ * WHY this beats react-native-size-matters raw: size-matters uses a fixed
+ * 350×680 guideline with NO clamp, so on wide screens (e.g. a 700dp device)
+ * everything becomes ~2× and the UI looks distorted. We clamp the factor
+ * (see MIN_SCALE/MAX_SCALE) so small screens shrink gracefully and tablets
+ * never blow up.
  */
 import { Dimensions, PixelRatio } from 'react-native';
 
@@ -33,27 +38,37 @@ const [shortDimension, longDimension] =
     ? [WINDOW_WIDTH, WINDOW_HEIGHT]
     : [WINDOW_HEIGHT, WINDOW_WIDTH];
 
-/** Design-time canvas the screens were built against. */
-export const BASE_WIDTH = 375;
-export const BASE_HEIGHT = 812;
+/** Physical screen size (px) of the running device. */
+export const deviceWidth = WINDOW_WIDTH;
+export const deviceHeight = WINDOW_HEIGHT;
+/** True on large screens (≥600dp) — use this for tablet-specific layouts. */
+export const isTablet = shortDimension >= 600;
 
-/** Clamp bounds — shrink small phones, grow large ones, cap tablets. */
+/** Design-time canvas the screens were built against (the suggested standard). */
+export const BASE_WIDTH = 390;
+export const BASE_HEIGHT = 844;
+
+/**
+ * Clamp bounds — shrink small phones, grow large ones, cap tablets so the UI
+ * is never distorted. Tweak these to taste: raise MAX_SCALE to use more room
+ * on tablets, lower MIN_SCALE if small phones still overflow.
+ */
 export const MIN_SCALE = 0.8;
 export const MAX_SCALE = 1.18;
 
 const clampScale = (value: number): number =>
   Math.min(MAX_SCALE, Math.max(MIN_SCALE, value));
 
-/** Horizontal (width-based) scale factor. */
+/** Horizontal (width-based) scale factor = screenWidth / 390 (clamped). */
 export const designScale = clampScale(shortDimension / BASE_WIDTH);
-/** Vertical (height-based) scale factor. */
+/** Vertical (height-based) scale factor = screenHeight / 844 (clamped). */
 export const verticalDesignScale = clampScale(longDimension / BASE_HEIGHT);
 
 const round = (value: number): number => PixelRatio.roundToNearestPixel(value);
 
 /**
  * Width-based scaling — for element widths, horizontal offsets, icon sizes,
- * avatar sizes, etc. Designed at width 375.
+ * avatar sizes, etc. Designed at width 390.
  */
 export const wp = (size: number): number => round(size * designScale);
 
