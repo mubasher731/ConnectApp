@@ -1,9 +1,8 @@
+import { styles } from './style';
 import React, { useState } from 'react';
-import { StyleSheet } from 'react-native';
-import { AuthScreenLayout, FormInput, PrimaryButton, useAlert } from '../../components';
-import { authService } from '../../services/authService';
-import { validators } from '../../utils/validation';
-import { Spacing } from '../../theme';
+import { AuthScreenLayout, FormInput, PrimaryButton, useAlert } from '../../../components';
+import { authService } from '../../../services/authService';
+import { validators } from '../../../utils/validation';
 
 interface ForgotPasswordScreenProps {
   navigation: any;
@@ -82,11 +81,5 @@ const ForgotPasswordScreen: React.FC<ForgotPasswordScreenProps> = ({ navigation 
     </AuthScreenLayout>
   );
 };
-
-const styles = StyleSheet.create({
-  submitButton: {
-    marginTop: Spacing.lg,
-  },
-});
 
 export default ForgotPasswordScreen;

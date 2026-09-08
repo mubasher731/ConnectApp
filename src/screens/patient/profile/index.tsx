@@ -1,24 +1,22 @@
+import { styles } from './style';
 import React, { useState } from 'react';
 import {
   View,
   Text,
   TouchableOpacity,
-  StyleSheet,
   ScrollView,
   TextInput,
   Modal,
-  Platform,
-  PermissionsAndroid,
 } from 'react-native';
 import dayjs from 'dayjs';
 import { launchImageLibrary } from 'react-native-image-picker';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { AppIcon, Avatar, PrimaryButton, useAlert } from '../../components';
-import { useAuth } from '../../context/AuthContext';
-import { validators } from '../../utils/validation';
-import { Colors, Radius, Shadows, Spacing, responsiveSize, wp, ms, fs } from '../../theme';
-import { useTabBarClearance } from '../../utils/useResponsive';
+import { AppIcon, Avatar, PrimaryButton, useAlert } from '../../../components';
+import { useAuth } from '../../../context/AuthContext';
+import { validators } from '../../../utils/validation';
+import { Colors, wp } from '../../../theme';
+import { useTabBarClearance } from '../../../utils/useResponsive';
 
 const ProfileScreen: React.FC = () => {
   const { user, signOut, updateUser } = useAuth();
@@ -229,220 +227,5 @@ const ProfileScreen: React.FC = () => {
     </SafeAreaView>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.background,
-  },
-  header: {
-    paddingHorizontal: Spacing.xl,
-    paddingTop: Spacing.lg,
-    paddingBottom: Spacing.md,
-  },
-  headerTitle: {
-    fontSize: responsiveSize(28),
-    fontWeight: '800',
-    color: Colors.text,
-    letterSpacing: -0.5,
-  },
-  scroll: {
-    flexGrow: 1,
-  },
-  scrollView: {
-    flex: 1,
-  },
-  profileHeader: {
-    alignItems: 'center',
-    paddingTop: Spacing.xl,
-    paddingBottom: Spacing.xl,
-    paddingHorizontal: Spacing.xl,
-  },
-  avatarContainer: {
-    position: 'relative',
-    marginBottom: Spacing.lg,
-  },
-  editAvatarButton: {
-    position: 'absolute',
-    bottom: -2,
-    right: -4,
-    width: wp(32),
-    height: wp(32),
-    borderRadius: Radius.round,
-    backgroundColor: Colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: ms(2),
-    borderColor: Colors.white,
-    ...Shadows.primary,
-  },
-  profileName: {
-    fontSize: responsiveSize(24),
-    fontWeight: '800',
-    color: Colors.text,
-    letterSpacing: -0.3,
-    marginBottom: Spacing.sm,
-  },
-  roleBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Colors.primarySoft,
-    borderRadius: Radius.round,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: ms(6),
-    marginBottom: Spacing.lg,
-  },
-  roleText: {
-    fontSize: fs(13),
-    fontWeight: '600',
-    color: Colors.primary,
-    marginLeft: ms(6),
-  },
-  editButton: {
-    paddingHorizontal: Spacing.xxl,
-    minHeight: wp(46),
-  },
-  accountCard: {
-    marginHorizontal: Spacing.xl,
-    borderRadius: Radius.lg,
-    backgroundColor: Colors.card,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    paddingVertical: Spacing.lg,
-    paddingHorizontal: Spacing.lg,
-    marginBottom: Spacing.xl,
-    ...Shadows.card,
-  },
-  accountRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  accountText: {
-    fontSize: fs(14),
-    color: Colors.textSecondary,
-    marginLeft: Spacing.md,
-  },
-  accountDivider: {
-    height: 1,
-    backgroundColor: Colors.border,
-    marginVertical: Spacing.md,
-  },
-  appInfo: {
-    alignItems: 'center',
-    paddingTop: Spacing.xxl,
-    paddingHorizontal: Spacing.xl,
-  },
-  appInfoText: {
-    fontSize: fs(14),
-    fontWeight: '600',
-    color: Colors.textSecondary,
-    marginBottom: ms(2),
-  },
-  appInfoSubtext: {
-    fontSize: fs(12),
-    color: Colors.textTertiary,
-  },
-  logoutButton: {
-    marginHorizontal: Spacing.xl,
-    backgroundColor: Colors.error,
-    borderRadius: Radius.lg,
-    paddingVertical: Spacing.lg,
-    alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'center',
-    ...Shadows.raised,
-  },
-  logoutText: {
-    fontSize: fs(16),
-    fontWeight: '700',
-    color: Colors.white,
-    marginLeft: Spacing.sm,
-  },
-  bottomSpacer: {
-    height: Spacing.xl,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: Colors.overlay,
-    paddingHorizontal: Spacing.xl,
-  },
-  modalScroll: {
-    flexGrow: 1,
-    justifyContent: 'center',
-    paddingVertical: Spacing.xl,
-  },
-  modalContent: {
-    backgroundColor: Colors.card,
-    borderRadius: Radius.xl,
-    padding: Spacing.xl,
-    width: '100%',
-    ...Shadows.raised,
-  },
-  modalTitle: {
-    fontSize: responsiveSize(20),
-    fontWeight: '800',
-    color: Colors.text,
-    marginBottom: Spacing.lg,
-    textAlign: 'center',
-  },
-  modalLabel: {
-    fontSize: fs(13),
-    fontWeight: '600',
-    color: Colors.text,
-    marginBottom: Spacing.xs,
-    marginLeft: ms(2),
-  },
-  modalInput: {
-    backgroundColor: Colors.inputBackground,
-    borderRadius: Radius.md,
-    borderWidth: 1.5,
-    borderColor: Colors.border,
-    paddingVertical: ms(14),
-    paddingHorizontal: Spacing.lg,
-    fontSize: fs(15),
-    color: Colors.text,
-    marginBottom: Spacing.md,
-  },
-  modalError: {
-    fontSize: fs(12),
-    color: Colors.error,
-    marginTop: -Spacing.sm,
-    marginBottom: Spacing.sm,
-    marginLeft: ms(2),
-  },
-  modalButtons: {
-    flexDirection: 'row',
-    marginTop: Spacing.xs,
-  },
-  modalCancelButton: {
-    flex: 1,
-    paddingVertical: ms(14),
-    borderRadius: Radius.md,
-    backgroundColor: Colors.inputBackground,
-    alignItems: 'center',
-    marginRight: Spacing.sm,
-  },
-  modalCancelText: {
-    fontSize: fs(15),
-    fontWeight: '600',
-    color: Colors.textSecondary,
-  },
-  modalSaveButton: {
-    flex: 1,
-    paddingVertical: ms(14),
-    borderRadius: Radius.md,
-    backgroundColor: Colors.primary,
-    alignItems: 'center',
-    marginLeft: Spacing.sm,
-  },
-  modalSaveDisabled: {
-    opacity: 0.6,
-  },
-  modalSaveText: {
-    fontSize: fs(15),
-    fontWeight: '700',
-    color: Colors.white,
-  },
-});
 
 export default ProfileScreen;

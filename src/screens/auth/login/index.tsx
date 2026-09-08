@@ -1,14 +1,13 @@
+import { styles } from './style';
 import React, { useState } from 'react';
 import {
   View,
   Text,
   TouchableOpacity,
-  StyleSheet,
 } from 'react-native';
-import { AuthScreenLayout, FormInput, PrimaryButton, useAlert } from '../../components';
-import { useAuth } from '../../context/AuthContext';
-import { validators, FieldErrors } from '../../utils/validation';
-import { Colors, Spacing, fs } from '../../theme';
+import { AuthScreenLayout, FormInput, PrimaryButton, useAlert } from '../../../components';
+import { useAuth } from '../../../context/AuthContext';
+import { validators, FieldErrors } from '../../../utils/validation';
 
 interface LoginScreenProps {
   navigation: any;
@@ -110,33 +109,5 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
     </AuthScreenLayout>
   );
 };
-
-const styles = StyleSheet.create({
-  submitButton: {
-    marginTop: Spacing.lg,
-  },
-  forgotRow: {
-    alignSelf: 'flex-end',
-    marginBottom: Spacing.lg,
-  },
-  forgotText: {
-    fontSize: fs(14),
-    fontWeight: '600',
-    color: Colors.primary,
-  },
-  footerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  footerText: {
-    fontSize: fs(14),
-    color: Colors.textSecondary,
-  },
-  footerLink: {
-    fontSize: fs(14),
-    fontWeight: '700',
-    color: Colors.primary,
-  },
-});
 
 export default LoginScreen;

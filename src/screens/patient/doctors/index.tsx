@@ -1,10 +1,11 @@
+import { styles } from './style';
 import React, { useCallback, useEffect, useState } from 'react';
-import { View, Text, FlatList, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, Text, FlatList, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { BookAppointmentModal, DoctorCard, EmptyState } from '../../components';
-import { sessionService } from '../../services';
-import { BookingDoctor } from '../../types';
-import { Colors, Spacing, fs, ms } from '../../theme';
+import { BookAppointmentModal, DoctorCard, EmptyState } from '../../../components';
+import { sessionService } from '../../../services';
+import { BookingDoctor } from '../../../types';
+import { Colors } from '../../../theme';
 
 const DoctorsScreen: React.FC<{ navigation: any }> = () => {
   const [doctors, setDoctors] = useState<BookingDoctor[]>([]);
@@ -91,39 +92,5 @@ const DoctorsScreen: React.FC<{ navigation: any }> = () => {
     </SafeAreaView>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.background,
-  },
-  center: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  header: {
-    paddingHorizontal: Spacing.xl,
-    paddingTop: Spacing.lg,
-    paddingBottom: Spacing.md,
-  },
-  headerTitle: {
-    fontSize: fs(24),
-    fontWeight: '800',
-    color: Colors.text,
-    letterSpacing: -0.5,
-  },
-  headerSub: {
-    fontSize: fs(16),
-    color: Colors.textSecondary,
-    marginTop: ms(2),
-  },
-  listContainer: {
-    paddingHorizontal: Spacing.xl,
-    paddingTop: Spacing.xs,
-    paddingBottom: Spacing.xxl,
-    flexGrow: 1,
-  },
-});
 
 export default DoctorsScreen;

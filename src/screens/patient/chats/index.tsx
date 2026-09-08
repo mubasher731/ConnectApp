@@ -1,19 +1,18 @@
+import { styles } from './style';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
   FlatList,
   TouchableOpacity,
-  StyleSheet,
 } from 'react-native';
 import { useFocusEffect, useIsFocused } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useAutoRefresh } from '../../hooks/useAutoRefresh';
-import { AppointmentCard, EmptyState } from '../../components';
-import { CHAT_FILTERS, ChatFilterKey } from '../../context/appData';
-import { chatService } from '../../services';
-import { Chat } from '../../types';
-import { Colors, Radius, Spacing, responsiveSize, ms } from '../../theme';
+import { useAutoRefresh } from '../../../hooks/useAutoRefresh';
+import { AppointmentCard, EmptyState } from '../../../components';
+import { CHAT_FILTERS, ChatFilterKey } from '../../../context/appData';
+import { chatService } from '../../../services';
+import { Chat } from '../../../types';
 
 const ChatsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const [chats, setChats] = useState<Chat[]>([]);
@@ -123,59 +122,5 @@ const ChatsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     </SafeAreaView>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.background,
-  },
-  header: {
-    paddingHorizontal: Spacing.xl,
-    paddingTop: Spacing.lg,
-    paddingBottom: Spacing.md,
-  },
-  headerTitle: {
-    fontSize: responsiveSize(28),
-    fontWeight: '800',
-    color: Colors.text,
-    letterSpacing: -0.5,
-  },
-  headerCount: {
-    fontSize: responsiveSize(14),
-    color: Colors.textSecondary,
-    marginTop: ms(2),
-  },
-  filterRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    paddingHorizontal: Spacing.lg,
-    paddingBottom: Spacing.sm,
-    gap: Spacing.sm,
-  },
-  filterChip: {
-    paddingHorizontal: Spacing.md,
-    paddingVertical: ms(7),
-    borderRadius: Radius.round,
-    backgroundColor: Colors.inputBackground,
-  },
-  filterChipActive: {
-    backgroundColor: Colors.primary,
-  },
-  filterChipText: {
-    fontSize: responsiveSize(13),
-    fontWeight: '600',
-    color: Colors.textSecondary,
-  },
-  filterChipTextActive: {
-    color: Colors.white,
-  },
-  listContainer: {
-    paddingHorizontal: Spacing.lg,
-    paddingTop: Spacing.xs,
-    paddingBottom: ms(110),
-    flexGrow: 1,
-    backgroundColor: Colors.surface,
-  },
-});
 
 export default ChatsScreen;

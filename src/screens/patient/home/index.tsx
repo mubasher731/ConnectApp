@@ -1,3 +1,4 @@
+import { styles } from './style';
 import React, { useCallback, useState } from 'react';
 import {
   View,
@@ -5,16 +6,15 @@ import {
   FlatList,
   TouchableOpacity,
   ActivityIndicator,
-  StyleSheet,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
-import { AppIcon, AppointmentCard, Avatar, EmptyState } from '../../components';
-import { useAuth } from '../../context/AuthContext';
-import { chatService, sessionService } from '../../services/dataService';
-import { useAutoRefresh } from '../../hooks/useAutoRefresh';
-import { Chat } from '../../types';
-import { Colors, Radius, Shadows, Spacing, responsiveSize, wp, ms, fs } from '../../theme';
+import { AppIcon, AppointmentCard, Avatar, EmptyState } from '../../../components';
+import { useAuth } from '../../../context/AuthContext';
+import { chatService, sessionService } from '../../../services';
+import { useAutoRefresh } from '../../../hooks/useAutoRefresh';
+import { Chat } from '../../../types';
+import { Colors, wp } from '../../../theme';
 
 const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const { user } = useAuth();
@@ -166,150 +166,5 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     </SafeAreaView>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.background,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: Spacing.xl,
-    paddingTop: Spacing.lg,
-    paddingBottom: Spacing.md,
-  },
-  headerActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  notificationButton: {
-    width: wp(44),
-    height: wp(44),
-    borderRadius: Radius.round,
-    backgroundColor: Colors.inputBackground,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: Spacing.sm,
-  },
-  notificationDot: {
-    position: 'absolute',
-    top: 10,
-    right: 10,
-    width: wp(8),
-    height: wp(8),
-    borderRadius: ms(4),
-    backgroundColor: Colors.error,
-    borderWidth: 1.5,
-    borderColor: Colors.white,
-  },
-  greeting: {
-    fontSize: responsiveSize(15),
-    color: Colors.textSecondary,
-    fontWeight: '500',
-  },
-  userName: {
-    fontSize: responsiveSize(26),
-    fontWeight: '800',
-    color: Colors.text,
-    letterSpacing: -0.3,
-    marginTop: ms(2),
-  },
-  bookingBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginHorizontal: Spacing.xl,
-    marginTop: Spacing.md,
-    marginBottom: Spacing.sm,
-    padding: Spacing.lg,
-    borderRadius: Radius.xl,
-    backgroundColor: Colors.primary,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.12)',
-    ...Shadows.primary,
-  },
-  bookingBannerIcon: {
-    width: wp(48),
-    height: wp(48),
-    borderRadius: Radius.round,
-    backgroundColor: 'rgba(255,255,255,0.18)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: Spacing.md,
-  },
-  bookingBannerText: {
-    flex: 1,
-  },
-  bookingBannerTitle: {
-    fontSize: responsiveSize(17),
-    fontWeight: '800',
-    color: Colors.white,
-    letterSpacing: -0.2,
-  },
-  bookingBannerSub: {
-    fontSize: responsiveSize(12),
-    color: 'rgba(255,255,255,0.85)',
-    marginTop: ms(3),
-    lineHeight: fs(17),
-  },
-  bookingBannerArrow: {
-    width: wp(32),
-    height: wp(32),
-    borderRadius: Radius.round,
-    backgroundColor: 'rgba(255,255,255,0.18)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginLeft: Spacing.sm,
-  },
-  sectionTitleBlock: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.sm,
-  },
-  sectionSubtitle: {
-    fontSize: fs(12),
-    color: Colors.textTertiary,
-    marginTop: ms(2),
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: Spacing.xl,
-    paddingTop: Spacing.sm,
-    paddingBottom: Spacing.xs,
-  },
-  sectionActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  reloadButton: {
-    width: wp(32),
-    height: wp(32),
-    borderRadius: Radius.round,
-    backgroundColor: Colors.primarySoft,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: Spacing.md,
-  },
-  sectionTitle: {
-    fontSize: responsiveSize(18),
-    fontWeight: '700',
-    color: Colors.text,
-    letterSpacing: -0.2,
-  },
-  seeAllText: {
-    fontSize: responsiveSize(14),
-    fontWeight: '600',
-    color: Colors.primary,
-  },
-  chatList: {
-    paddingHorizontal: Spacing.xl,
-    paddingTop: Spacing.sm,
-    paddingBottom: ms(150),
-    backgroundColor: Colors.surface,
-  },
-});
 
 export default HomeScreen;

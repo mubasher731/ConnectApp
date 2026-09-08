@@ -1,14 +1,13 @@
+import { styles } from './style';
 import React, { useState } from 'react';
 import {
   View,
   Text,
   TouchableOpacity,
-  StyleSheet,
 } from 'react-native';
-import { AuthScreenLayout, FormInput, PrimaryButton, useAlert } from '../../components';
-import { useAuth } from '../../context/AuthContext';
-import { validators, FieldErrors } from '../../utils/validation';
-import { Colors, Spacing, fs } from '../../theme';
+import { AuthScreenLayout, FormInput, PrimaryButton, useAlert } from '../../../components';
+import { useAuth } from '../../../context/AuthContext';
+import { validators, FieldErrors } from '../../../utils/validation';
 
 interface SignupScreenProps {
   navigation: any;
@@ -149,24 +148,5 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ navigation }) => {
     </AuthScreenLayout>
   );
 };
-
-const styles = StyleSheet.create({
-  submitButton: {
-    marginTop: Spacing.sm,
-  },
-  footerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  footerText: {
-    fontSize: fs(14),
-    color: Colors.textSecondary,
-  },
-  footerLink: {
-    fontSize: fs(14),
-    fontWeight: '700',
-    color: Colors.primary,
-  },
-});
 
 export default SignupScreen;

@@ -1,16 +1,15 @@
+import { styles } from './style';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   View,
   Text,
   FlatList,
-  StyleSheet,
 } from 'react-native';
 import { useIsFocused } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { CallCard, EmptyState, ListItemSeparator } from '../../components';
-import { callService } from '../../services/dataService';
-import { CallLog } from '../../types';
-import { Colors, Spacing, responsiveSize, ms } from '../../theme';
+import { CallCard, EmptyState, ListItemSeparator } from '../../../components';
+import { callService } from '../../../services/dataService';
+import { CallLog } from '../../../types';
 
 const CallsScreen: React.FC = () => {
   const [calls, setCalls] = useState<CallLog[]>([]);
@@ -64,33 +63,5 @@ const CallsScreen: React.FC = () => {
     </SafeAreaView>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.background,
-  },
-  header: {
-    paddingHorizontal: Spacing.xl,
-    paddingTop: Spacing.lg,
-    paddingBottom: Spacing.md,
-  },
-  headerTitle: {
-    fontSize: responsiveSize(32),
-    fontWeight: '800',
-    color: Colors.text,
-    letterSpacing: -0.5,
-  },
-  headerCount: {
-    fontSize: responsiveSize(14),
-    color: Colors.textSecondary,
-    marginTop: ms(2),
-  },
-  listContainer: {
-    paddingHorizontal: Spacing.lg,
-    paddingBottom: ms(110),
-    flexGrow: 1,
-  },
-});
 
 export default CallsScreen;

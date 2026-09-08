@@ -1,7 +1,7 @@
+import { styles } from './style';
 import React, { useCallback, useState } from 'react';
 import {
   FlatList,
-  StyleSheet,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
@@ -9,7 +9,6 @@ import { EmptyState, ListItemSeparator, NotificationCard } from '../../component
 import { useAutoRefresh } from '../../hooks/useAutoRefresh';
 import { sessionService } from '../../services';
 import { AppNotification, BackendNotification, NotificationKind } from '../../types';
-import { Colors, Spacing } from '../../theme';
 
 const kindFromType = (type: string): NotificationKind => {
   if (
@@ -86,18 +85,5 @@ const NotificationsScreen: React.FC = () => {
     </SafeAreaView>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.background,
-  },
-  listContainer: {
-    paddingHorizontal: Spacing.xl,
-    paddingTop: Spacing.lg,
-    paddingBottom: Spacing.xxl,
-    flexGrow: 1,
-  },
-});
 
 export default NotificationsScreen;
