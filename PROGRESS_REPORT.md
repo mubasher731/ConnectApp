@@ -1,17 +1,22 @@
 # 📈 ConnectApp — Development Progress Report
 
 **Project:** ConnectApp — Healthcare Communication Platform (React Native)
-**Reporting Period:** August 1, 2026 – August 20, 2026
-**Stack:** React Native 0.86 · React 19 · TypeScript · React Navigation v7 · AsyncStorage · Socket.IO · Reanimated
+**Reporting Period:** August 1, 2026 – September 8, 2026
+**Stack:** React Native 0.86 (New Architecture) · React 19 · TypeScript · React Navigation v7 (native-stack + bottom-tabs) · Socket.IO · react-native-webrtc · react-native-nitro-sound · Reanimated v4
+**Backend:** Fountain Backend (Node.js/Express + PostgreSQL/Knex + Socket.IO)
 
 ---
 
 ## Overview
 
-Built a complete healthcare chat application from an empty prototype through a **role-based
-(Patient + Doctor) app with authentication, booking, persistent chat, notifications and session
-lifecycle** — first as a fully mock/offline demo, then **integrated end-to-end with the live
-Fountain Backend** (REST + Socket.IO), with **all mock data removed**.
+Built a complete, production-ready healthcare chat + **audio/video calling** platform for
+**patients and doctors** — from an empty prototype, through a fully mock/offline demo, to an
+**end-to-end integration with the live Fountain Backend** (REST + Socket.IO) with **all mock
+data removed**. The final phase added real-time **WebRTC calls**, **WhatsApp-style call logs
+(in the Calls tab and inline in chat)**, a **fully responsive design system**, an app-wide
+**screens refactor (logic / styles separation)**, and a **comprehensive mock-data audit**.
+
+> Every data path in the app now comes from the live backend. There is **no mock layer** left.
 
 ---
 
@@ -21,120 +26,121 @@ Fountain Backend** (REST + Socket.IO), with **all mock data removed**.
 - **Task:** Design and scaffold a modern, Apple-inspired React Native chat app named **ConnectApp**.
 - **Description:** Project structure (screens, components, theme, navigation), an animated **Splash screen**, a **Welcome screen**, and the **Main App** with a **bottom tab bar** (Home, Chats, Calls, Profile).
 - **Key Deliverables:** Animated splash/welcome screens, tab navigation with custom branding, central design-token theme (`Colors`, `Spacing`, `Radius`, `Shadows`, `responsiveSize`).
-- **Skills:** RN scaffolding, React Navigation (stack + tabs), design-token theming, responsive layout.
+- **Skills:** RN scaffolding, React Navigation (stack + tabs), design-token theming.
 
 ### 2. Authentication & Backend Foundation
-- **Task:** Production-ready auth + backend connectivity.
-- **Description:** **Login / Signup / Forgot Password** screens with validation, **JWT session persistence** (AsyncStorage), API client, Socket.IO service, and runtime backend URL discovery.
-- **Key Deliverables:** Auth screens + `AuthContext`, token store, REST/socket clients, `/api/config` discovery.
-- **Skills:** Secure auth flows, JWT management, REST + WebSocket integration.
+- **Description:** **Login / Signup / Forgot Password** screens with validation, **JWT session persistence** (AsyncStorage), API client, Socket.IO service, and runtime backend URL discovery (`GET /api/config`).
+- **Key Deliverables:** Auth screens + `AuthContext`, token store, REST/socket clients.
 
 ### 3. Role-Based Modules (Patient & Doctor)
-- **Task:** Two distinct experiences.
-- **Description:** Separate **Doctor** and **Patient** module folders with their own screens (Doctor Dashboard, Consultations; Patient Home, Chats, Calls, Profile) and `components/Doctor|Patient` subfolders.
-- **Key Deliverables:** Doctor module, Patient module, organized `src/screens/` + `src/components/` structure.
-- **Skills:** Role-based routing, feature-module organization, mock-data modeling.
+- **Description:** Separate **Doctor** and **Patient** module folders and screen sets (Doctor Dashboard/Consultations; Patient Home/Chats/Calls/Profile) plus `components/Doctor|Patient`.
+- **Key Deliverables:** Role-based routing (native-stack + two tab navigators), organized folders.
 
-### 4. Doctor Booking & Appointment Flow (Prototype)
-- **Task:** Patients find doctors and book with a realistic slot selector.
-- **Description:** **Doctors screen**, doctor cards, and a **booking modal** with a custom **15-minute interval time-slot dropdown**.
-- **Key Deliverables:** Doctor directory + cards, booking modal with 15-min slots, mock booking store + dashboard **Appointment Requests** (Accept/Reject).
-- **Skills:** Modals, dropdown UI patterns, mock state management.
-
-### 5. Booking Intelligence (Slot Conflicts & Availability)
-- **Task:** Simulate real-time slot availability and prevent double-booking.
-- **Description:** **60-second slot lock** on selection + conflict alert; a **10-second availability check** with spinner → ✅ Available / ❌ Already Booked.
-- **Key Deliverables:** Slot-lock booking store, availability-check UX, "Booked" tags.
-- **Skills:** Concurrency/state-machine design, simulated API delays, loading/success/error UX.
-
-### 6. Code Architecture Refactor
-- **Task:** Standardize the codebase.
-- **Description:** Extracted repeated views into reusable **Card components** (`components/Card/`) and moved all static screen data into **`context/appData.ts`**, exported via the component barrel.
-- **Key Deliverables:** 8 reusable cards, centralized static data, shared list separator, slimmer screens.
-- **Skills:** Component abstraction, DRY refactoring, barrel exports, folder conventions.
-
-### 7. Persistent Chat History (WhatsApp Style, Prototype)
-- **Task:** Chat persists forever between the same patient & doctor.
-- **Description:** **AsyncStorage engine** so rebooking a doctor reopens the **entire history from all previous sessions** with a **"Previous Sessions — read only"** divider (only when history exists) and original timestamps.
-- **Key Deliverables:** AsyncStorage session/message store, history separator + read-only rendering, seeded demo history.
-- **Skills:** Local persistence, data modeling, chat-history UX, WhatsApp-style grouping/date chips.
-
-### 8. Pre-Session Notifications (5 Minutes Before, Prototype)
-- **Task:** Notify both roles 5 minutes before a session.
-- **Description:** Global ticker fires a **role-specific notification** at the 5-minute mark (Patient: "⏰ Session Starting Soon" + **Join Session**; Doctor: "⏰ Upcoming Session" + **View Details**), persisted to the Notifications tab.
-- **Key Deliverables:** `MockSessionProvider` scheduler, notification center + event emitter, notifications screen.
-- **Skills:** Timers/scheduling, alert deep-linking, event-driven UI.
-
-### 9. Session Extension Alert (1 Minute Before End, Prototype)
-- **Task:** Doctor extends a session 1 minute before it ends.
-- **Description:** **Full-screen alert** at 60s remaining — "⏰ Session ending in 60 seconds" with **Cancel** / **Extend +5 min**; extend resets the timer + broadcasts a system message; ignoring auto-ends.
-- **Key Deliverables:** `SessionExtensionAlert` component, extension state + system messages, doctor demo shortcut.
-- **Skills:** Custom full-screen modals, session timing logic, in-chat system messages.
-
-### 10. Personalized Notifications & Complete Booking Flow (Prototype)
-- **Task:** Role-scoped notifications + end-to-end booking → accept → confirm.
-- **Description:** Notifications stored with **user_id + role** and filtered per login; completed flow (patient books → doctor gets "📋 New booking" → **Accepts** → both get confirmation, meeting scheduled at the selected slot time).
-- **Key Deliverables:** User-scoped notifications, confirmation notifications, doctor Accept action.
-- **Skills:** User/role data scoping, multi-step flow design, cross-role communication.
-
-### 11. UI Polish & Responsiveness
-- **Task:** Polished, responsive UI.
-- **Description:** Enlarged Doctors header, **centered chat input** (equal margins + vertically centered placeholder), fixed tab-bar cut-off, responsive across **280px–560px**.
-- **Key Deliverables:** Balanced headers, symmetric composer, responsive tab bar + layouts.
-- **Skills:** Responsive design, safe-area handling, pixel alignment, cross-device QA.
+### 4–11. Booking, Slot intelligence, Chat history, Notifications, Session alerts, UI polish
+Prototype features (booking modal with 15-min slots, slot-lock + availability UX, reusable Card
+components, AsyncStorage chat history with session dividers, 5-min pre-session + 1-min extension
+alerts, personalized notifications, responsive layouts 280px–560px).
 
 ---
 
 ## Phase B — Live Backend Integration (Fountain Backend)
 
 ### 12. Full Real-Backend Integration & Mock Removal
-- **Task:** Wire the frontend to the **live Fountain Backend** and remove all mock/dummy data.
-- **Description:** Rewrote the data layer to the real contract — **conversations** (`GET/POST /api/conversations`, messages, status, extend, end), **doctor availability/requests**, **notifications**, and **role-specific auth** (`role_id 3 = Doctor`, `4 = Patient`, flat `{ message, data }` envelope). Deleted the entire `src/mock/` layer plus mock session/notification stores.
-- **Key Deliverables:**
-  - `sessionService` (conversation/message/request/status/extend/end/availability/notification endpoints)
-  - `dataService` (conversation → chat mapping, `peer_user_id` presence, peer grouping)
-  - Real booking (`POST /api/conversations`), real doctor requests + **Accept/Reject via `PUT .../status`**
-  - Real notifications UI (`GET /api/notification/all`)
-- **Skills:** API contract integration, envelope/error handling, removing legacy mock layers safely.
+- **Description:** Rewrote the data layer to the real contract — **conversations**, **messages**, **status/extend/end**, **doctor availability/requests/slots**, **notifications**, role auth (`role_id 3 = Doctor`, `4 = Patient`), flat `{ message, data }` envelope. Deleted the entire `src/mock/` layer and mock session/notification stores.
+- **Key Deliverables:** `sessionService`, `dataService` (conversation → chat mapping, `peer_user_id` presence, peer grouping, one row per pair), real booking + doctor Accept/Reject, real notifications.
 
 ### 13. Real-Time Chat & Socket Layer
-- **Task:** Live messaging, presence, typing, and session events.
-- **Description:** Fixed the **socket to authenticate with the JWT** (auth + query handshake), switched to `websocket` transport, and matched the verified event contract (`join-conversation`, `new-message`, `typing`, `session-timer-update`, `session-ended`, `chat-decision`, `user-online/offline`, `user-joined/left`), all payloads unwrapped from `{ data: {...} }`. Added room re-join on reconnect and live dashboard refresh on `chat-request`.
-- **Key Deliverables:** Authenticated socket singleton, room tracking, verified event handlers, presence (online/offline dot), typing indicator.
-- **Skills:** Socket.IO auth + real-time events, reconnect handling, event-driven UI.
+- **Description:** Fixed the socket to authenticate with the JWT (**auth + query handshake**), `transports: ['websocket','polling']` (**polling fallback required** over ngrok/proxies), and matched the verified event contract (`join-conversation`, `new-message`, `typing`, `session-timer-update`, `session-ended`, `chat-decision`, `schedule-shifted`, `user-online/offline`, `user-joined/left`, `chat-request`). Chat payloads are wrapped in `{ data: {...} }`. Added room re-join on reconnect, presence, typing indicator, and **auto-refresh** for list screens (`useAutoRefresh` + focus polling).
+- **Key Deliverables:** Authenticated socket singleton + re-register on reconnect, `liveData` emitter, presence (online/offline dot), typing indicator.
 
 ### 14. Booking & Doctor Workflow on the Live Backend
-- **Task:** Correct booking + approval-gated sessions.
-- **Description:** Booking now **allows future dates** (7-day picker), **disables past slots**, requires the backend's **3–5 word reason**, and **surfaces the real backend error** on failure (removed the fake 10s check). Pending conversations show **"Awaiting doctor approval"** (locked, no countdown); countdown only once `in_progress`/`active`. Doctor **Consultations exclude pending**; pending requests live on the Dashboard with Accept/Reject.
-- **Key Deliverables:** Date + slot picker, pending-state chat banner/lock, dashboard request flow, real error handling.
-- **Skills:** State-machine UI (pending/in_progress/active/ended), validation parity with backend, error surfacing.
+- **Description:** Booking allows **future dates** with past slots disabled, requires the backend's **3–5 word reason**, and surfaces **real backend errors**. Pending conversations show **"Awaiting doctor approval"** (locked); countdown only once `in_progress`/`active`. Doctor Dashboard handles pending **Appointment Requests** (Accept/Reject/Reschedule) with real-time refresh.
+- **Key Deliverables:** Date + slot picker, pending-state banner/lock, dashboard request flow, real error surfacing.
 
 ### 15. Media, Session Divider & Final Polish (Live)
-- **Task:** Media messages, session boundary UI, and last-mile fixes.
-- **Description:** **Photo/file/voice rendering** (base-URL prepend, image + file/voice chips) and **multipart send support**; a **"New session" divider** that separates the previous (read-only) session history from the new session; chat list **grouped by peer** (one row per pair, most recent); full participant names in the chat header.
-- **Key Deliverables:** Media message UI, session-start divider + styles, peer-grouped chat list.
-- **Skills:** Media handling, chat-history UX, list de-duplication, defensive data shaping.
+- **Description:** **Photo/file/voice** rendering (base-URL prepend, image/file/voice chips) + **multipart send**; **"New session" divider**; chat list grouped by peer; full participant names in header; WhatsApp-style countdown & lifecycle banners.
 
 ---
 
-## Summary of Deliverables (Key Files)
+## Phase C — Real-Time Audio/Video Calls (WebRTC) + Hardening
+
+### 16. End-to-End WebRTC Calls (Signal + Media)
+- **Description:** Implemented **voice & video calls** over react-native-webrtc with backend-relayed Socket.IO signaling (`call:offer → call:incoming`, `call:answer`, `call:ice-candidate`, `call:end → call:ended`, `call:reject → call:rejected`, `call:busy`), routed by real `users.id` via `peer_user_id`. WhatsApp-style **incoming call UI** (slide-up accept/decline), in-call screen with PiP local preview + **camera switch**, `InCallManager` audio routing, connection-quality indicator, 30s ring auto-reject.
+- **Key fixes along the way:**
+  - Caller name resolution from the conversation (`doctor_name`/`patient_name`) instead of "Unknown".
+  - **Socket race / call-delivery regression** — connect() reuses `socket.connected || socket.active` with a `connectPromise` guard; call listeners re-register on `user?.id` + socket reconnect.
+  - `peerReady` gating so an answer is only created after the remote offer is applied.
+  - Double-end guard, InCallManager start/stop lifecycle guard, camera-switch freeze fix (brand-new `MediaStream` + release track before re-acquire).
+- **Skills:** WebRTC peer-connection state machine, Socket.IO signaling, media/camera handling.
+
+### 17. WebRTC Backend/Contract Alignment (Frontend)
+- **Description:** Found & fixed the real ICE endpoint path — the mobile was calling `/calls/ice-credentials` instead of `/api/calls/ice-credentials` (404 "Url Not exists"); the endpoint **exists** and returns TURN. ICE fetch is now **best-effort** (`configureIceForCall`) with loud diagnostics (`[ICE] OK/FAILED` host/status logs, `[CallContext] ICE config loaded`).
+- Added **`call:error` handling** (`unauthorized`/`rate_limited`) so a rejected offer no longer leaves the caller stuck on "Calling…".
+- `extractError` now preserves the **HTTP status** on errors for diagnosis.
+
+### 18. Call Resilience & Diagnostics
+- **Description:** Graceful **disconnect handling** — `connectionState: 'disconnected'` is no longer an instant hang-up; the call goes to **"Reconnecting…"**, retries `restartIce()` (up to 3× over ~16s), and only ends on `failed`/`closed` or if recovery never happens. `endCall` works while reconnecting. Added candidate diagnostics (`Remote candidate type: host/srflx/relay`) via `getStats`.
+- **Backend bug identified for the fix:** `socketIo.js call:answer` was clearing the **callee's** ring timer (which is null) instead of the **caller's** — the caller's "missed" timer fired ~20s after a successful answer and force-ended the call **on the answering device**. Fix = clear `activeCalls.get(peer).ringTimer` and notify both sides on cleanup.
+
+### 19. WhatsApp-style Call Logs (History UI)
+- **Description:** Wired the UI to the real **`GET /api/calls/history`** endpoint:
+  - **Calls tab** — real list (avatar, name, direction, duration, relative time, call-type icon) with focus auto-refresh.
+  - **Inline in chat** — call rows merged into the thread by timestamp (like WhatsApp): green right bubble for outgoing, grey left for incoming, red ✕ for **Missed**, with `↑/↓` arrow + `duration · time`.
+- **Key fixes:** backend returns **snake_case** keys (`peer_name`, `peer_user_id`, `duration_seconds`) alongside camelCase — mapper now reads both, fixing **"Unknown" names**, missing chat rows, and durations. Missed/rejected/failed collapse to "Missed" (WhatsApp behavior). Duration shown only for answered calls.
+
+---
+
+## Phase D — Cross-Cutting Polish, Responsive System, Cleanup
+
+### 20. Responsive Design System (all devices + orientation)
+- **Description:** Created a single-source **`src/utils/responsive.ts`** with `wp/hp/ms/fs` scaling from a **390×844** design baseline with clamped factors (`MIN 0.8 / MAX 1.18`, orientation-aware short/long dimension) — replacing raw `react-native-size-matters` (fixed 350×680, unbounded → distorted on wide screens). The **theme barrel re-exports** the whole API, and **all 38 styled files** were converted (widths→`wp`, heights→`hp`, padding/margin/radius→`ms`, fonts→`fs`), with circular controls kept round (`wp` for both axes). Added `deviceWidth/Height`, `isTablet`.
+- **Key Deliverables:** Responsive utility + theme, full codebase conversion, tablet/small-phone/landscape-safe clamps.
+
+### 21. Voice Recording & Playback Fixes (nitro-sound)
+- **Description:** Fixed voice notes:
+  - **"3 presses to play"** — just-sent notes used a local recorder path that got mangled into a broken API URL; remote notes cancelled/restarted their download on every extra tap. Now: local-file-aware URI resolution (only pending `local-` ids play raw), a `voiceBusyRef` in-flight guard, a loading spinner, and **real pause → resume** from the same position.
+  - **Cancel (✕) now single-tap** — enlarged the recording cancel target to a full-height ~46px area and rendered it above the timer text.
+
+### 22. Screen Structure Refactor (index.tsx + style.ts)
+- **Description:** Standardized `src/screens` so **every screen folder has exactly two files**:
+  - `splash`, `chat`, `doctor`, `notification` → `index.tsx` + `style.ts`
+  - `auth/{login,signup,forgotpassword}` and `patient/{home,chats,calls,doctors,profile}` → each with `index.tsx` + `style.ts`
+  - Single import site `AppNavigator.tsx`; relative depths fixed; all screens verified with `tsc` + `eslint`.
+
+### 23. Mock-Data Audit & Removal
+- **Description:** Removed every remaining mock/stub so **all data comes from the backend**:
+  - Deleted `services/userService.ts` (returned `[]`) and the unreachable `DirectoryScreen.tsx` that depended on it.
+  - Removed the `notificationService` stub (empty/no-op) — notifications use the real `sessionService.getNotifications()`.
+  - Removed the stale `isMock` type field and the unused `DOCTOR_DEMO_CREDENTIALS`.
+  - Final grep: no `mock`/stub references left in `src`.
+
+### 24. Misc UI/Bug Fixes (Chat)
+- **Double "Session ended"** banner fixed — the red countdown banner is the only one; the yellow `sessionNotice` duplicate was removed on session end.
+- `HomeScreen` pre-existing wrong `sessionService` import (from `dataService`) fixed → services barrel.
+- TS cleanup in `WebRTCService.ts` (local `Init` type declarations), `tsc`-clean project.
+
+---
+
+## Summary of Deliverables (Key Files — Final Structure)
 
 | Area | Deliverable |
 |---|---|
-| API | `config.ts` (live ngrok base URL), `sessionService` (conversations/messages/status/extend/end/availability/notifications), `dataService` (chat mapping + peer grouping) |
-| Real-time | `socket.ts` (JWT auth, `websocket`, verified events, room re-join) |
-| Booking | future-date + past-slot-disabled picker, 3–5 word reason, real error surfacing |
-| Doctor | Dashboard requests (Accept/Reject via `PUT /api/conversations/:id/status`), Consultations (pending excluded), live `chat-request` refresh |
-| Chat | pending "Awaiting approval" banner/lock, media rendering, "New session" divider |
-| Notifications | real `GET/PUT/DELETE /api/notification/*` + `fcm-token`, socket live refresh |
-| UI | 8 reusable cards, `SessionExtensionAlert`, themed screens, centered composer |
-| Data | `context/appData.ts` (static data), removed all `src/mock/**` |
+| API | `src/api/config.ts` (host discovery via `/api/config` + fallback), `client.ts` (axios + JWT + `extractError` w/ status), `socket.ts` (auth socket, event contract, `liveData`) |
+| Services | `sessionService` (conversations/messages/status/extend/end/availability/notifications), `dataService` (`chatService`, `callService` → `/api/calls/history`), `iceService` (`/api/calls/ice-credentials`) |
+| Calls/WebRTC | `WebRTCService.ts`, `context/CallContext.tsx`, `components/Call/*` (CallScreen, CallControls, IncomingCallModal), ICE diagnostics + graceful reconnect |
+| Screens (refactored) | `screens/{splash,chat,doctor,notification}/index.tsx+style.ts`, `screens/auth/{login,signup,forgotpassword}/…`, `screens/patient/{home,chats,calls,doctors,profile}/…` |
+| Chat | media/voice rendering, WhatsApp call rows inline, session divider, single red "Session ended", single-tap recording cancel |
+| Theme/Responsive | `utils/responsive.ts` (390×844, clamped wp/hp/ms/fs), theme barrel re-exports |
+| Backend findings | `/api/calls/ice-credentials` path fix, ICE/TURN config (config.turn), `call:answer` ring-timer bug, call-history SQL quoting bug |
+
+## Validation
+- `npx tsc --noEmit` → **0 errors**
+- `npx eslint src` → **0 new errors** (only pre-existing chat `useCallback` dependency debt resolved)
+- Jest suite passes for mocked modules (vector-icons, nitro-sound, image-picker, documents-picker, reanimated).
 
 ## Skills Gained — Overall
-- React Native & React 19 (hooks, contexts, state machines)
-- TypeScript architecture (components, barrels, data/service layer)
-- React Navigation (stack/tabs/deep links)
-- **REST + Socket.IO integration with a live backend** (auth, events, error handling)
-- Local persistence (AsyncStorage) and **mock-to-real migration**
-- Product thinking: role-based UX, notifications, session lifecycle
-- Code quality: `tsc` / `eslint` / `jest` validation discipline
+- React Native & React 19 (hooks, contexts, state machines) · TypeScript architecture · React Navigation v7
+- REST + Socket.IO real-time with a live backend · **WebRTC audio/video calling + signaling + NAT/ICE/TURN**
+- Responsive design systems · WhatsApp-style chat/call UX · mock-to-real migration & cleanup
+- Backend contract analysis (endpoints, events, encryption, session lifecycle, call records)
+- Code quality: `tsc` / `eslint` / `jest` discipline
